@@ -1,0 +1,7 @@
+echo ".next
+node_modules
+.turbo
+.DS_Store
+.env
+.vscode
+.vercel" > .gitignore
