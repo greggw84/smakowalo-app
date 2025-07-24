@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 21, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/middleware.ts"],"sourcesContent":["import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'\nimport { NextResponse } from 'next/server'\nimport type { NextRequest } from 'next/server'\n\nexport async function middleware(req: NextRequest) {\n  const res = NextResponse.next()\n  const supabase = createMiddlewareClient({ req, res })\n\n  // Refresh session if expired - required for Server Components\n  const {\n    data: { session },\n  } = await supabase.auth.getSession()\n\n  return res\n}\n\nexport const config = {\n  matcher: [\n    /*\n     * Match all request paths except for the ones starting with:\n     * - api (API routes)\n     * - _next/static (static files)\n     * - _next/image (image optimization files)\n     * - favicon.ico (favicon file)\n     */\n    '/((?!api|_next/static|_next/image|favicon.ico).*)',\n  ],\n}\n"],"names":[],"mappings":";;;;AAAA;AACA;AAAA;;;AAGO,eAAe,WAAW,GAAgB;IAC/C,MAAM,MAAM,6LAAA,CAAA,eAAY,CAAC,IAAI;IAC7B,MAAM,WAAW,CAAA,GAAA,gLAAA,CAAA,yBAAsB,AAAD,EAAE;QAAE;QAAK;IAAI;IAEnD,8DAA8D;IAC9D,MAAM,EACJ,MAAM,EAAE,OAAO,EAAE,EAClB,GAAG,MAAM,SAAS,IAAI,CAAC,UAAU;IAElC,OAAO;AACT;AAEO,MAAM,SAAS;IACpB,SAAS;QACP;;;;;;KAMC,GACD;KACD;AACH"}}]
-}

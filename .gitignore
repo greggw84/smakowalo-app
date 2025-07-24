@@ -6,3 +6,5 @@ node_modules
 .vscode
 .vercel" > .gitignore
 .vercel
+.env.local
+.env.local
