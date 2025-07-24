@@ -10,11 +10,9 @@
     "format": "bunx biome format --write"
   },
   "dependencies": {
-    "@auth/supabase-adapter": "^1.10.0",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
-    "@sendgrid/mail": "^8.1.5",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.3.1",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
@@ -23,12 +21,8 @@
     "@supabase/supabase-js": "^2.50.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "framer-motion": "^12.23.7",
-    "jspdf": "^3.0.1",
-    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.475.0",
     "next": "^15.3.2",
-    "next-auth": "^4.24.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "stripe": "^18.2.1",
@@ -36,16 +30,16 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
     "@eslint/eslintrc": "^3.3.1",
+    "@biomejs/biome": "1.9.4",
     "@types/node": "^20.17.50",
     "@types/react": "^18.3.22",
     "@types/react-dom": "^18.3.7",
-    "bippy": "^0.3.16",
     "eslint": "^9.27.0",
     "eslint-config-next": "15.1.7",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "bippy": "^0.3.16"
   }
 }

@@ -27,7 +27,8 @@ console.log('NextAuth Config:', {
   hasSupabase,
   hasFacebook: !!(facebookClientId && facebookClientSecret),
   hasGoogle: !!(googleClientId && googleClientSecret),
-  hasEmail: !!(process.env.EMAIL_SERVER_HOST && process.env.EMAIL_FROM)
+  hasEmail: !!(process.env.EMAIL_SERVER_HOST && process.env.EMAIL_FROM),
+  isProduction: process.env.NODE_ENV === 'production'
 })
 
 const handler = NextAuth({
@@ -38,45 +39,73 @@ const handler = NextAuth({
   }) : undefined,
 
   providers: [
-    // Facebook OAuth - only if configured
-    ...(facebookClientId && facebookClientSecret ? [FacebookProvider({
-      clientId: facebookClientId,
-      clientSecret: facebookClientSecret,
-    })] : []),
-
-    // Google OAuth - only if configured
-    ...(googleClientId && googleClientSecret ? [GoogleProvider({
-      clientId: googleClientId,
-      clientSecret: googleClientSecret,
-    })] : []),
-
-    // Email magic links - configured for Gmail SMTP
-    EmailProvider({
-      server: {
-        host: process.env.EMAIL_SERVER_HOST || 'smtp.gmail.com',
-        port: Number(process.env.EMAIL_SERVER_PORT) || 587,
-        auth: {
-          user: process.env.EMAIL_SERVER_USER || 'noreply@smakowalo.pl',
-          pass: process.env.EMAIL_SERVER_PASSWORD || 'placeholder', // Use App Password for Gmail
-        },
-        secure: false, // Use STARTTLS
-      },
-      from: process.env.EMAIL_FROM || 'Smakowało <noreply@smakowalo.pl>',
-    }),
-
-    // Credentials provider for testing and custom auth
+    // Credentials provider for testing and fallback auth
     CredentialsProvider({
       name: 'credentials',
       credentials: {
         email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
+        password: { label: 'Password', type: 'password' },
+        firstName: { label: 'First Name', type: 'text' },
+        lastName: { label: 'Last Name', type: 'text' },
+        isSignUp: { label: 'Is Sign Up', type: 'hidden' }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
 
-        // If we have Supabase, try to authenticate with it
+        // If this is a sign up request
+        if (credentials.isSignUp === 'true') {
+          // For test domains, create user directly without email verification
+          if (supabase) {
+            try {
+              // Check if user already exists
+              const { data: existingUser } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('email', credentials.email)
+                .single()
+
+              if (existingUser) {
+                throw new Error('User already exists')
+              }
+
+              // Create user in Supabase auth
+              const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+                email: credentials.email,
+                password: credentials.password,
+                email_confirm: true, // Skip email verification for test
+                user_metadata: {
+                  first_name: credentials.firstName,
+                  last_name: credentials.lastName
+                }
+              })
+
+              if (authError || !authData.user) {
+                console.error('Error creating user:', authError)
+                throw new Error('Failed to create user')
+              }
+
+              return {
+                id: authData.user.id,
+                email: authData.user.email,
+                name: `${credentials.firstName} ${credentials.lastName}`.trim(),
+              }
+            } catch (error) {
+              console.error('Sign up error:', error)
+              return null
+            }
+          } else {
+            // Fallback for no database - create test user
+            return {
+              id: Date.now().toString(),
+              email: credentials.email,
+              name: `${credentials.firstName} ${credentials.lastName}`.trim(),
+            }
+          }
+        }
+
+        // Regular sign in
         if (supabase) {
           try {
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -111,6 +140,35 @@ const handler = NextAuth({
         return null
       }
     }),
+
+    // Facebook OAuth - only if configured AND not on test domain
+    ...(facebookClientId && facebookClientSecret && !process.env.VERCEL_URL?.includes('vercel.app') ? [FacebookProvider({
+      clientId: facebookClientId,
+      clientSecret: facebookClientSecret,
+    })] : []),
+
+    // Google OAuth - only if configured AND not on test domain
+    ...(googleClientId && googleClientSecret && !process.env.VERCEL_URL?.includes('vercel.app') ? [GoogleProvider({
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+    })] : []),
+
+    // Email magic links - only if SMTP is properly configured
+    ...(process.env.EMAIL_SERVER_HOST &&
+        process.env.EMAIL_SERVER_PASSWORD &&
+        !process.env.EMAIL_SERVER_PASSWORD.includes('placeholder') &&
+        !process.env.VERCEL_URL?.includes('vercel.app') ? [EmailProvider({
+      server: {
+        host: process.env.EMAIL_SERVER_HOST || 'smtp.gmail.com',
+        port: Number(process.env.EMAIL_SERVER_PORT) || 587,
+        auth: {
+          user: process.env.EMAIL_SERVER_USER || 'noreply@smakowalo.pl',
+          pass: process.env.EMAIL_SERVER_PASSWORD,
+        },
+        secure: false,
+      },
+      from: process.env.EMAIL_FROM || 'Smakowało <noreply@smakowalo.pl>',
+    })] : []),
   ],
 
   pages: {
@@ -121,22 +179,18 @@ const handler = NextAuth({
 
   callbacks: {
     async session({ session, token, user }) {
-      // Add user ID to session
       if (session.user && token.sub) {
         session.user.email = session.user.email || token.email as string
-        // Store user ID in a custom way to avoid type issues
         Object.assign(session.user, { id: token.sub })
       }
       return session
     },
 
     async jwt({ token, user, account }) {
-      // Store user ID in token
       if (user) {
         token.id = user.id
       }
 
-      // Store provider info
       if (account) {
         token.provider = account.provider
       }
@@ -145,9 +199,8 @@ const handler = NextAuth({
     },
 
     async redirect({ url, baseUrl }) {
-      // Redirect to panel after successful login
       if (url.startsWith(baseUrl)) {
-        return '/panel'
+        return url
       }
       return `${baseUrl}/panel`
     },
@@ -155,7 +208,6 @@ const handler = NextAuth({
 
   events: {
     async createUser({ user }) {
-      // Create profile in Supabase when user is created (only if using Supabase)
       if (user.email && supabase) {
         try {
           const { error } = await supabase.from('profiles').insert({
@@ -191,7 +243,6 @@ const handler = NextAuth({
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 
-  // Add debug for development
   debug: process.env.NODE_ENV === 'development',
 })
 

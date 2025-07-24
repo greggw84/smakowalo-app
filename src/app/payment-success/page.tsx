@@ -1,45 +1,42 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { CheckCircle, Loader } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  CheckCircle,
+  Package,
+  Mail,
+  Calendar,
+  ArrowRight,
+  Home,
+  User
+} from "lucide-react"
+import Link from "next/link"
 import Logo from '@/components/Logo'
-import Link from 'next/link'
 
-function PaymentSuccessContent() {
+export default function PaymentSuccessPage() {
+  const { data: session } = useSession()
+  const router = useRouter()
   const searchParams = useSearchParams()
-  const [loading, setLoading] = useState(true)
-  const [paymentStatus, setPaymentStatus] = useState<'success' | 'failed' | 'processing'>('processing')
-
-  const paymentIntentId = searchParams.get('payment_intent')
-  const paymentIntentClientSecret = searchParams.get('payment_intent_client_secret')
-  const redirectStatus = searchParams.get('redirect_status')
+  const [orderDetails, setOrderDetails] = useState<any>(null)
 
   useEffect(() => {
-    // Check payment status based on redirect_status
-    if (redirectStatus === 'succeeded') {
-      setPaymentStatus('success')
-    } else if (redirectStatus === 'failed') {
-      setPaymentStatus('failed')
+    // If user is not authenticated, redirect to login
+    if (!session) {
+      router.push('/login?callbackUrl=/payment-success')
+      return
     }
-    setLoading(false)
-  }, [redirectStatus])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <Loader className="h-12 w-12 text-[var(--smakowalo-green-primary)] mx-auto mb-4 animate-spin" />
-            <h2 className="text-xl font-semibold mb-2">Sprawdzamy status płatności...</h2>
-            <p className="text-gray-600">Proszę czekać</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+    // Get payment intent ID from URL if available
+    const paymentIntentId = searchParams?.get('payment_intent')
+    if (paymentIntentId) {
+      // You could fetch order details here using the payment intent ID
+      console.log('Payment Intent ID:', paymentIntentId)
+    }
+  }, [session, router, searchParams])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
@@ -47,102 +44,140 @@ function PaymentSuccessContent() {
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link href="/">
-              <Logo width={120} height={32} />
-            </Link>
+            <div className="flex items-center">
+              <Link href="/">
+                <Logo width={120} height={32} />
+              </Link>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/panel">
+                <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
+                  <User className="w-4 h-4 mr-2" />
+                  Panel
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
 
-      <div className="flex items-center justify-center py-12 px-4">
-        <Card className="w-full max-w-lg">
-          <CardContent className="p-8 text-center">
-            {paymentStatus === 'success' ? (
-              <>
-                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
-                <h1 className="text-2xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
-                  Płatność zakończona sukcesem!
-                </h1>
-                <p className="text-gray-600 mb-6">
-                  Dziękujemy za zakup! Twoje zamówienie zostało przyjęte i wkrótce otrzymasz potwierdzenie na email.
-                </p>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center mb-8">
+          <div className="mx-auto flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h1 className="text-3xl font-bold text-[var(--smakowalo-green-dark)] mb-2">
+            Płatność zakończona sukcesem!
+          </h1>
+          <p className="text-lg text-gray-600">
+            Dziękujemy za zamówienie. Twoje świeże składniki są już przygotowywane.
+          </p>
+        </div>
 
-                {paymentIntentId && (
-                  <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                    <p className="text-sm text-gray-600">
-                      <strong>ID płatności:</strong> {paymentIntentId}
-                    </p>
-                  </div>
-                )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6 text-center">
+              <Mail className="w-8 h-8 text-[var(--smakowalo-green-primary)] mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Potwierdzenie email</h3>
+              <p className="text-sm text-gray-600">
+                Wysłaliśmy potwierdzenie zamówienia na Twój adres email
+              </p>
+            </CardContent>
+          </Card>
 
-                <div className="space-y-3">
-                  <Button
-                    onClick={() => window.location.assign('/')}
-                    className="w-full smakowalo-green"
-                  >
-                    Powrót do strony głównej
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => window.location.assign('/menu')}
-                    className="w-full"
-                  >
-                    Zamów ponownie
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <span className="text-red-500 text-2xl">✗</span>
-                </div>
-                <h1 className="text-2xl font-bold text-red-600 mb-4">
-                  Płatność nieudana
-                </h1>
-                <p className="text-gray-600 mb-6">
-                  Wystąpił problem z przetworzeniem płatności. Proszę spróbować ponownie.
-                </p>
+          <Card>
+            <CardContent className="p-6 text-center">
+              <Package className="w-8 h-8 text-[var(--smakowalo-green-primary)] mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Przygotowanie</h3>
+              <p className="text-sm text-gray-600">
+                Nasz zespół już przygotowuje Twoje świeże składniki
+              </p>
+            </CardContent>
+          </Card>
 
-                <div className="space-y-3">
-                  <Button
-                    onClick={() => window.location.assign('/checkout')}
-                    className="w-full smakowalo-green"
-                  >
-                    Spróbuj ponownie
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => window.location.assign('/')}
-                    className="w-full"
-                  >
-                    Powrót do strony głównej
-                  </Button>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
-
-export default function PaymentSuccessPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white flex items-center justify-center">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-8 text-center">
-              <Loader className="h-12 w-12 text-[var(--smakowalo-green-primary)] mx-auto mb-4 animate-spin" />
-              <h2 className="text-xl font-semibold mb-2">Sprawdzamy status płatności...</h2>
-              <p className="text-gray-600">Proszę czekać</p>
+          <Card>
+            <CardContent className="p-6 text-center">
+              <Calendar className="w-8 h-8 text-[var(--smakowalo-green-primary)] mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">Dostawa</h3>
+              <p className="text-sm text-gray-600">
+                Otrzymasz szczegóły dostawy w ciągu 24 godzin
+              </p>
             </CardContent>
           </Card>
         </div>
-      }
-    >
-      <PaymentSuccessContent />
-    </Suspense>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Co dalej?</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-[var(--smakowalo-green-primary)] text-white rounded-full flex items-center justify-center text-sm font-medium">
+                1
+              </div>
+              <div>
+                <h4 className="font-medium">Sprawdź email</h4>
+                <p className="text-sm text-gray-600">
+                  Potwierdzenie zamówienia zostało wysłane na Twój adres email wraz ze szczegółami.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-[var(--smakowalo-green-primary)] text-white rounded-full flex items-center justify-center text-sm font-medium">
+                2
+              </div>
+              <div>
+                <h4 className="font-medium">Śledź status zamówienia</h4>
+                <p className="text-sm text-gray-600">
+                  W panelu klienta możesz śledzić aktualny status przygotowania i dostawy.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-[var(--smakowalo-green-primary)] text-white rounded-full flex items-center justify-center text-sm font-medium">
+                3
+              </div>
+              <div>
+                <h4 className="font-medium">Przygotuj się na gotowanie</h4>
+                <p className="text-sm text-gray-600">
+                  Wraz z dostawą otrzymasz szczegółowe przepisy i instrukcje przygotowania.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+          <Link href="/panel">
+            <Button className="smakowalo-green">
+              <User className="w-4 h-4 mr-2" />
+              Przejdź do panelu
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
+
+          <Link href="/">
+            <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
+              <Home className="w-4 h-4 mr-2" />
+              Strona główna
+            </Button>
+          </Link>
+        </div>
+
+        <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center">
+            <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+            <div>
+              <p className="font-medium text-green-800">Dziękujemy za zaufanie!</p>
+              <p className="text-sm text-green-700">
+                Jeśli masz pytania, skontaktuj się z nami pod adresem kontakt@smakowalo.pl
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

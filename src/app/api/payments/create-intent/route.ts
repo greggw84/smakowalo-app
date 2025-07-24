@@ -122,14 +122,19 @@ async function validateDiscountCode(code: string): Promise<{ valid: boolean; dis
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔵 Payment intent creation started');
+
     const session = await getServerSession();
 
     if (!session?.user?.email) {
+      console.log('❌ No authenticated user');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
+
+    console.log('✅ User authenticated:', session.user.email);
 
     const body: PaymentIntentRequest = await request.json();
     const { items, customerInfo, discountCode } = body;
@@ -186,6 +191,13 @@ export async function POST(request: NextRequest) {
 
     const finalAmount = Math.max(subtotal - totalDiscount, 0);
 
+    console.log('💰 Payment calculation:', {
+      subtotal: subtotal.toFixed(2),
+      totalDiscount: totalDiscount.toFixed(2),
+      finalAmount: finalAmount.toFixed(2),
+      isFirstOrder: isFirstOrderEligible
+    });
+
     // Create Stripe payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(finalAmount * 100), // Convert to cents
@@ -225,8 +237,12 @@ export async function POST(request: NextRequest) {
       });
 
     if (dbError) {
-      console.error('Error storing payment intent:', dbError);
+      console.error('❌ Error storing payment intent:', dbError);
+    } else {
+      console.log('✅ Payment intent stored in database');
     }
+
+    console.log('🎉 Payment intent created successfully:', paymentIntent.id);
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,

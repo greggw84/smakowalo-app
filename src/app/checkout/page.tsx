@@ -81,10 +81,18 @@ function PaymentForm({ customerInfo, discountCode, onPaymentSuccess }: PaymentFo
         }),
       })
 
-      const { clientSecret, error } = await response.json()
+      const data = await response.json()
 
-      if (error) {
-        setPaymentError(error)
+      if (!response.ok || data.error) {
+        setPaymentError(data.error || 'Błąd podczas tworzenia płatności')
+        setIsProcessing(false)
+        return
+      }
+
+      const { clientSecret } = data
+
+      if (!clientSecret) {
+        setPaymentError('Błąd konfiguracji płatności')
         setIsProcessing(false)
         return
       }
@@ -148,6 +156,17 @@ function PaymentForm({ customerInfo, discountCode, onPaymentSuccess }: PaymentFo
             },
           }}
         />
+      </div>
+
+      {/* Test Card Information */}
+      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <h4 className="font-medium text-blue-800 mb-2">💳 Karta testowa Stripe</h4>
+        <div className="text-sm text-blue-700 space-y-1">
+          <p><strong>Numer:</strong> 4242 4242 4242 4242</p>
+          <p><strong>Ważność:</strong> 12/34 (dowolna data w przyszłości)</p>
+          <p><strong>CVC:</strong> 123 (dowolny 3-cyfrowy kod)</p>
+          <p><strong>Kod pocztowy:</strong> 12345</p>
+        </div>
       </div>
 
       {paymentError && (
