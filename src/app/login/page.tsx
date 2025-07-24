@@ -32,7 +32,25 @@ import Logo from '@/components/Logo'
 export default function LoginPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const searchParams = useSearchParams()
+  import { Suspense } from "react";
+
+function SearchWrapper() {
+  const searchParams = useSearchParams();
+  // reszta logiki tu
+  return (
+    <div>
+      {/* coś tam */}
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SearchWrapper />
+    </Suspense>
+  );
+}
   const callbackUrl = searchParams?.get('callbackUrl') || '/panel'
 
   const [activeTab, setActiveTab] = useState('signin')
