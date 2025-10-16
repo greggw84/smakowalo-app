@@ -1,0 +1,168 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle, CheckCircle, Loader2, ArrowLeft, Mail } from "lucide-react"
+import Link from "next/link"
+import Logo from '@/components/Logo'
+
+export default function ForgotPasswordPage() {
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+
+    if (!email) {
+      setError('Podaj adres email')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError('Podaj prawidłowy adres email')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setSuccess(data.message || 'Email z linkiem do resetowania hasła został wysłany!')
+        setEmail('')
+      } else {
+        setError(data.error || 'Wystąpił błąd podczas wysyłania emaila')
+      }
+    } catch (error) {
+      console.error('Reset password error:', error)
+      setError('Wystąpił nieoczekiwany błąd')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <Link href="/">
+                <Logo width={120} height={32} />
+              </Link>
+            </div>
+            <Link href="/login">
+              <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Powrót do logowania
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      <div className="flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-[var(--smakowalo-green-dark)]">
+              Zapomniałeś hasła?
+            </h2>
+            <p className="mt-2 text-gray-600">
+              Nie martw się! Wyślemy Ci link do resetowania hasła.
+            </p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Reset hasła</CardTitle>
+              <CardDescription>
+                Podaj adres email powiązany z Twoim kontem
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent>
+              {error && (
+                <Alert className="mb-4 border-red-200 bg-red-50">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-700">
+                    {error}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {success && (
+                <Alert className="mb-4 border-green-200 bg-green-50">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-700">
+                    {success}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="email">Adres email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="jan@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full smakowalo-green"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Wysyłanie...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="mr-2 h-4 w-4" />
+                      Wyślij link resetujący
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              <div className="mt-6 text-center text-sm">
+                <p className="text-gray-600">
+                  Pamiętasz hasło?{' '}
+                  <Link href="/login" className="text-[var(--smakowalo-green-primary)] hover:underline font-medium">
+                    Zaloguj się
+                  </Link>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}

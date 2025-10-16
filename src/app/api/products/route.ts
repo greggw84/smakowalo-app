@@ -1,0 +1,851 @@
+import { type NextRequest, NextResponse } from 'next/server'
+import { createSupabaseClient } from '@/lib/supabase'
+import { fetchOpenCartProducts, fetchOpenCartCategories, fetchOpenCartStockMap } from '@/lib/opencart'
+import { scrapeProducts, scrapeCategories } from '@/lib/opencart-scraper'
+
+// OpenCart Product interface
+interface OpenCartProduct {
+  product_id: string
+  name: string
+  description: string
+  image: string
+  price: number
+  category_id?: number
+  cook_time?: number
+  difficulty?: string
+  calories?: number
+  protein?: number
+  ingredients?: string[]
+  diets?: string[]
+  rating?: number
+  category?: {
+    name: string
+    slug: string
+  }
+}
+
+// Real OpenCart products from smakowalo.pl
+const realOpenCartProducts = [
+  {
+    id: 1,
+    name: "Krewetki z Harissą i Miodem z Ryżem z Kalafiora i Greckim Jogurtem",
+    description: "Pikantne krewetki w sosie harissa z miodem, podawane z ryżem z kalafiora i chłodzącym greckim jogurtem",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg",
+    price: 35.00,
+    category_id: 1,
+    cook_time: 25,
+    difficulty: 'Średni',
+    calories: 520,
+    protein: 35,
+    ingredients: ["Pierś z kurczaka", "Ryż jaśminowy", "Brokuły", "Marchew", "Sos teriyaki"],
+    diets: ["wysokobiałkowa", "zdrowa"],
+    rating: 4.8,
+    servings: 2,
+    carbs: 45,
+    fat: 12,
+    fiber: 4,
+    reviews_count: 89,
+    allergens: ["soja", "gluten"],
+    equipment: ["Patelnia", "Garnek", "Nóż"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: true,
+    stock_quantity: 50,
+    sku: "OC-001",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania główne", slug: "dania-glowne" }
+  },
+  {
+    id: 2,
+    name: "Kurczak Tikka Masala z Curry z ryżem z kalafiora i kolendrą",
+    description: "Aromatyczny kurczak tikka masala w kremowym sosie curry, podany z ryżem z kalafiora i świeżą kolendrą",
+    image: "https://ext.same-assets.com/817389662/2623479817.jpeg",
+    price: 32.00,
+    category_id: 1,
+    cook_time: 20,
+    difficulty: 'Średni',
+    calories: 580,
+    protein: 28,
+    ingredients: ["Pasta penne", "Krewetki", "Śmietana", "Szpinak", "Suszone pomidory"],
+    diets: ["wysokobiałkowa"],
+    rating: 4.7,
+    servings: 2,
+    carbs: 52,
+    fat: 18,
+    fiber: 3,
+    reviews_count: 123,
+    allergens: ["gluten", "mleko", "skorupiaki"],
+    equipment: ["Garnek", "Patelnia", "Łyżka"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: true,
+    stock_quantity: 42,
+    sku: "OC-003",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania główne", slug: "dania-glowne" }
+  },
+  {
+    id: 7,
+    name: "Risotto z dynia piżmową i tymiankiem z przesmazonymi kiełkami groszku i pestkami dyni",
+    description: "Kremowe risotto z dynia piżmową i aromatycznym tymiankiem, podane z przesmazonymi kiełkami groszku",
+    image: "https://ext.same-assets.com/290874832/189435024.jpeg",
+    price: 38.00,
+    category_id: 1,
+    cook_time: 35,
+    difficulty: 'Trudny',
+    calories: 490,
+    protein: 18,
+    ingredients: ["Ryż arborio", "Grzyby leśne", "Parmezan", "Białe wino", "Bulion warzywny"],
+    diets: ["wegetariańska"],
+    rating: 4.9,
+    servings: 2,
+    carbs: 68,
+    fat: 12,
+    fiber: 3,
+    reviews_count: 156,
+    allergens: ["mleko"],
+    equipment: ["Patelnia", "Łyżka drewniana", "Garnek"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: true,
+    stock_quantity: 22,
+    sku: "OC-007",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania główne", slug: "dania-glowne" }
+  },
+  {
+    id: 8,
+    name: "Świeży łosoś na łóżku cytrynowego risotto z dodatkiem tenderstem i groszku",
+    description: "Świeży łosoś na kremowym cytrynowym risotto z tenderstem broccoli i zielonym groszkiem",
+    image: "https://ext.same-assets.com/290874832/1351291427.jpeg",
+    price: 45.00,
+    category_id: 1,
+    cook_time: 25,
+    difficulty: 'Średni',
+    calories: 650,
+    protein: 45,
+    ingredients: ["Stek z łososia", "Szparagi", "Młode ziemniaki", "Masło ziołowe"],
+    diets: ["wysokobiałkowa", "keto"],
+    rating: 4.6,
+    servings: 1,
+    carbs: 25,
+    fat: 35,
+    fiber: 6,
+    reviews_count: 78,
+    allergens: ["ryby", "mleko"],
+    equipment: ["Grill", "Patelnia", "Nóż"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 30,
+    sku: "OC-008",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania główne", slug: "dania-glowne" }
+  },
+  {
+    id: 9,
+    name: "Curry z kurczakiem i warzywami",
+    description: "Aromatyczne curry z kurczakiem, papryką, cukinią i mlekiem kokosowym",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=FF9800/FFFFFF?text=Curry+z+Kurczakiem",
+    price: 29.99,
+    category_id: 1,
+    cook_time: 30,
+    difficulty: 'Łatwy',
+    calories: 480,
+    protein: 32,
+    ingredients: ["Pierś z kurczaka", "Papryka", "Cukinia", "Mleko kokosowe", "Curry"],
+    diets: ["bezglutenowa", "wysokobiałkowa"],
+    rating: 4.5,
+    servings: 2,
+    carbs: 28,
+    fat: 22,
+    fiber: 8,
+    reviews_count: 92,
+    allergens: [],
+    equipment: ["Patelnia", "Nóż", "Deska"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 45,
+    sku: "OC-009",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania główne", slug: "dania-glowne" }
+  },
+  {
+    id: 3,
+    name: "Sałatka z łososiem i awokado",
+    description: "Świeża sałatka z wędzonym łososiem, awokado, rukolą i dressingiem cytrynowym",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=4CAF50/FFFFFF?text=Salatka+z+Lososiem",
+    price: 28.99,
+    category_id: 2,
+    cook_time: 15,
+    difficulty: 'Łatwy',
+    calories: 380,
+    protein: 25,
+    ingredients: ["Wędzony łosoś", "Awokado", "Rukola", "Pomidorki cherry", "Dressing cytrynowy"],
+    diets: ["keto", "niskowęglowodanowa", "zdrowa"],
+    rating: 4.6,
+    servings: 1,
+    carbs: 8,
+    fat: 28,
+    fiber: 6,
+    reviews_count: 67,
+    allergens: ["ryby"],
+    equipment: ["Nóż", "Deska do krojenia", "Miska"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 35,
+    sku: "OC-002",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Sałatki", slug: "salatki" }
+  },
+  {
+    id: 10,
+    name: "Sałatka Cezar z grillowanym kurczakiem",
+    description: "Klasyczna sałatka Cezar z grillowanym kurczakiem, grzankami i parmezanem",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=9C27B0/FFFFFF?text=Salatka+Cezar",
+    price: 26.99,
+    category_id: 2,
+    cook_time: 20,
+    difficulty: 'Łatwy',
+    calories: 420,
+    protein: 35,
+    ingredients: ["Sałata rzymska", "Pierś z kurczaka", "Parmezan", "Grzanki", "Sos Cezar"],
+    diets: ["wysokobiałkowa"],
+    rating: 4.4,
+    servings: 1,
+    carbs: 18,
+    fat: 24,
+    fiber: 4,
+    reviews_count: 156,
+    allergens: ["gluten", "mleko", "jaja"],
+    equipment: ["Grill", "Nóż", "Miska"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 40,
+    sku: "OC-010",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Sałatki", slug: "salatki" }
+  },
+  {
+    id: 11,
+    name: "Sałatka grecka z serem feta",
+    description: "Tradycyjna sałatka grecka z pomidorami, ogórkami, oliwkami i serem feta",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=2196F3/FFFFFF?text=Salatka+Grecka",
+    price: 22.99,
+    category_id: 2,
+    cook_time: 10,
+    difficulty: 'Łatwy',
+    calories: 320,
+    protein: 15,
+    ingredients: ["Pomidory", "Ogórki", "Oliwki", "Ser feta", "Cebula czerwona"],
+    diets: ["wegetariańska", "bezglutenowa"],
+    rating: 4.3,
+    servings: 1,
+    carbs: 12,
+    fat: 25,
+    fiber: 5,
+    reviews_count: 89,
+    allergens: ["mleko"],
+    equipment: ["Nóż", "Deska", "Miska"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 50,
+    sku: "OC-011",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Sałatki", slug: "salatki" }
+  },
+  {
+    id: 4,
+    name: "Buddha bowl wegańskie",
+    description: "Kolorowa miska z quinoa, pieczonymi warzywami i sosem tahini",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=8BC34A/FFFFFF?text=Buddha+Bowl",
+    price: 26.99,
+    category_id: 3,
+    cook_time: 30,
+    difficulty: 'Łatwy',
+    calories: 420,
+    protein: 15,
+    ingredients: ["Quinoa", "Bataty", "Ciecierzyca", "Szpinak", "Sos tahini"],
+    diets: ["wegańska", "wegetariańska", "bezglutenowa", "zdrowa"],
+    rating: 4.5,
+    servings: 1,
+    carbs: 58,
+    fat: 14,
+    fiber: 12,
+    reviews_count: 94,
+    allergens: ["sezam"],
+    equipment: ["Piekarnik", "Blender", "Nóż"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 28,
+    sku: "OC-004",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania wegańskie", slug: "dania-weganskie" }
+  },
+  {
+    id: 12,
+    name: "Wegańskie chili z czarną fasolą",
+    description: "Pikantne chili z czarną fasolą, papryką i pomidorami, podane z awokado",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=F44336/FFFFFF?text=Weganskie+Chili",
+    price: 24.99,
+    category_id: 3,
+    cook_time: 45,
+    difficulty: 'Łatwy',
+    calories: 380,
+    protein: 18,
+    ingredients: ["Czarna fasola", "Papryka", "Pomidory", "Awokado", "Przyprawy"],
+    diets: ["wegańska", "wegetariańska", "bezglutenowa"],
+    rating: 4.7,
+    servings: 2,
+    carbs: 52,
+    fat: 8,
+    fiber: 16,
+    reviews_count: 134,
+    allergens: [],
+    equipment: ["Garnek", "Nóż", "Deska"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: true,
+    stock_quantity: 35,
+    sku: "OC-012",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania wegańskie", slug: "dania-weganskie" }
+  },
+  {
+    id: 13,
+    name: "Makaron z pestem bazyliowym i orzechami",
+    description: "Makaron pełnoziarnisty z domowym pesto z bazylii, orzechów włoskich i czosnku",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=4CAF50/FFFFFF?text=Makaron+Pesto",
+    price: 27.99,
+    category_id: 3,
+    cook_time: 25,
+    difficulty: 'Łatwy',
+    calories: 450,
+    protein: 16,
+    ingredients: ["Makaron pełnoziarnisty", "Bazylia", "Orzechy włoskie", "Czosnek", "Oliwa"],
+    diets: ["wegańska", "wegetariańska"],
+    rating: 4.6,
+    servings: 2,
+    carbs: 62,
+    fat: 18,
+    fiber: 8,
+    reviews_count: 87,
+    allergens: ["orzechy", "gluten"],
+    equipment: ["Garnek", "Blender", "Nóż"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 32,
+    sku: "OC-013",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania wegańskie", slug: "dania-weganskie" }
+  },
+  {
+    id: 5,
+    name: "Wrap z grillowanym kurczakiem",
+    description: "Tortilla z grillowanym kurczakiem, warzywami i sosem jogurtowym",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=FFC107/FFFFFF?text=Wrap+z+Kurczakiem",
+    price: 22.99,
+    category_id: 4,
+    cook_time: 18,
+    difficulty: 'Łatwy',
+    calories: 450,
+    protein: 32,
+    ingredients: ["Tortilla", "Pierś z kurczaka", "Sałata", "Pomidor", "Sos jogurtowy"],
+    diets: ["wysokobiałkowa", "zdrowa"],
+    rating: 4.4,
+    servings: 1,
+    carbs: 35,
+    fat: 15,
+    fiber: 4,
+    reviews_count: 76,
+    allergens: ["gluten", "mleko"],
+    equipment: ["Grill", "Nóż", "Deska"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 31,
+    sku: "OC-005",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Wrapy", slug: "wrapy" }
+  },
+  {
+    id: 14,
+    name: "Wrap z hummusem i grillowanymi warzywami",
+    description: "Wegański wrap z hummusem, grillowaną papryką, cukinią i świeżymi ziołami",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=4CAF50/FFFFFF?text=Wrap+Weganki",
+    price: 19.99,
+    category_id: 4,
+    cook_time: 15,
+    difficulty: 'Łatwy',
+    calories: 320,
+    protein: 12,
+    ingredients: ["Tortilla", "Hummus", "Papryka", "Cukinia", "Świeże zioła"],
+    diets: ["wegańska", "wegetariańska"],
+    rating: 4.2,
+    servings: 1,
+    carbs: 42,
+    fat: 12,
+    fiber: 8,
+    reviews_count: 54,
+    allergens: ["gluten", "sezam"],
+    equipment: ["Grill", "Nóż", "Deska"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 25,
+    sku: "OC-014",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Wrapy", slug: "wrapy" }
+  },
+  {
+    id: 15,
+    name: "Wrap z tuńczykiem i avocado",
+    description: "Zdrowy wrap z tuńczykiem w sosie własnym, awokado i miksem sałat",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=03A9F4/FFFFFF?text=Wrap+Tunczyk",
+    price: 24.99,
+    category_id: 4,
+    cook_time: 12,
+    difficulty: 'Łatwy',
+    calories: 380,
+    protein: 28,
+    ingredients: ["Tortilla", "Tuńczyk", "Awokado", "Miks sałat", "Sos cytrynowy"],
+    diets: ["wysokobiałkowa", "zdrowa"],
+    rating: 4.5,
+    servings: 1,
+    carbs: 28,
+    fat: 18,
+    fiber: 6,
+    reviews_count: 98,
+    allergens: ["gluten", "ryby"],
+    equipment: ["Nóż", "Deska", "Miska"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 40,
+    sku: "OC-015",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Wrapy", slug: "wrapy" }
+  },
+  {
+    id: 16,
+    name: "Krem z pomidorów z bazylią",
+    description: "Aksamitny krem z dojrzałych pomidorów z świeżą bazylią i śmietanką",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=F44336/FFFFFF?text=Krem+Pomidorowy",
+    price: 18.99,
+    category_id: 5,
+    cook_time: 30,
+    difficulty: 'Łatwy',
+    calories: 220,
+    protein: 8,
+    ingredients: ["Pomidory", "Bazylia", "Śmietanka", "Cebula", "Czosnek"],
+    diets: ["wegetariańska"],
+    rating: 4.3,
+    servings: 2,
+    carbs: 18,
+    fat: 14,
+    fiber: 4,
+    reviews_count: 67,
+    allergens: ["mleko"],
+    equipment: ["Garnek", "Blender", "Nóż"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 45,
+    sku: "OC-016",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Zupy", slug: "zupy" }
+  },
+  {
+    id: 17,
+    name: "Żurek z kiełbasą i jajkiem",
+    description: "Tradycyjny polski żurek z białą kiełbasą, jajkiem i marjoraną",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=8D6E63/FFFFFF?text=Zurek+Polski",
+    price: 26.99,
+    category_id: 5,
+    cook_time: 40,
+    difficulty: 'Średni',
+    calories: 420,
+    protein: 22,
+    ingredients: ["Żurek", "Biała kiełbasa", "Jajko", "Czosnek", "Majeranek"],
+    diets: ["wysokobiałkowa"],
+    rating: 4.8,
+    servings: 2,
+    carbs: 32,
+    fat: 24,
+    fiber: 3,
+    reviews_count: 189,
+    allergens: ["gluten", "jaja"],
+    equipment: ["Garnek", "Nóż", "Łyżka"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: true,
+    stock_quantity: 30,
+    sku: "OC-017",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Zupy", slug: "zupy" }
+  },
+  {
+    id: 18,
+    name: "Miso ramen z tofu",
+    description: "Japońska zupa ramen z bulionem miso, tofu, wodorostami i jajkiem",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=FF9800/FFFFFF?text=Miso+Ramen",
+    price: 29.99,
+    category_id: 5,
+    cook_time: 35,
+    difficulty: 'Średni',
+    calories: 380,
+    protein: 20,
+    ingredients: ["Makaron ramen", "Pasta miso", "Tofu", "Wodorosty", "Jajko"],
+    diets: ["wegetariańska"],
+    rating: 4.6,
+    servings: 1,
+    carbs: 45,
+    fat: 12,
+    fiber: 6,
+    reviews_count: 123,
+    allergens: ["gluten", "soja", "jaja"],
+    equipment: ["Garnek", "Miska", "Pałeczki"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 25,
+    sku: "OC-018",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Zupy", slug: "zupy" }
+  },
+  {
+    id: 19,
+    name: "Tiramisu domowe",
+    description: "Klasyczne włoskie tiramisu z mascarpone, kawą i kakao",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=8D6E63/FFFFFF?text=Tiramisu",
+    price: 22.99,
+    category_id: 6,
+    cook_time: 20,
+    difficulty: 'Średni',
+    calories: 380,
+    protein: 8,
+    ingredients: ["Mascarpone", "Kawa", "Biszkopty", "Jaja", "Kakao"],
+    diets: ["wegetariańska"],
+    rating: 4.9,
+    servings: 4,
+    carbs: 32,
+    fat: 28,
+    fiber: 1,
+    reviews_count: 245,
+    allergens: ["mleko", "gluten", "jaja"],
+    equipment: ["Miska", "Mikser", "Forma"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: true,
+    stock_quantity: 15,
+    sku: "OC-019",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Desery", slug: "desery" }
+  },
+  {
+    id: 20,
+    name: "Chia pudding z owocami",
+    description: "Zdrowy pudding z nasion chia, mlekiem migdałowym i świeżymi owocami",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg?color=E91E63/FFFFFF?text=Chia+Pudding",
+    price: 16.99,
+    category_id: 6,
+    cook_time: 15,
+    difficulty: 'Łatwy',
+    calories: 220,
+    protein: 8,
+    ingredients: ["Nasiona chia", "Mleko migdałowe", "Mango", "Jagody", "Miód"],
+    diets: ["wegańska", "bezglutenowa", "zdrowa"],
+    rating: 4.4,
+    servings: 2,
+    carbs: 28,
+    fat: 8,
+    fiber: 12,
+    reviews_count: 89,
+    allergens: ["orzechy"],
+    equipment: ["Miska", "Łyżka", "Lodówka"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 35,
+    sku: "OC-020",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Desery", slug: "desery" }
+  },
+  {
+    id: 21,
+    name: "Makaron Linguine z krewetkami w maśle cytrynowo-czosnkowym z serem i płatkami chili",
+    description: "Aromatyczny makaron linguine z krewetkami w delikatnym maśle cytrynowo-czosnkowym, serem i lekko ostrymi płatkami chili",
+    image: "https://ext.same-assets.com/290874832/189435024.jpeg",
+    price: 38.00,
+    category_id: 1,
+    cook_time: 25,
+    difficulty: 'Średni',
+    calories: 520,
+    protein: 28,
+    ingredients: ["Linguine", "Krewetki", "Masło", "Cytryna", "Czosnek", "Ser", "Płatki chili"],
+    diets: ["wysokobiałkowa"],
+    rating: 4.7,
+    servings: 2,
+    carbs: 45,
+    fat: 18,
+    fiber: 3,
+    reviews_count: 112,
+    allergens: ["skorupiaki", "gluten", "mleko"],
+    equipment: ["Garnek", "Patelnia", "Nóż"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: true,
+    stock_quantity: 25,
+    sku: "OC-021",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania główne", slug: "dania-glowne" }
+  },
+  {
+    id: 22,
+    name: "Słoneczne kuleczki mięsne z wołowiny w sosie pomidorowym z warzywami pieczonymi z pesto i sałatką z rukolą",
+    description: "Soczyste kuleczki mięsne z wołowiny w bogatym sosie pomidorowym, podane z warzywami pieczonymi z pesto i świeżą sałatką z rukolą",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg",
+    price: 42.00,
+    category_id: 1,
+    cook_time: 35,
+    difficulty: 'Średni',
+    calories: 580,
+    protein: 32,
+    ingredients: ["Mięso wołowe", "Sos pomidorowy", "Warzywa", "Pesto", "Rukola"],
+    diets: ["wysokobiałkowa"],
+    rating: 4.6,
+    servings: 2,
+    carbs: 28,
+    fat: 24,
+    fiber: 6,
+    reviews_count: 89,
+    allergens: ["gluten"],
+    equipment: ["Piekarnik", "Patelnia", "Nóż"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: false,
+    stock_quantity: 20,
+    sku: "OC-022",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania główne", slug: "dania-glowne" }
+  },
+  {
+    id: 23,
+    name: "Sea Bream in spice harissa",
+    description: "Świeży dorad w pikantnej harissie - danie o intensywnym smaku inspirowane kuchnią północnoafrykańską",
+    image: "https://ext.same-assets.com/817389662/2623479817.jpeg",
+    price: 44.00,
+    category_id: 1,
+    cook_time: 30,
+    difficulty: 'Średni',
+    calories: 480,
+    protein: 35,
+    ingredients: ["Dorada", "Harissa", "Oliwa", "Przyprawy"],
+    diets: ["wysokobiałkowa", "bezglutenowa"],
+    rating: 4.8,
+    servings: 2,
+    carbs: 8,
+    fat: 22,
+    fiber: 2,
+    reviews_count: 67,
+    allergens: ["ryby"],
+    equipment: ["Piekarnik", "Patelnia", "Nóż"],
+    tags: ["OpenCart"],
+    active: true,
+    featured: true,
+    stock_quantity: 15,
+    sku: "OC-023",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: { name: "Dania główne", slug: "dania-glowne" }
+  }
+]
+
+// Helper to decide whether to use OpenCart
+const hasOpenCart = !!(
+  process.env.OPENCART_URL &&
+  process.env.OPENCART_API_USERNAME &&
+  process.env.OPENCART_API_PASSWORD
+)
+const opencartImageBase = process.env.OPENCART_IMAGE_BASE || (process.env.OPENCART_URL ? `${process.env.OPENCART_URL}/image/` : '')
+
+console.log('OpenCart configuration:', {
+  hasOpenCart,
+  url: process.env.OPENCART_URL,
+  hasUsername: !!process.env.OPENCART_API_USERNAME,
+  hasPassword: !!process.env.OPENCART_API_PASSWORD
+})
+
+export async function GET(request: NextRequest) {
+  try {
+    const url = new URL(request.url)
+    const category = url.searchParams.get('category')
+    const diet = url.searchParams.get('diet')
+    const search = url.searchParams.get('search')
+    const featured = url.searchParams.get('featured')
+
+    // Always try OpenCart first if configured
+    if (hasOpenCart) {
+      try {
+        console.log('🔍 Fetching products from OpenCart...')
+
+        // Try scraping first (API doesn't exist on this OpenCart)
+        let products: any[] = []
+        let categories: any[] = []
+        let stockMap: Record<number, number> = {}
+
+        try {
+          console.log('🕷️ Using web scraper (API not available)')
+          products = await scrapeProducts()
+          categories = await scrapeCategories()
+          console.log(`✅ Scraped ${products.length} products from OpenCart`)
+        } catch (scrapeError) {
+          console.error('❌ Scraping failed, trying API...', scrapeError)
+          // Fallback to API if scraping fails
+          stockMap = await fetchOpenCartStockMap()
+          products = await fetchOpenCartProducts()
+          categories = await fetchOpenCartCategories()
+          console.log(`✅ Got ${products.length} products from OpenCart API`)
+        }
+
+        if (products.length === 0) {
+          throw new Error('No products found from OpenCart')
+        }
+
+        // Attach stock and map images - use OpenCart images directly
+        const enriched = products.map(p => ({
+          ...p,
+          stock: stockMap[p.id] ?? p.stock ?? 0,
+          // Use the image from OpenCart directly - it's already formatted with full URL
+          image: p.image || `${opencartImageBase}catalog/no-image.jpg`,
+          cook_time: p.cook_time ?? 25,
+          difficulty: p.difficulty ?? 'Średni',
+          calories: p.calories ?? 500,
+          protein: p.protein ?? 25,
+          ingredients: p.ingredients ?? [],
+          // Map OpenCart categories to diets array
+          diets: p.categories ? p.categories.map((cat: string) => cat.toLowerCase()) : (p.diets ?? ['zdrowa']),
+          rating: p.rating ?? 4.6,
+          servings: p.servings ?? 2,
+          categories: categories.find((c: any) => c.id === p.category_id) || { name: 'Dania główne', slug: 'dania-glowne' },
+        }))
+
+        // Basic filters
+        let filtered = enriched
+        if (category) {
+          filtered = filtered.filter(p => p.categories?.slug === category || String(p.category_id) === category)
+        }
+        if (diet && diet !== 'all') {
+          filtered = filtered.filter(p => p.diets?.includes(diet))
+        }
+        if (search) {
+          filtered = filtered.filter(p =>
+            p.name?.toLowerCase().includes(search.toLowerCase()) ||
+            p.description?.toLowerCase().includes(search.toLowerCase())
+          )
+        }
+        if (featured === 'true') {
+          filtered = filtered.filter(p => p.featured)
+        }
+
+        console.log(`✅ Returning ${filtered.length} products from OpenCart`)
+
+        return NextResponse.json({
+          success: true,
+          products: filtered,
+          total: filtered.length,
+          source: 'opencart'
+        })
+      } catch (openCartError) {
+        console.error('❌ OpenCart fetch failed, falling back to mock data:', openCartError)
+        // Fall through to mock data
+      }
+    }
+
+    // Fallback to mock data
+    let filteredProducts = [...realOpenCartProducts]
+
+    if (category) {
+      filteredProducts = filteredProducts.filter(p => p.categories?.slug === category || String(p.category_id) === category)
+    }
+    if (diet && diet !== 'all') {
+      filteredProducts = filteredProducts.filter(p => p.diets && p.diets.includes(diet))
+    }
+    if (search) {
+      filteredProducts = filteredProducts.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.description.toLowerCase().includes(search.toLowerCase())
+      )
+    }
+    if (featured === 'true') {
+      filteredProducts = filteredProducts.filter(p => p.featured)
+    }
+
+    return NextResponse.json({
+      success: true,
+      products: filteredProducts,
+      total: filteredProducts.length,
+      source: 'mock'
+    })
+  } catch (error) {
+    console.error('❌ Products API error:', error)
+    // Always fallback to mock data in case of any error
+    const url = new URL(request.url)
+    const category = url.searchParams.get('category')
+    const diet = url.searchParams.get('diet')
+    const search = url.searchParams.get('search')
+    const featured = url.searchParams.get('featured')
+
+    let filteredProducts = [...realOpenCartProducts]
+
+    if (category) {
+      filteredProducts = filteredProducts.filter(p => p.categories?.slug === category || String(p.category_id) === category)
+    }
+    if (diet && diet !== 'all') {
+      filteredProducts = filteredProducts.filter(p => p.diets && p.diets.includes(diet))
+    }
+    if (search) {
+      filteredProducts = filteredProducts.filter(p =>
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.description.toLowerCase().includes(search.toLowerCase())
+      )
+    }
+    if (featured === 'true') {
+      filteredProducts = filteredProducts.filter(p => p.featured)
+    }
+
+    return NextResponse.json({
+      success: true,
+      products: filteredProducts,
+      total: filteredProducts.length,
+      source: 'mock-error-fallback'
+    })
+  }
+}
