@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Supabase Email Test - Smakowalo.pl</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #fafafa;
+      padding: 40px;
+      text-align: center;
+    }
+    input {
+      padding: 10px;
+      font-size: 16px;
+      width: 280px;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #00a86b;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    button:hover {
+      background: #008f5e;
+    }
+    .log {
+      margin-top: 20px;
+      font-family: monospace;
+      text-align: left;
+      max-width: 640px;
+      margin-inline: auto;
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body>
+  <h1>Test wysyłki e-maila (Supabase + Smakowalo.pl)</h1>
+  <p>Podaj adres e-mail, aby wysłać testowy e-mail potwierdzający rejestrację.</p>
+  <input id="email" type="email" placeholder="np. greghdm@gmail.com" />
+  <button id="send">Wyślij e-mail testowy</button>
+  <div class="log" id="log"></div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+    // 🔧 UZUPEŁNIJ SWOJE DANE PONIŻEJ:
+    const supabaseUrl = 'https://quqqpijxjzujauhessa.supabase.co'
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTY4Nzc3NDYyNSwiZXhwIjoxOTAzMzUwNjI1fQ.pC3Mi0ljzdXbNYmFrZSlSnF1FlcFXwaN4p4dWphdwhlc3NnImFubBzea' // 🔑 Twój publiczny anon key
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    document.getElementById('send').addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim()
+      const log = document.getElementById('log')
+      if (!email) {
+        log.innerHTML = '❌ Wpisz adres e-mail.'
+        return
+      }
+
+      log.innerHTML = '⏳ Wysyłam e-mail...'
+
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: 'Test1234!'
+      })
+
+      if (error) {
+        log.innerHTML = `❌ Błąd: ${error.message}`
+        console.error(error)
+      } else {
+        log.innerHTML = `✅ Wysłano! Sprawdź skrzynkę: <b>${email}</b><br><br>Odpowiedź Supabase:<br>${JSON.stringify(data, null, 2)}`
+        console.log('RESULT:', data)
+      }
+    })
+  </script>
+</body>
+</html>
