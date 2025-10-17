@@ -52,9 +52,9 @@
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-    // 🔧 UZUPEŁNIJ SWOJE DANE PONIŻEJ:
-    const supabaseUrl = 'https://quqqpijxjzujauhessa.supabase.co'
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTY4Nzc3NDYyNSwiZXhwIjoxOTAzMzUwNjI1fQ.pC3Mi0ljzdXbNYmFrZSlSnF1FlcFXwaN4p4dWphdwhlc3NnImFubBzea' // 🔑 Twój publiczny anon key
+    // 🔧 KONFIGURACJA
+    const supabaseUrl = 'https://quqqpixujzxujauhessa.supabase.co'
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1cXFwaXh1anp4dWphdWhlc3NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0NjE0MzIsImV4cCI6MjA2NjAzNzQzMn0.-325zNFTNj4itZfjYWep6OBie3U99b-E9juq68-BzeA'
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 
@@ -68,17 +68,22 @@
 
       log.innerHTML = '⏳ Wysyłam e-mail...'
 
-      const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: 'Test1234!'
-      })
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: email,
+          password: 'Test1234!'
+        })
 
-      if (error) {
-        log.innerHTML = `❌ Błąd: ${error.message}`
-        console.error(error)
-      } else {
-        log.innerHTML = `✅ Wysłano! Sprawdź skrzynkę: <b>${email}</b><br><br>Odpowiedź Supabase:<br>${JSON.stringify(data, null, 2)}`
-        console.log('RESULT:', data)
+        if (error) {
+          log.innerHTML = `❌ Błąd: ${error.message}`
+          console.error(error)
+        } else {
+          log.innerHTML = `✅ Wysłano! Sprawdź skrzynkę: <b>${email}</b><br><br>Odpowiedź Supabase:<br>${JSON.stringify(data, null, 2)}`
+          console.log('RESULT:', data)
+        }
+      } catch (e) {
+        log.innerHTML = `❌ Błąd połączenia: ${e.message}`
+        console.error('Fetch error:', e)
       }
     })
   </script>
