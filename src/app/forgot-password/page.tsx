@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,6 +11,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle, Loader2, ArrowLeft, Mail } from "lucide-react"
 import Link from "next/link"
 import Logo from '@/components/Logo'
+
+// ✅ Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -37,23 +44,21 @@ export default function ForgotPasswordPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+      // ✅ Use Supabase’s built-in password reset
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://www.smakowalo.pl/reset-password',
       })
 
-      const data = await response.json()
-
-      if (response.ok) {
-        setSuccess(data.message || 'Email z linkiem do resetowania hasła został wysłany!')
-        setEmail('')
+      if (error) {
+        console.error('Supabase reset error:', error)
+        setError('Nie udało się wysłać wiadomości: ' + error.message)
       } else {
-        setError(data.error || 'Wystąpił błąd podczas wysyłania emaila')
+        setSuccess('✅ Email z linkiem do resetowania hasła został wysłany! Sprawdź swoją skrzynkę.')
+        setEmail('')
       }
-    } catch (error) {
-      console.error('Reset password error:', error)
-      setError('Wystąpił nieoczekiwany błąd')
+    } catch (err) {
+      console.error('Reset password error:', err)
+      setError('Wystąpił nieoczekiwany błąd. Spróbuj ponownie.')
     } finally {
       setIsLoading(false)
     }
