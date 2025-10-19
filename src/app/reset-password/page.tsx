@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,10 +12,13 @@ import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff, Lock } from "lucide-rea
 import Link from "next/link"
 import Logo from '@/components/Logo'
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 function ResetPasswordContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const token = searchParams?.get('token')
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -22,65 +26,63 @@ function ResetPasswordContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [tokenValid, setTokenValid] = useState(false)
 
+  // Detect Supabase recovery link in hash
   useEffect(() => {
-    if (!token) {
-      setError('Brak tokenu resetowania hasła. Sprawdź link w emailu.')
+    const hash = window.location.hash
+    if (hash.includes('type=recovery')) {
+      setTokenValid(true)
+    } else {
+      setError('Nieprawidłowy lub wygasły link resetujący hasło.')
     }
-  }, [token])
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    if (!token) {
-      setError('Brak tokenu resetowania hasła')
+    if (!tokenValid) {
+      setError('Brak ważnego tokenu resetowania hasła.')
       return
     }
 
     if (!password || !confirmPassword) {
-      setError('Wszystkie pola są wymagane')
+      setError('Wszystkie pola są wymagane.')
       return
     }
 
     if (password.length < 6) {
-      setError('Hasło musi mieć co najmniej 6 znaków')
+      setError('Hasło musi mieć co najmniej 6 znaków.')
       return
     }
 
     if (password !== confirmPassword) {
-      setError('Hasła nie są identyczne')
+      setError('Hasła nie są identyczne.')
       return
     }
 
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/auth/reset-password/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password })
-      })
+      const { error: updateError } = await supabase.auth.updateUser({ password })
 
-      const data = await response.json()
-
-      if (response.ok) {
-        setSuccess(true)
-        // Redirect to login after 2 seconds
-        setTimeout(() => {
-          router.push('/login?reset=success')
-        }, 2000)
+      if (updateError) {
+        console.error('Error updating password:', updateError)
+        setError('Nie udało się zmienić hasła: ' + updateError.message)
       } else {
-        setError(data.error || 'Wystąpił błąd podczas resetowania hasła')
+        setSuccess(true)
+        setTimeout(() => router.push('/login?reset=success'), 2000)
       }
-    } catch (error) {
-      console.error('Reset password error:', error)
-      setError('Wystąpił nieoczekiwany błąd')
+    } catch (err) {
+      console.error('Reset password error:', err)
+      setError('Wystąpił nieoczekiwany błąd. Spróbuj ponownie.')
     } finally {
       setIsLoading(false)
     }
   }
 
+  // ✅ SUCCESS VIEW
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white flex items-center justify-center px-4">
@@ -111,6 +113,7 @@ function ResetPasswordContent() {
     )
   }
 
+  // ✅ MAIN FORM
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
       {/* Navigation */}
@@ -168,7 +171,7 @@ function ResetPasswordContent() {
                       placeholder="Minimum 6 znaków"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      disabled={isLoading || !token}
+                      disabled={isLoading || !tokenValid}
                       required
                     />
                     <Button
@@ -196,14 +199,14 @@ function ResetPasswordContent() {
                     placeholder="Powtórz nowe hasło"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    disabled={isLoading || !token}
+                    disabled={isLoading || !tokenValid}
                     required
                   />
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={isLoading || !token}
+                  disabled={isLoading || !tokenValid}
                   className="w-full smakowalo-green"
                 >
                   {isLoading ? (
