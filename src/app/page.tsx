@@ -217,7 +217,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 🌍 Footer band */}
+          {/* 🌍 Footer band */}
       <section className="py-12 bg-[var(--smakowalo-green-primary)] text-center text-white">
         <h2 className="text-2xl font-bold mb-2">Jedzenie, z którym możesz się dobrze czuć</h2>
-        <p className="text
+        <p className="text-white/90 max-w-2xl mx-auto">
+          Smakowało kładzie nacisk na używanie zrównoważonych składników i kompensuje 100% emisji CO2
+          związanych z działalnością operacyjną i dystrybucją.
+        </p>
+      </section>
+    </div>
+  )
+}
