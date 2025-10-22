@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ChefHat, Clock, Heart, Truck, ShoppingCart } from "lucide-react"
+import { ChefHat, Clock, Heart, Truck, ShoppingCart, Leaf, Scale, Package } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import Logo from "@/components/Logo"
@@ -114,57 +114,112 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section className="py-16 bg-white">
+      {/* Old "How It Works" section is retained here but hidden so it can be restored if needed */}
+      <div className="hidden" aria-hidden="true">
+        {/* How It Works Section */}
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
+                Przejmij kontrolę nad posiłkami w 3 krokach
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Planuj, zamawiaj i gotuj z najlepszymi składnikami dostarczonymi prosto pod Twoje drzwi
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <Card className="text-center border-none shadow-lg">
+                <CardContent className="p-8">
+                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-[var(--smakowalo-green-primary)] to-[var(--smakowalo-green-dark)] rounded-2xl flex items-center justify-center shadow-lg">
+                    <ChefHat className="w-10 h-10 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
+                    Wybierz
+                  </h3>
+                  <p className="text-gray-600">
+                    Wybierz preferencje dietetyczne lub mieszaj i dopasowuj smaczne przepisy zaprojektowane przez dietetyków, aby dopasować je do swojego stylu życia
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="text-center border-none shadow-lg">
+                <CardContent className="p-8">
+                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-[var(--smakowalo-brown)] to-amber-700 rounded-2xl flex items-center justify-center shadow-lg">
+                    <Clock className="w-10 h-10 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
+                    Gotuj
+                  </h3>
+                  <p className="text-gray-600">
+                    Otrzymaj wysokiej jakości składniki i łatwe do wykonania przepisy, a większość obiadów będzie gotowa w 30 minut lub mniej
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="text-center border-none shadow-lg">
+                <CardContent className="p-8">
+                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-red-400 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+                    <Heart className="w-10 h-10 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
+                    Ciesz się
+                  </h3>
+                  <p className="text-gray-600">
+                    Otrzymujesz odpowiednią wielkość porcji, węglowodany, białko, tłuszcze i kalorie, aby jeść zgodnie ze swoimi celami zdrowotnymi
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* New: Świeże składniki. Idealne porcje. Zero odpadów. */}
+      <section className="py-16 bg-[var(--smakowalo-cream)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
-              Przejmij kontrolę nad posiłkami w 3 krokach
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-[var(--smakowalo-green-primary)] leading-tight mb-4">
+              Świeże składniki. Idealne porcje. Zero odpadów.
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Planuj, zamawiaj i gotuj z najlepszymi składnikami dostarczonymi prosto pod Twoje drzwi
+            <p className="text-lg text-gray-700 max-w-2xl mx-auto">
+              Dostarczymy pod Twoje drzwi wszystko, czego potrzebujesz do ugotowania pysznego posiłku.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="text-center border-none shadow-lg">
+            <Card className="text-center border-none shadow-lg bg-white">
               <CardContent className="p-8">
-                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-[var(--smakowalo-green-primary)] to-[var(--smakowalo-green-dark)] rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
-                  <ChefHat className="w-10 h-10 text-white" />
+                <div className="w-20 h-20 mx-auto mb-6 bg-white rounded-2xl flex items-center justify-center shadow-lg">
+                  <Leaf className="w-10 h-10 text-[var(--smakowalo-green-primary)]" />
                 </div>
-                <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
-                  Wybierz
-                </h3>
+                <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-4">Świeże z farm</h3>
                 <p className="text-gray-600">
-                  Wybierz preferencje dietetyczne lub mieszaj i dopasowuj smaczne przepisy zaprojektowane przez dietetyków, aby dopasować je do swojego stylu życia
+                  Współpracujemy z lokalnymi dostawcami, by zapewnić najwyższą jakość.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="text-center border-none shadow-lg">
+            <Card className="text-center border-none shadow-lg bg-white">
               <CardContent className="p-8">
-                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-[var(--smakowalo-brown)] to-amber-700 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
-                  <Clock className="w-10 h-10 text-white" />
+                <div className="w-20 h-20 mx-auto mb-6 bg-white rounded-2xl flex items-center justify-center shadow-lg">
+                  <Scale className="w-10 h-10 text-[var(--smakowalo-green-primary)]" />
                 </div>
-                <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
-                  Gotuj
-                </h3>
+                <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-4">Idealne porcje</h3>
                 <p className="text-gray-600">
-                  Otrzymaj wysokiej jakości składniki i łatwe do wykonania przepisy, a większość obiadów będzie gotowa w 30 minut lub mniej
+                  Odmierzone składniki dla 2 lub 4 osób. Koniec z resztkami i marnowaniem!
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="text-center border-none shadow-lg">
+            <Card className="text-center border-none shadow-lg bg-white">
               <CardContent className="p-8">
-                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-red-400 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
-                  <Heart className="w-10 h-10 text-white" />
+                <div className="w-20 h-20 mx-auto mb-6 bg-white rounded-2xl flex items-center justify-center shadow-lg">
+                  <Package className="w-10 h-10 text-[var(--smakowalo-green-primary)]" />
                 </div>
-                <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
-                  Ciesz się
-                </h3>
+                <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-4">Stylowe pudełko</h3>
                 <p className="text-gray-600">
-                  Otrzymujesz odpowiednią wielkość porcji, węglowodany, białko, tłuszcze i kalorie, aby jeść zgodnie ze swoimi celami zdrowotnymi
+                  Wszystko bezpiecznie zapakowane i gotowe do gotowania od razu po otwarciu.
                 </p>
               </CardContent>
             </Card>
@@ -187,7 +242,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="text-center border-none shadow-lg bg-white">
               <CardContent className="p-6">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-[var(--smakowalo-green-primary)] to-[var(--smakowalo-green-dark)] rounded-xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform duration-300">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-[var(--smakowalo-green-primary)] to-[var(--smakowalo-green-dark)] rounded-xl flex items-center justify-center shadow-lg">
                   <Clock className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="font-bold text-[var(--smakowalo-green-dark)] mb-2">Czas</h3>
@@ -199,7 +254,7 @@ export default function HomePage() {
 
             <Card className="text-center border-none shadow-lg bg-white">
               <CardContent className="p-6">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-red-400 to-pink-500 rounded-xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform duration-300">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-red-400 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
                   <Heart className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="font-bold text-[var(--smakowalo-green-dark)] mb-2">Stres</h3>
@@ -211,7 +266,7 @@ export default function HomePage() {
 
             <Card className="text-center border-none shadow-lg bg-white">
               <CardContent className="p-6">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform duration-300">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
                   <Truck className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="font-bold text-[var(--smakowalo-green-dark)] mb-2">Pieniądze</h3>
@@ -223,7 +278,7 @@ export default function HomePage() {
 
             <Card className="text-center border-none shadow-lg bg-white">
               <CardContent className="p-6">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-transform duration-300">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
                   <ChefHat className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="font-bold text-[var(--smakowalo-green-dark)] mb-2">Jakość</h3>
@@ -364,7 +419,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-        </div>
+        </section>
       </section>
 
       {/* CTA Section */}
@@ -433,7 +488,7 @@ export default function HomePage() {
       <section className="py-12 bg-[var(--smakowalo-green-primary)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-2xl font-bold text-white mb-2">Jedzenie, z którym możesz się dobrze czuć</h2>
-          <p className="text-white/90 max-w-2xl mx-auto">Smakowało kładzie nacisk na używanie zrównoważonych składników i kompensuje 100% emisji CO2 związanych z działalnością operacyjną i dystrybucją.</p>
+          <p className="text-white/90 max-w-2xl mx-auto">Smakowało kładzie nacisk na używanie zrównoważonych składników i kompensuje 100% emisji CO2 związanych z działalnością operacyjną.</p>
         </div>
       </section>
     </div>
