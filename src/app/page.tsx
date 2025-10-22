@@ -167,24 +167,68 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 🍅 Świeże składniki tygodnia */}
-      <section className="py-16 bg-white">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-[var(--smakowalo-green-dark)] mb-4">Świeże składniki tego tygodnia</h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">Poznaj najlepsze sezonowe składniki, które znajdziesz w naszych przepisach</p>
-        </div>
-        <div className="relative overflow-hidden">
-          <div className="flex animate-slide gap-8 pb-8 justify-center">
-            {["Zioła aromatyczne","Warzywa korzeniowe","Pomidory sezonowe","Czosnek młody"].map((nazwa, i)=>(
-              <div key={i} className="min-w-[280px] h-[200px] rounded-2xl overflow-hidden relative shadow-lg hover:scale-105 transition-transform duration-300">
-                <Image src={`https://picsum.photos/seed/${i}/400/300`} alt={nazwa} fill className="object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-br from-black/20 to-black/40" />
-                <div className="absolute inset-0 p-6 flex flex-col justify-end text-white"><h3 className="text-xl font-bold mb-2">{nazwa}</h3></div>
-              </div>
-            ))}
+ {/* 🍅 Świeże składniki tygodnia */}
+<section className="py-20 bg-white">
+  <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <h2 className="text-3xl md:text-4xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
+      Świeże składniki tego tygodnia
+    </h2>
+    <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-10">
+      Poznaj najlepsze sezonowe składniki, które znajdziesz w naszych przepisach
+    </p>
+
+    {/* Slider container */}
+    <div className="relative flex justify-center gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
+      {[
+        {
+          title: "Zioła aromatyczne",
+          desc: "Świeży bazylia, rozmaryn i tymianek prosto z polskich upraw ekologicznych",
+          img: "https://ugc.same-assets.com/6uEsIpTxMuSmhjFwIPSFPGzwjcRh2vqD.jpeg",
+          gradient: "from-green-500/70 to-green-800/50",
+        },
+        {
+          title: "Warzywa korzeniowe",
+          desc: "Marchew, pietruszka i seler - pełne witamin i naturalnego smaku",
+          img: "https://ugc.same-assets.com/Muz6SglCbUo0_90djilEkRKchPrx2Eu1.jpeg",
+          gradient: "from-orange-500/70 to-orange-800/50",
+        },
+        {
+          title: "Pomidory sezonowe",
+          desc: "Słodkie pomidory koktajlowe i malinowe z lokalnych szklarni",
+          img: "https://ugc.same-assets.com/S9kpT-NHTMMPq9-IzhEiZ0V0gHlOcoyX.jpeg",
+          gradient: "from-red-500/70 to-red-800/50",
+        },
+        {
+          title: "Czosnek młody",
+          desc: "Delikatny młody czosnek o łagodnym smaku, idealny do sałatek",
+          img: "https://ugc.same-assets.com/MC_XLvO1SXms579hLjizXQiMm0L7jnOV.jpeg",
+          gradient: "from-purple-500/70 to-purple-800/50",
+        },
+      ].map((item, idx) => (
+        <div
+          key={idx}
+          className="snap-center shrink-0 w-[280px] sm:w-[320px] h-[220px] rounded-2xl overflow-hidden relative shadow-lg hover:scale-105 transition-transform duration-300"
+        >
+          <Image
+            src={item.img}
+            alt={item.title}
+            fill
+            className="object-cover"
+          />
+          <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient}`} />
+          <div className="absolute inset-0 p-6 flex flex-col justify-end text-white text-left">
+            <h3 className="text-xl font-bold mb-2" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>
+              {item.title}
+            </h3>
+            <p className="text-sm opacity-95" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+              {item.desc}
+            </p>
           </div>
         </div>
-      </section>
+      ))}
+    </div>
+  </div>
+</section>
 
       {/* 📦 CTA */}
       <section className="py-16 bg-[var(--smakowalo-green-primary)] text-center text-white">
