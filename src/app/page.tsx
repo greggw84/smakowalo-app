@@ -167,8 +167,8 @@ export default function HomePage() {
         </div>
       </section>
 
- {/* 🍅 Świeże składniki tygodnia */}
-<section className="py-20 bg-white">
+ {/* 🍅 Świeże składniki tygodnia (Auto Carousel) */}
+<section className="py-20 bg-white overflow-hidden">
   <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
     <h2 className="text-3xl md:text-4xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
       Świeże składniki tego tygodnia
@@ -177,57 +177,103 @@ export default function HomePage() {
       Poznaj najlepsze sezonowe składniki, które znajdziesz w naszych przepisach
     </p>
 
-    {/* Slider container */}
-    <div className="relative flex justify-center gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
-      {[
-        {
-          title: "Zioła aromatyczne",
-          desc: "Świeży bazylia, rozmaryn i tymianek prosto z polskich upraw ekologicznych",
-          img: "https://ugc.same-assets.com/6uEsIpTxMuSmhjFwIPSFPGzwjcRh2vqD.jpeg",
-          gradient: "from-green-500/70 to-green-800/50",
-        },
-        {
-          title: "Warzywa korzeniowe",
-          desc: "Marchew, pietruszka i seler - pełne witamin i naturalnego smaku",
-          img: "https://ugc.same-assets.com/Muz6SglCbUo0_90djilEkRKchPrx2Eu1.jpeg",
-          gradient: "from-orange-500/70 to-orange-800/50",
-        },
-        {
-          title: "Pomidory sezonowe",
-          desc: "Słodkie pomidory koktajlowe i malinowe z lokalnych szklarni",
-          img: "https://ugc.same-assets.com/S9kpT-NHTMMPq9-IzhEiZ0V0gHlOcoyX.jpeg",
-          gradient: "from-red-500/70 to-red-800/50",
-        },
-        {
-          title: "Czosnek młody",
-          desc: "Delikatny młody czosnek o łagodnym smaku, idealny do sałatek",
-          img: "https://ugc.same-assets.com/MC_XLvO1SXms579hLjizXQiMm0L7jnOV.jpeg",
-          gradient: "from-purple-500/70 to-purple-800/50",
-        },
-      ].map((item, idx) => (
-        <div
-          key={idx}
-          className="snap-center shrink-0 w-[280px] sm:w-[320px] h-[220px] rounded-2xl overflow-hidden relative shadow-lg hover:scale-105 transition-transform duration-300"
-        >
-          <Image
-            src={item.img}
-            alt={item.title}
-            fill
-            className="object-cover"
-          />
-          <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient}`} />
-          <div className="absolute inset-0 p-6 flex flex-col justify-end text-white text-left">
-            <h3 className="text-xl font-bold mb-2" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>
-              {item.title}
-            </h3>
-            <p className="text-sm opacity-95" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
-              {item.desc}
-            </p>
-          </div>
-        </div>
-      ))}
+    {/* Animated Carousel */}
+    <div className="relative overflow-hidden">
+      <div className="flex gap-8 animate-carousel">
+        {[
+          {
+            title: "Zioła aromatyczne",
+            desc: "Świeży bazylia, rozmaryn i tymianek prosto z polskich upraw ekologicznych",
+            img: "https://ugc.same-assets.com/6uEsIpTxMuSmhjFwIPSFPGzwjcRh2vqD.jpeg",
+            gradient: "from-green-500/70 to-green-800/50",
+          },
+          {
+            title: "Warzywa korzeniowe",
+            desc: "Marchew, pietruszka i seler - pełne witamin i naturalnego smaku",
+            img: "https://ugc.same-assets.com/Muz6SglCbUo0_90djilEkRKchPrx2Eu1.jpeg",
+            gradient: "from-orange-500/70 to-orange-800/50",
+          },
+          {
+            title: "Pomidory sezonowe",
+            desc: "Słodkie pomidory koktajlowe i malinowe z lokalnych szklarni",
+            img: "https://ugc.same-assets.com/S9kpT-NHTMMPq9-IzhEiZ0V0gHlOcoyX.jpeg",
+            gradient: "from-red-500/70 to-red-800/50",
+          },
+          {
+            title: "Czosnek młody",
+            desc: "Delikatny młody czosnek o łagodnym smaku, idealny do sałatek",
+            img: "https://ugc.same-assets.com/MC_XLvO1SXms579hLjizXQiMm0L7jnOV.jpeg",
+            gradient: "from-purple-500/70 to-purple-800/50",
+          },
+        ]
+          // Duplicate list to make infinite loop
+          .concat([
+            {
+              title: "Zioła aromatyczne",
+              desc: "Świeży bazylia, rozmaryn i tymianek prosto z polskich upraw ekologicznych",
+              img: "https://ugc.same-assets.com/6uEsIpTxMuSmhjFwIPSFPGzwjcRh2vqD.jpeg",
+              gradient: "from-green-500/70 to-green-800/50",
+            },
+            {
+              title: "Warzywa korzeniowe",
+              desc: "Marchew, pietruszka i seler - pełne witamin i naturalnego smaku",
+              img: "https://ugc.same-assets.com/Muz6SglCbUo0_90djilEkRKchPrx2Eu1.jpeg",
+              gradient: "from-orange-500/70 to-orange-800/50",
+            },
+            {
+              title: "Pomidory sezonowe",
+              desc: "Słodkie pomidory koktajlowe i malinowe z lokalnych szklarni",
+              img: "https://ugc.same-assets.com/S9kpT-NHTMMPq9-IzhEiZ0V0gHlOcoyX.jpeg",
+              gradient: "from-red-500/70 to-red-800/50",
+            },
+            {
+              title: "Czosnek młody",
+              desc: "Delikatny młody czosnek o łagodnym smaku, idealny do sałatek",
+              img: "https://ugc.same-assets.com/MC_XLvO1SXms579hLjizXQiMm0L7jnOV.jpeg",
+              gradient: "from-purple-500/70 to-purple-800/50",
+            },
+          ])
+          .map((item, idx) => (
+            <div
+              key={idx}
+              className="min-w-[280px] sm:min-w-[320px] h-[220px] rounded-2xl overflow-hidden relative shadow-lg hover:scale-105 transition-transform duration-500"
+            >
+              <Image
+                src={item.img}
+                alt={item.title}
+                fill
+                className="object-cover"
+              />
+              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient}`} />
+              <div className="absolute inset-0 p-6 flex flex-col justify-end text-white text-left">
+                <h3 className="text-xl font-bold mb-2" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}>
+                  {item.title}
+                </h3>
+                <p className="text-sm opacity-95" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                  {item.desc}
+                </p>
+              </div>
+            </div>
+          ))}
+      </div>
     </div>
   </div>
+
+  {/* Carousel Animation */}
+  <style jsx>{`
+    @keyframes carousel {
+      0% {
+        transform: translateX(0);
+      }
+      100% {
+        transform: translateX(-50%);
+      }
+    }
+    .animate-carousel {
+      animation: carousel 30s linear infinite;
+      width: max-content;
+    }
+  `}</style>
 </section>
 
       {/* 📦 CTA */}
