@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
     // Create Stripe subscription (if Stripe is configured)
     let stripeSubscriptionId: string | null = null
     try {
-      if (process.env.STRIPE_SECRET_KEY) {
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY
+      if (stripeSecretKey && stripeSecretKey.trim() !== '') {
         const stripe = getServerStripe()
         
         // In a real implementation, you would:
@@ -71,9 +72,22 @@ export async function POST(request: NextRequest) {
         
         // stripeSubscriptionId = subscription.id
       }
-    } catch (stripeError) {
+    } catch (stripeError: any) {
+      // Log the error but don't fail the request if Stripe is not properly configured
       console.error('Stripe error:', stripeError)
-      // Don't fail the whole request if Stripe is not configured
+      
+      // If it's a configuration error, we can continue without Stripe
+      // If it's a payment processing error, we should fail
+      if (stripeError?.type === 'StripeAuthenticationError' || 
+          stripeError?.message?.includes('API key')) {
+        console.warn('Stripe not properly configured, continuing without payment processing')
+      } else if (stripeError?.type && stripeError.type !== 'StripeConfigurationError') {
+        // This is a real processing error, we should fail
+        return NextResponse.json(
+          { error: 'Payment processing failed', details: stripeError.message },
+          { status: 400 }
+        )
+      }
     }
 
     // Save subscription to database (if Supabase is configured)
