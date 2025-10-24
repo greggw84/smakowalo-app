@@ -19,14 +19,16 @@ const subscriptionPlans = [
     name: 'Podstawowy', 
     description: 'Idealny dla osób rozpoczynających przygodę ze zdrowymi posiłkami',
     price: 299,
-    features: ['3 posiłki dziennie', 'Dostawa co tydzień', 'Podstawowe diety', 'Wsparcie email']
+    meals_per_week: 3, // Basic plan: 3 meals per week
+    features: ['3 posiłki tygodniowo', 'Dostawa co tydzień', 'Podstawowe diety', 'Wsparcie email']
   },
   { 
     id: 'premium', 
     name: 'Premium', 
     description: 'Kompletna opieka dietetyczna dla wymagających',
     price: 449,
-    features: ['5 posiłków dziennie', 'Dostawa 2x w tygodniu', 'Wszystkie diety', 'Priorytetowe wsparcie', 'Konsultacje dietetyczne', 'Aplikacja mobilna']
+    meals_per_week: 5, // Premium plan: 5 meals per week
+    features: ['5 posiłków tygodniowo', 'Dostawa 2x w tygodniu', 'Wszystkie diety', 'Priorytetowe wsparcie', 'Konsultacje dietetyczne', 'Aplikacja mobilna']
   },
 ];
 
@@ -252,12 +254,8 @@ export default function KreatorPage() {
 
   // Get the number of meals per week based on the subscription plan
   const getSubscriptionMealCount = (): number => {
-    if (selectedPlan === 'basic') {
-      return 3; // Basic plan: 3 meals/week
-    } else if (selectedPlan === 'premium') {
-      return 5; // Premium plan: 5 meals/week
-    }
-    return 3; // Default to 3 if no plan selected
+    const plan = subscriptionPlans.find(p => p.id === selectedPlan);
+    return plan?.meals_per_week || 3; // Default to 3 if no plan selected
   };
 
   const handleAddToCart = async () => {
