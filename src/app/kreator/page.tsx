@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Check, ChefHat, Clock, Heart, Loader, ShoppingCart, User, AlertCircle, Zap } from "lucide-react"
+import { Check, ChefHat, Clock, Heart, Loader, ShoppingCart, User, AlertCircle, Zap, CreditCard, Crown, Package } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,24 @@ import Logo from '@/components/Logo'
 import { useCart } from '@/contexts/CartContext'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+
+// Subscription plan types
+const subscriptionPlans = [
+  { 
+    id: 'basic', 
+    name: 'Podstawowy', 
+    description: 'Idealny dla osób rozpoczynających przygodę ze zdrowymi posiłkami',
+    price: 299,
+    features: ['3 posiłki dziennie', 'Dostawa co tydzień', 'Podstawowe diety', 'Wsparcie email']
+  },
+  { 
+    id: 'premium', 
+    name: 'Premium', 
+    description: 'Kompletna opieka dietetyczna dla wymagających',
+    price: 449,
+    features: ['5 posiłków dziennie', 'Dostawa 2x w tygodniu', 'Wszystkie diety', 'Priorytetowe wsparcie', 'Konsultacje dietetyczne', 'Aplikacja mobilna']
+  },
+];
 
 const dietTypes = [
   { id: 1, name: "Wegetariańska", description: "Dania bez mięsa, z nabiałem i jajami", code: "wegetariańska" },
@@ -21,6 +39,18 @@ const dietTypes = [
   { id: 6, name: "Bezglutenowa", description: "Bez składników zawierających gluten", code: "bezglutenowa" },
   { id: 7, name: "Pescetariańska", description: "Bez mięsa, ale z rybami i owocami morza", code: "pescetariańska" },
   { id: 8, name: "Paleo", description: "Bazująca na naturalnych, nieprzetworzonych produktach", code: "paleo" },
+];
+
+// Additional allergy options
+const allergyOptions = [
+  { id: 'gluten', name: 'Gluten' },
+  { id: 'lactose', name: 'Laktoza' },
+  { id: 'nuts', name: 'Orzechy' },
+  { id: 'soy', name: 'Soja' },
+  { id: 'eggs', name: 'Jaja' },
+  { id: 'fish', name: 'Ryby' },
+  { id: 'shellfish', name: 'Skorupiaki' },
+  { id: 'sesame', name: 'Sezam' },
 ];
 
 interface Product {
@@ -41,6 +71,15 @@ export default function KreatorPage() {
   const { totalItems, addItem } = useCart()
   const router = useRouter()
 
+  // Mode selector: 'subscription' or 'onetime'
+  const [mode, setMode] = useState<'subscription' | 'onetime'>('subscription');
+  
+  // Subscription-specific state
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Shared state
   const [selectedDiets, setSelectedDiets] = useState<number[]>([]);
   const [numberOfPeople, setNumberOfPeople] = useState(2);
   const [numberOfDays, setNumberOfDays] = useState(3);
@@ -164,6 +203,15 @@ export default function KreatorPage() {
     });
   };
 
+  const toggleAllergy = (allergyId: string) => {
+    setSelectedAllergies(prev => {
+      if (prev.includes(allergyId)) {
+        return prev.filter(id => id !== allergyId);
+      }
+      return [...prev, allergyId];
+    });
+  };
+
   const toggleDish = (dish: Product) => {
     setSelectedDishes(prev => {
       const isSelected = prev.find(d => d.id === dish.id);
@@ -215,7 +263,436 @@ export default function KreatorPage() {
     }
   };
 
+  const handleSubscriptionPayment = async () => {
+    // Ensure user is authenticated
+    if (!session) {
+      router.push('/login?callbackUrl=/kreator');
+      return;
+    }
+
+    setIsProcessingPayment(true);
+
+    try {
+      const selectedPlanData = subscriptionPlans.find(p => p.id === selectedPlan);
+      
+      // Create subscription data
+      const subscriptionData = {
+        plan_type: selectedPlan,
+        price_per_delivery: selectedPlanData?.price || 0,
+        meal_plan_config: {
+          selectedDiets: selectedDiets.map(id => dietTypes.find(d => d.id === id)?.name).filter(Boolean),
+          selectedAllergies,
+          numberOfPeople,
+          numberOfDays,
+        },
+        customer_email: session.user?.email,
+      };
+
+      console.log('Creating subscription:', subscriptionData);
+
+      // Call the API to create subscription
+      const response = await fetch('/api/create-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscriptionData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Redirect to panel with success message
+        router.push('/panel?subscription=success');
+      } else {
+        throw new Error(result.error || 'Failed to create subscription');
+      }
+
+    } catch (error) {
+      console.error('Error processing subscription payment:', error);
+      alert('Wystąpił błąd podczas przetwarzania płatności. Spróbuj ponownie.');
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
   const renderStepContent = () => {
+    if (mode === 'subscription') {
+      return renderSubscriptionStepContent();
+    }
+    return renderOneTimeStepContent();
+  };
+
+  const renderSubscriptionStepContent = () => {
+    switch (step) {
+      case 1:
+        // Step 1: Choose subscription plan
+        return (
+          <>
+            <h2 className="text-2xl font-bold text-[var(--smakowalo-green-dark)] mb-6 text-center">
+              Krok 1: Wybierz plan subskrypcji
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              {subscriptionPlans.map((plan) => (
+                <Card
+                  key={plan.id}
+                  className={`cursor-pointer transition-all ${
+                    selectedPlan === plan.id
+                      ? 'ring-2 ring-[var(--smakowalo-green-primary)] bg-green-50'
+                      : 'hover:shadow-md'
+                  }`}
+                  onClick={() => setSelectedPlan(plan.id)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        {plan.id === 'premium' ? (
+                          <Crown className="w-8 h-8 text-yellow-500" />
+                        ) : (
+                          <Package className="w-8 h-8 text-[var(--smakowalo-green-primary)]" />
+                        )}
+                        <h3 className="text-2xl font-bold text-[var(--smakowalo-green-dark)]">{plan.name}</h3>
+                      </div>
+                      <div className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                        selectedPlan === plan.id
+                          ? 'bg-[var(--smakowalo-green-primary)] border-[var(--smakowalo-green-primary)]'
+                          : 'border-gray-300'
+                      }`}>
+                        {selectedPlan === plan.id && (
+                          <Check className="h-4 w-4 text-white" />
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-gray-600 mb-4">{plan.description}</p>
+                    <div className="text-3xl font-bold text-[var(--smakowalo-green-primary)] mb-4">
+                      {plan.price} zł<span className="text-lg text-gray-500">/tydzień</span>
+                    </div>
+                    <ul className="space-y-2">
+                      {plan.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-center text-sm text-gray-600">
+                          <Check className="w-4 h-4 mr-2 text-green-500" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <div className="flex justify-center mt-8">
+              <Button
+                size="lg"
+                className="smakowalo-green"
+                onClick={() => setStep(2)}
+                disabled={!selectedPlan}
+              >
+                Dalej
+              </Button>
+            </div>
+          </>
+        );
+
+      case 2:
+        // Step 2: Extended preferences (diets + allergies)
+        return (
+          <>
+            <h2 className="text-2xl font-bold text-[var(--smakowalo-green-dark)] mb-6 text-center">
+              Krok 2: Wybierz preferencje dietetyczne i alergie
+            </h2>
+            
+            <div className="max-w-5xl mx-auto mb-8">
+              <h3 className="text-xl font-semibold text-[var(--smakowalo-green-dark)] mb-4">
+                Preferencje dietetyczne (maksymalnie 3)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {dietTypes.map((diet) => (
+                  <Card
+                    key={diet.id}
+                    className={`cursor-pointer transition-all ${
+                      selectedDiets.includes(diet.id)
+                        ? 'ring-2 ring-[var(--smakowalo-green-primary)] bg-green-50'
+                        : 'hover:shadow-md'
+                    }`}
+                    onClick={() => toggleDiet(diet.id)}
+                  >
+                    <CardContent className="p-4 flex items-start space-x-3">
+                      <div className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                        selectedDiets.includes(diet.id)
+                          ? 'bg-[var(--smakowalo-green-primary)] border-[var(--smakowalo-green-primary)]'
+                          : 'border-gray-300'
+                      }`}>
+                        {selectedDiets.includes(diet.id) && (
+                          <Check className="h-4 w-4 text-white" />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-[var(--smakowalo-green-dark)]">{diet.name}</h3>
+                        <p className="text-xs text-gray-500">{diet.description}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <h3 className="text-xl font-semibold text-[var(--smakowalo-green-dark)] mb-4">
+                Alergie i nietolerancje
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                {allergyOptions.map((allergy) => (
+                  <Button
+                    key={allergy.id}
+                    variant={selectedAllergies.includes(allergy.id) ? "default" : "outline"}
+                    className={selectedAllergies.includes(allergy.id) ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                    onClick={() => toggleAllergy(allergy.id)}
+                    size="sm"
+                  >
+                    {allergy.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between max-w-5xl mx-auto">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setStep(1)}
+              >
+                Wstecz
+              </Button>
+              <Button
+                size="lg"
+                className="smakowalo-green"
+                onClick={() => setStep(3)}
+              >
+                Dalej
+              </Button>
+            </div>
+          </>
+        );
+
+      case 3:
+        // Step 3: Preview sample menu (passive view, not selection)
+        return (
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-2xl font-bold text-[var(--smakowalo-green-dark)] mb-6 text-center">
+              Krok 3: Zobacz przykładowe menu
+            </h2>
+            <p className="text-center mb-6 text-gray-600">
+              Oto przykładowe dania, które możesz otrzymać w ramach swojej subskrypcji
+            </p>
+
+            {selectedDiets.length > 0 && (
+              <div className="bg-[var(--smakowalo-cream)] p-4 rounded-lg mb-6">
+                <p className="text-center text-sm text-gray-600">
+                  Pokazuje produkty pasujące do wybranych diet: {selectedDiets.map(id => dietTypes.find(d => d.id === id)?.name).join(', ')}
+                </p>
+                {selectedAllergies.length > 0 && (
+                  <p className="text-center text-sm text-gray-500 mt-1">
+                    Wykluczając alergeny: {selectedAllergies.map(id => allergyOptions.find(a => a.id === id)?.name).join(', ')}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {isLoadingProducts ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="text-center">
+                  <Loader className="h-8 w-8 animate-spin text-[var(--smakowalo-green-primary)] mx-auto mb-4" />
+                  <p className="text-gray-600">Ładowanie przykładowego menu...</p>
+                </div>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center py-16">
+                <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">Brak produktów dla wybranych preferencji</h3>
+                <p className="text-gray-500 mb-6">
+                  Spróbuj wybrać inne preferencje dietetyczne
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {filteredProducts.slice(0, 6).map((dish) => (
+                  <Card key={dish.id} className="hover:shadow-md transition-all">
+                    <CardContent className="p-0">
+                      <div className="relative">
+                        <Image
+                          src={dish.image}
+                          alt={dish.name}
+                          width={300}
+                          height={200}
+                          className="w-full h-48 object-cover rounded-t-lg"
+                        />
+                        <Badge className="absolute top-3 right-3 bg-white text-gray-800">
+                          Przykład
+                        </Badge>
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-semibold text-[var(--smakowalo-green-dark)] mb-2">{dish.name}</h3>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{dish.description}</p>
+                        <div className="flex justify-between items-center text-sm text-gray-500">
+                          <div className="flex items-center">
+                            <Clock className="w-4 h-4 mr-1" />
+                            {dish.cook_time || 30} min
+                          </div>
+                          <div className="flex items-center">
+                            <Zap className="w-4 h-4 mr-1" />
+                            {dish.calories} kcal
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            <div className="bg-[var(--smakowalo-cream)] p-6 rounded-lg mb-8">
+              <p className="text-center text-gray-600">
+                W ramach subskrypcji otrzymasz różnorodne, dopasowane do Twoich preferencji dania co tydzień
+              </p>
+            </div>
+
+            <div className="flex justify-between">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setStep(2)}
+              >
+                Wstecz
+              </Button>
+              <Button
+                size="lg"
+                className="smakowalo-green"
+                onClick={() => setStep(4)}
+              >
+                Dalej
+              </Button>
+            </div>
+          </div>
+        );
+
+      case 4:
+        // Step 4: Login and payment
+        return (
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-2xl font-bold text-[var(--smakowalo-green-dark)] mb-6 text-center">
+              Krok 4: Zaloguj się i opłać subskrypcję
+            </h2>
+
+            {!session ? (
+              <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+                <div className="text-center mb-6">
+                  <User className="w-16 h-16 text-[var(--smakowalo-green-primary)] mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">Zaloguj się, aby kontynuować</h3>
+                  <p className="text-gray-600">
+                    Aby zapisać się na subskrypcję, musisz się najpierw zalogować
+                  </p>
+                </div>
+                <Button
+                  size="lg"
+                  className="smakowalo-green w-full"
+                  onClick={() => router.push('/login?callbackUrl=/kreator')}
+                >
+                  Przejdź do logowania
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
+                    Podsumowanie subskrypcji
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span>Plan:</span>
+                      <span className="font-medium">
+                        {subscriptionPlans.find(p => p.id === selectedPlan)?.name}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Preferencje dietetyczne:</span>
+                      <span className="font-medium">
+                        {selectedDiets.length > 0
+                          ? selectedDiets.map(id => dietTypes.find(d => d.id === id)?.name).join(', ')
+                          : 'Nie wybrano'}
+                      </span>
+                    </div>
+                    {selectedAllergies.length > 0 && (
+                      <div className="flex justify-between">
+                        <span>Alergie:</span>
+                        <span className="font-medium">
+                          {selectedAllergies.map(id => allergyOptions.find(a => a.id === id)?.name).join(', ')}
+                        </span>
+                      </div>
+                    )}
+                    <div className="border-t pt-3 mt-3">
+                      <div className="flex justify-between text-lg font-bold">
+                        <span>Cena tygodniowa:</span>
+                        <span className="text-[var(--smakowalo-green-primary)]">
+                          {subscriptionPlans.find(p => p.id === selectedPlan)?.price} zł
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-amber-800">
+                    <strong>Uwaga:</strong> Po kliknięciu "Opłać subskrypcję" zostaniesz przekierowany do bezpiecznej płatności. 
+                    Subskrypcja będzie odnawiać się automatycznie co tydzień.
+                  </p>
+                </div>
+
+                <Button
+                  size="lg"
+                  className="smakowalo-green w-full"
+                  onClick={handleSubscriptionPayment}
+                  disabled={isProcessingPayment}
+                >
+                  {isProcessingPayment ? (
+                    <>
+                      <Loader className="mr-2 h-5 w-5 animate-spin" />
+                      Przetwarzanie...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="mr-2 h-5 w-5" />
+                      Opłać subskrypcję
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            <div className="flex justify-between">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setStep(3)}
+                disabled={isProcessingPayment}
+              >
+                Wstecz
+              </Button>
+            </div>
+          </div>
+        );
+
+      case 5:
+        // Step 5: Redirect to panel (this case shouldn't normally render)
+        return (
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-2xl font-bold text-[var(--smakowalo-green-dark)] mb-6">
+              Przekierowywanie do panelu...
+            </h2>
+            <Loader className="h-8 w-8 animate-spin text-[var(--smakowalo-green-primary)] mx-auto" />
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const renderOneTimeStepContent = () => {
     switch (step) {
       case 1:
         return (
@@ -601,13 +1078,42 @@ export default function KreatorPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
-            Stwórz swój plan posiłków
+            {mode === 'subscription' ? 'Zapisz się na subskrypcję' : 'Stwórz swój plan posiłków'}
           </h1>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Wybierz swoje preferencje dietetyczne i zaplanuj tygodniowe menu. Cena: {pricePerPortion} zł za porcję.
+          <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-6">
+            {mode === 'subscription' 
+              ? 'Regularnie dostarczane, zdrowe posiłki dopasowane do Twoich potrzeb'
+              : `Wybierz swoje preferencje dietetyczne i zaplanuj tygodniowe menu. Cena: ${pricePerPortion} zł za porcję.`
+            }
           </p>
+          
+          {/* Mode switcher */}
+          <div className="flex justify-center gap-4 mb-8">
+            <Button
+              variant={mode === 'subscription' ? 'default' : 'outline'}
+              className={mode === 'subscription' ? 'bg-[var(--smakowalo-green-primary)]' : ''}
+              onClick={() => {
+                setMode('subscription');
+                setStep(1);
+              }}
+            >
+              <Crown className="w-4 h-4 mr-2" />
+              Subskrypcja
+            </Button>
+            <Button
+              variant={mode === 'onetime' ? 'default' : 'outline'}
+              className={mode === 'onetime' ? 'bg-[var(--smakowalo-green-primary)]' : ''}
+              onClick={() => {
+                setMode('onetime');
+                setStep(1);
+              }}
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              Jednorazowy zakup
+            </Button>
+          </div>
         </div>
 
         {renderStepContent()}
@@ -615,3 +1121,30 @@ export default function KreatorPage() {
     </div>
   )
 }
+
+/*
+ * ============================================================================
+ * OLD KREATOR CODE - ONE-TIME PURCHASE FUNCTIONALITY (PRESERVED)
+ * ============================================================================
+ * 
+ * The old 3-step kreator flow for one-time purchases has been integrated into
+ * the renderOneTimeStepContent() function above. It maintains the original
+ * functionality:
+ * 
+ * Step 1: Choose dietary preferences (up to 3)
+ * Step 2: Select number of people and days
+ * Step 3: Select specific dishes and add to cart
+ * 
+ * Key features preserved:
+ * - OpenCart API integration for fetching products
+ * - Diet-based filtering
+ * - Cart integration
+ * - Authentication check before adding to cart
+ * - Price calculation: numberOfPeople × numberOfDays × pricePerPortion
+ * 
+ * The mode switcher at the top allows users to toggle between:
+ * - 'subscription': New 5-step subscription flow
+ * - 'onetime': Original one-time purchase flow
+ * 
+ * ============================================================================
+ */
