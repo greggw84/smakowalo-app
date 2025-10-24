@@ -78,12 +78,13 @@ export default function KreatorPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [selectedDishesSub, setSelectedDishesSub] = useState<Product[]>([]); // Separate state for subscription mode
 
   // Shared state
   const [selectedDiets, setSelectedDiets] = useState<number[]>([]);
   const [numberOfPeople, setNumberOfPeople] = useState(2);
   const [numberOfDays, setNumberOfDays] = useState(3);
-  const [selectedDishes, setSelectedDishes] = useState<Product[]>([]);
+  const [selectedDishes, setSelectedDishes] = useState<Product[]>([]); // For one-time purchase mode
   const [step, setStep] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
@@ -212,6 +213,7 @@ export default function KreatorPage() {
     });
   };
 
+  // Toggle dish for one-time purchase mode
   const toggleDish = (dish: Product) => {
     setSelectedDishes(prev => {
       const isSelected = prev.find(d => d.id === dish.id);
@@ -226,6 +228,36 @@ export default function KreatorPage() {
 
       return prev;
     });
+  };
+
+  // Toggle dish for subscription mode with plan-based selection count
+  const toggleDishSub = (dish: Product) => {
+    // Get the target count based on the selected plan
+    const targetCount = getSubscriptionMealCount();
+
+    setSelectedDishesSub(prev => {
+      const isSelected = prev.find(d => d.id === dish.id);
+
+      if (isSelected) {
+        return prev.filter(d => d.id !== dish.id);
+      }
+
+      if (prev.length < targetCount) {
+        return [...prev, dish];
+      }
+
+      return prev;
+    });
+  };
+
+  // Get the number of meals per week based on the subscription plan
+  const getSubscriptionMealCount = (): number => {
+    if (selectedPlan === 'basic') {
+      return 3; // Basic plan: 3 meals/week
+    } else if (selectedPlan === 'premium') {
+      return 5; // Premium plan: 5 meals/week
+    }
+    return 3; // Default to 3 if no plan selected
   };
 
   const handleAddToCart = async () => {
@@ -275,7 +307,7 @@ export default function KreatorPage() {
     try {
       const selectedPlanData = subscriptionPlans.find(p => p.id === selectedPlan);
       
-      // Create subscription data
+      // Create subscription data with selected meals
       const subscriptionData = {
         plan_type: selectedPlan,
         price_per_delivery: selectedPlanData?.price || 0,
@@ -284,6 +316,8 @@ export default function KreatorPage() {
           selectedAllergies,
           numberOfPeople,
           numberOfDays,
+          // Include selected meals (names) for the subscription
+          selected_meals: selectedDishesSub.map(dish => dish.name),
         },
         customer_email: session.user?.email,
       };
@@ -470,15 +504,15 @@ export default function KreatorPage() {
         );
 
       case 3:
-        // Step 3: Preview sample menu (passive view, not selection)
+        // Step 3: Select meals for subscription (active selection, not passive preview)
+        const targetMealCount = getSubscriptionMealCount();
+        
         return (
           <div className="max-w-5xl mx-auto">
             <h2 className="text-2xl font-bold text-[var(--smakowalo-green-dark)] mb-6 text-center">
-              Krok 3: Zobacz przykładowe menu
+              Krok 3: Wybierz {targetMealCount} dania
             </h2>
-            <p className="text-center mb-6 text-gray-600">
-              Oto przykładowe dania, które możesz otrzymać w ramach swojej subskrypcji
-            </p>
+            <p className="text-center mb-6">Wybrano: {selectedDishesSub.length} z {targetMealCount}</p>
 
             {selectedDiets.length > 0 && (
               <div className="bg-[var(--smakowalo-cream)] p-4 rounded-lg mb-6">
@@ -490,6 +524,9 @@ export default function KreatorPage() {
                     Wykluczając alergeny: {selectedAllergies.map(id => allergyOptions.find(a => a.id === id)?.name).join(', ')}
                   </p>
                 )}
+                <p className="text-center text-sm text-gray-500 mt-2">
+                  Te dania będą dostarczone w ramach Twojej pierwszej dostawy
+                </p>
               </div>
             )}
 
@@ -497,7 +534,7 @@ export default function KreatorPage() {
               <div className="flex items-center justify-center py-16">
                 <div className="text-center">
                   <Loader className="h-8 w-8 animate-spin text-[var(--smakowalo-green-primary)] mx-auto mb-4" />
-                  <p className="text-gray-600">Ładowanie przykładowego menu...</p>
+                  <p className="text-gray-600">Ładowanie dań...</p>
                 </div>
               </div>
             ) : filteredProducts.length === 0 ? (
@@ -505,13 +542,28 @@ export default function KreatorPage() {
                 <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-600 mb-2">Brak produktów dla wybranych preferencji</h3>
                 <p className="text-gray-500 mb-6">
-                  Spróbuj wybrać inne preferencje dietetyczne
+                  Spróbuj wybrać inne preferencje dietetyczne lub wróć do kroku 2
                 </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setStep(2)}
+                  className="mx-auto"
+                >
+                  Wróć do wyboru preferencji
+                </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                {filteredProducts.slice(0, 6).map((dish) => (
-                  <Card key={dish.id} className="hover:shadow-md transition-all">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {filteredProducts.map((dish) => (
+                  <Card
+                    key={dish.id}
+                    className={`cursor-pointer transition-all ${
+                      selectedDishesSub.find(d => d.id === dish.id)
+                        ? 'ring-2 ring-[var(--smakowalo-green-primary)] bg-green-50'
+                        : 'hover:shadow-md'
+                    }`}
+                    onClick={() => toggleDishSub(dish)}
+                  >
                     <CardContent className="p-0">
                       <div className="relative">
                         <Image
@@ -521,9 +573,16 @@ export default function KreatorPage() {
                           height={200}
                           className="w-full h-48 object-cover rounded-t-lg"
                         />
-                        <Badge className="absolute top-3 right-3 bg-white text-gray-800">
-                          Przykład
-                        </Badge>
+                        {/* Selection checkmark badge in top-right corner */}
+                        <div className={`absolute top-4 right-4 w-8 h-8 rounded-full border-2 flex items-center justify-center ${
+                          selectedDishesSub.find(d => d.id === dish.id)
+                            ? 'bg-[var(--smakowalo-green-primary)] border-[var(--smakowalo-green-primary)]'
+                            : 'bg-white border-gray-300'
+                        }`}>
+                          {selectedDishesSub.find(d => d.id === dish.id) && (
+                            <Check className="h-5 w-5 text-white" />
+                          )}
+                        </div>
                       </div>
                       <div className="p-4">
                         <h3 className="font-semibold text-[var(--smakowalo-green-dark)] mb-2">{dish.name}</h3>
@@ -545,12 +604,6 @@ export default function KreatorPage() {
               </div>
             )}
 
-            <div className="bg-[var(--smakowalo-cream)] p-6 rounded-lg mb-8">
-              <p className="text-center text-gray-600">
-                W ramach subskrypcji otrzymasz różnorodne, dopasowane do Twoich preferencji dania co tydzień
-              </p>
-            </div>
-
             <div className="flex justify-between">
               <Button
                 variant="outline"
@@ -563,6 +616,7 @@ export default function KreatorPage() {
                 size="lg"
                 className="smakowalo-green"
                 onClick={() => setStep(4)}
+                disabled={selectedDishesSub.length < targetMealCount}
               >
                 Dalej
               </Button>
@@ -622,6 +676,16 @@ export default function KreatorPage() {
                         <span className="font-medium">
                           {selectedAllergies.map(id => allergyOptions.find(a => a.id === id)?.name).join(', ')}
                         </span>
+                      </div>
+                    )}
+                    {selectedDishesSub.length > 0 && (
+                      <div className="flex flex-col">
+                        <span className="font-medium mb-2">Wybrane dania na nadchodzącą dostawę:</span>
+                        <ul className="list-disc list-inside text-sm text-gray-600">
+                          {selectedDishesSub.map((dish) => (
+                            <li key={dish.id}>{dish.name}</li>
+                          ))}
+                        </ul>
                       </div>
                     )}
                     <div className="border-t pt-3 mt-3">
@@ -1097,6 +1161,8 @@ export default function KreatorPage() {
               onClick={() => {
                 setMode('subscription');
                 setStep(1);
+                // Clear one-time purchase selections when switching to subscription
+                setSelectedDishes([]);
               }}
             >
               <Crown className="w-4 h-4 mr-2" />
@@ -1108,6 +1174,8 @@ export default function KreatorPage() {
               onClick={() => {
                 setMode('onetime');
                 setStep(1);
+                // Clear subscription selections when switching to one-time purchase
+                setSelectedDishesSub([]);
               }}
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
