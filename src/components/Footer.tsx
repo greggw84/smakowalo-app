@@ -1,3 +1,4 @@
+"""tsx
 "use client"
 
 import Link from "next/link"
@@ -161,6 +162,11 @@ export function Footer() {
                 <Mail className="w-5 h-5 text-[var(--smakowalo-green-primary)] mr-3 flex-shrink-0" />
                 <a href="mailto:kontakt@smakowalo.pl" className="text-gray-300 hover:text-white transition-colors">kontakt@smakowalo.pl</a>
               </li>
+
+              {/* Moved company identifiers here */}
+              <li>
+                <span className="text-sm text-gray-300">KRS: 0001093816 | NIP: 7812067133 | REGON: 528059450</span>
+              </li>
             </ul>
           </div>
 
@@ -191,20 +197,7 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Company details and legal */}
-        <div className="mt-12 pt-8 border-t border-[#3a604a]">
-          <div className="text-center mb-6">
-            <div className="bg-[#2b4c35] rounded-lg p-6 max-w-4xl mx-auto">
-              <h4 className="text-lg font-semibold text-white mb-3">Dane firmy</h4>
-              <div className="text-sm text-gray-300 space-y-1">
-                <p><strong className="text-white">Smakowało Sp. z o.o.</strong></p>
-                <p>Ks. Józefa Bryzy 42/2, 62-080 Tarnowo Podgórne</p>
-                <p>KRS: 0001093816 | NIP: 7812067133 | REGON: 528059450</p>
-                <p>Kontakt: <a href="mailto:kontakt@smakowalo.pl" className="text-[var(--smakowalo-green-primary)] hover:underline">kontakt@smakowalo.pl</a></p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Removed the "Dane firmy" boxed section as requested */}
 
         {/* Eco commitment */}
         <div className="mt-8 pt-8 border-t border-[#3a604a]">
