@@ -273,8 +273,6 @@ export default function KreatorPage() {
     setIsProcessingPayment(true);
 
     try {
-      // In a real implementation, this would create a Stripe subscription
-      // For now, we'll simulate the payment flow
       const selectedPlanData = subscriptionPlans.find(p => p.id === selectedPlan);
       
       // Create subscription data
@@ -292,18 +290,21 @@ export default function KreatorPage() {
 
       console.log('Creating subscription:', subscriptionData);
 
-      // TODO: Integrate with Stripe Checkout for subscription
-      // const response = await fetch('/api/create-subscription', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(subscriptionData),
-      // });
+      // Call the API to create subscription
+      const response = await fetch('/api/create-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscriptionData),
+      });
 
-      // Simulate successful payment
-      setTimeout(() => {
-        // Redirect to panel
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Redirect to panel with success message
         router.push('/panel?subscription=success');
-      }, 1500);
+      } else {
+        throw new Error(result.error || 'Failed to create subscription');
+      }
 
     } catch (error) {
       console.error('Error processing subscription payment:', error);
