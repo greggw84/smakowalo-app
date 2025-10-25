@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Check, ChefHat, Clock, Heart, Loader, ShoppingCart, User, AlertCircle, Zap, CreditCard, Crown, Package } from "lucide-react"
@@ -87,7 +87,7 @@ interface Product {
   allergens?: string[];
 }
 
-export default function KreatorPage() {
+function KreatorPageComponent() {
   const { data: session, status } = useSession()
   const { totalItems, addItem } = useCart()
   const router = useRouter()
@@ -1539,6 +1539,14 @@ export default function KreatorPage() {
       </div>
     </div>
   )
+}
+
+export default function KreatorPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <KreatorPageComponent />
+    </Suspense>
+  );
 }
 
 /*
