@@ -1,11 +1,10 @@
+export const runtime = 'nodejs'
+
 import { type NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { getServerStripe } from '@/lib/stripe'
 import { getPriceForPlan, getPlanKey, isValidPlan } from '@/lib/pricing'
-
-// Force Node.js runtime (Stripe SDK not compatible with Edge)
-export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,13 +18,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { 
-      customer_email, 
-      numberOfPeople, 
+    const {
+      numberOfPeople,
       numberOfDays,
       selectedDiets,
       selectedAllergies,
-      selected_meals
+      selected_meals,
     } = body
 
     // Validate required fields
@@ -68,46 +66,65 @@ export async function POST(request: NextRequest) {
       planKey,
       weeklyPriceGrosze,
       numberOfPeople,
-      numberOfDays
+      numberOfDays,
     })
 
-    // Find or create Stripe Price with lookup_key
+    // Safer price resolution with search + verification and list() fallback
     const lookupKey = planKey
     let priceId: string | null = null
 
+    // 1) Prefer prices.search by lookup_key
     try {
-      // Try to find existing price by lookup_key
-      const prices = await stripe.prices.list({
-        lookup_keys: [lookupKey],
-        limit: 1
+      const search = await stripe.prices.search({
+        query: `active:'true' AND product:'${stripeProductId}' AND lookup_key:'${lookupKey}'`,
+        limit: 1,
       })
-
-      if (prices.data.length > 0) {
-        priceId = prices.data[0].id
-        console.log(`Found existing price: ${priceId}`)
+      if (search.data.length > 0) {
+        const p = search.data[0]
+        if (p.unit_amount === weeklyPriceGrosze && p.recurring?.interval === 'week') {
+          priceId = p.id
+          console.log(`Found matching price via search: ${priceId}`)
+        } else {
+          console.warn('Price found via search has mismatched amount/interval; will ignore', {
+            foundAmount: p.unit_amount,
+            expectedAmount: weeklyPriceGrosze,
+            interval: p.recurring?.interval,
+          })
+        }
       }
-    } catch (error) {
-      console.warn('Error searching for existing price:', error)
+    } catch (err: any) {
+      console.warn('Stripe price search failed; falling back to list():', err?.message || err)
     }
 
-    // If no price found, create one
+    // 2) Fallback: list active prices for product and verify
     if (!priceId) {
-      console.log('Creating new Stripe price...')
+      const list = await stripe.prices.list({ product: stripeProductId, active: true, limit: 100 })
+      const candidate = list.data.find(
+        (p) => (p.lookup_key === lookupKey || (p.nickname && p.nickname.includes(planKey))) &&
+               p.unit_amount === weeklyPriceGrosze &&
+               p.recurring?.interval === 'week'
+      )
+      if (candidate) {
+        priceId = candidate.id
+        console.log(`Found matching price via list(): ${priceId}`)
+      }
+    }
+
+    // 3) Create correct price if none matched
+    if (!priceId) {
+      console.log('Creating new Stripe price with lookup_key', lookupKey)
       const price = await stripe.prices.create({
         product: stripeProductId,
         unit_amount: weeklyPriceGrosze,
         currency: 'pln',
-        recurring: {
-          interval: 'week',
-          interval_count: 1
-        },
+        recurring: { interval: 'week', interval_count: 1 },
         lookup_key: lookupKey,
-        nickname: `Smakowalo Box ${planKey}`,
+        nickname: `Smakowalo Box ${planKey} (tygodniowo)`,
         metadata: {
           plan_key: planKey,
           people: numberOfPeople.toString(),
-          days: numberOfDays.toString()
-        }
+          days: numberOfDays.toString(),
+        },
       })
       priceId = price.id
       console.log(`Created new price: ${priceId}`)
@@ -117,12 +134,7 @@ export async function POST(request: NextRequest) {
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer_email: session.user.email,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1
-        }
-      ],
+      line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         metadata: {
           plan_key: planKey,
@@ -130,8 +142,8 @@ export async function POST(request: NextRequest) {
           days: numberOfDays.toString(),
           diets: selectedDiets ? JSON.stringify(selectedDiets) : '[]',
           allergies: selectedAllergies ? JSON.stringify(selectedAllergies) : '[]',
-          selected_meals: selected_meals ? JSON.stringify(selected_meals) : '[]'
-        }
+          selected_meals: selected_meals ? JSON.stringify(selected_meals) : '[]',
+        },
       },
       success_url: `${appUrl}/panel?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/kreator?resume=1`,
@@ -140,24 +152,18 @@ export async function POST(request: NextRequest) {
       metadata: {
         plan_key: planKey,
         people: numberOfPeople.toString(),
-        days: numberOfDays.toString()
-      }
+        days: numberOfDays.toString(),
+      },
+      locale: 'pl',
     })
 
     console.log('Checkout session created:', checkoutSession.id)
 
-    // Return checkout URL for frontend redirect
-    return NextResponse.json({
-      url: checkoutSession.url
-    })
-
+    return NextResponse.json({ url: checkoutSession.url })
   } catch (error: any) {
     console.error('Error creating subscription:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to create subscription',
-        details: error.message 
-      },
+      { error: 'Failed to create subscription', details: error.message },
       { status: 500 }
     )
   }
