@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import Logo from '@/components/Logo'
 import { useCart } from '@/contexts/CartContext'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 // Subscription plan types
 const subscriptionPlans = [
@@ -55,6 +55,24 @@ const allergyOptions = [
   { id: 'sezam', name: 'Sezam' },
 ];
 
+// Draft state management
+const DRAFT_KEY = 'kreator_draft_v1';
+const DRAFT_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+interface KreatorDraft {
+  v: number;
+  ts: number;
+  mode: 'subscription' | 'onetime';
+  step: number;
+  selectedPlan: string | null;
+  numberOfPeople: number;
+  numberOfDays: number;
+  selectedDiets: number[];
+  selectedAllergies: string[];
+  selectedDishes: number[]; // Store only IDs for one-time mode
+  selectedDishesSub: number[]; // Store only IDs for subscription mode
+}
+
 interface Product {
   id: number;
   name: string;
@@ -73,6 +91,7 @@ export default function KreatorPage() {
   const { data: session, status } = useSession()
   const { totalItems, addItem } = useCart()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   // Mode selector: 'subscription' or 'onetime'
   const [mode, setMode] = useState<'subscription' | 'onetime'>('subscription');
@@ -92,6 +111,67 @@ export default function KreatorPage() {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+
+  // Draft management functions
+  const saveDraft = () => {
+    const draft: KreatorDraft = {
+      v: 1,
+      ts: Date.now(),
+      mode,
+      step,
+      selectedPlan,
+      numberOfPeople,
+      numberOfDays,
+      selectedDiets,
+      selectedAllergies,
+      selectedDishes: selectedDishes.map(d => d.id),
+      selectedDishesSub: selectedDishesSub.map(d => d.id),
+    };
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      console.log('💾 Draft saved:', draft);
+    } catch (error) {
+      console.error('Failed to save draft:', error);
+    }
+  };
+
+  const loadDraft = (): KreatorDraft | null => {
+    try {
+      const stored = localStorage.getItem(DRAFT_KEY);
+      if (!stored) return null;
+
+      const draft = JSON.parse(stored) as KreatorDraft;
+      
+      // Check expiry
+      if (Date.now() - draft.ts > DRAFT_EXPIRY_MS) {
+        console.log('⏰ Draft expired, clearing...');
+        clearDraft();
+        return null;
+      }
+
+      // Validate version
+      if (draft.v !== 1) {
+        console.log('⚠️ Draft version mismatch, clearing...');
+        clearDraft();
+        return null;
+      }
+
+      console.log('📂 Draft loaded:', draft);
+      return draft;
+    } catch (error) {
+      console.error('Failed to load draft:', error);
+      return null;
+    }
+  };
+
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+      console.log('🗑️ Draft cleared');
+    } catch (error) {
+      console.error('Failed to clear draft:', error);
+    }
+  };
 
   // Fetch real OpenCart products
   useEffect(() => {
@@ -141,8 +221,9 @@ export default function KreatorPage() {
     fetchProducts();
   }, []);
 
-  // Load user preferences when session becomes available
+  // Combined useEffect to handle both preferences loading and draft restoration
   useEffect(() => {
+    // Load user preferences when session becomes available
     const loadPreferences = async () => {
       // Only load preferences in subscription mode when user is authenticated
       if (mode === 'subscription' && session?.user?.email) {
@@ -197,8 +278,57 @@ export default function KreatorPage() {
       }
     };
 
+    // Restore draft when returning from login with resume=1 parameter
+    const restoreDraft = () => {
+      const shouldResume = searchParams.get('resume') === '1';
+      
+      if (shouldResume && availableProducts.length > 0) {
+        const draft = loadDraft();
+        
+        if (draft) {
+          console.log('🔄 Restoring draft state...');
+          
+          // Restore basic state
+          setMode(draft.mode);
+          setStep(draft.step);
+          setSelectedPlan(draft.selectedPlan);
+          setNumberOfPeople(draft.numberOfPeople);
+          setNumberOfDays(draft.numberOfDays);
+          
+          // Restore diets with max 3 constraint
+          setSelectedDiets(draft.selectedDiets.slice(0, 3));
+          
+          // Restore allergies
+          setSelectedAllergies(draft.selectedAllergies);
+          
+          // Restore selected dishes by mapping IDs to products
+          if (draft.mode === 'onetime' && draft.selectedDishes.length > 0) {
+            const dishes = draft.selectedDishes
+              .map(id => availableProducts.find(p => p.id === id))
+              .filter((p): p is Product => p !== undefined);
+            setSelectedDishes(dishes.slice(0, draft.numberOfDays));
+          }
+          
+          if (draft.mode === 'subscription' && draft.selectedDishesSub.length > 0) {
+            const dishes = draft.selectedDishesSub
+              .map(id => availableProducts.find(p => p.id === id))
+              .filter((p): p is Product => p !== undefined);
+            setSelectedDishesSub(dishes.slice(0, draft.numberOfDays));
+          }
+          
+          console.log('✅ Draft restored successfully');
+          
+          // Clear the resume parameter from URL without reload
+          const url = new URL(window.location.href);
+          url.searchParams.delete('resume');
+          window.history.replaceState({}, '', url.toString());
+        }
+      }
+    };
+
     loadPreferences();
-  }, [session, status, mode]);
+    restoreDraft();
+  }, [session, status, mode, searchParams, availableProducts]);
 
   // Price per portion is 30 PLN as requested
   const pricePerPortion = 30;
@@ -387,7 +517,8 @@ export default function KreatorPage() {
   const handleAddToCart = async () => {
     // Check if user is authenticated
     if (!session) {
-      router.push('/login?callbackUrl=/kreator');
+      saveDraft();
+      router.push('/login?callbackUrl=/kreator?resume=1');
       return;
     }
 
@@ -410,6 +541,9 @@ export default function KreatorPage() {
 
       addItem(mealPlanItem, 1);
 
+      // Clear draft after successful cart addition
+      clearDraft();
+
       // Redirect to cart
       router.push('/cart');
     } catch (error) {
@@ -422,7 +556,8 @@ export default function KreatorPage() {
   const handleSubscriptionPayment = async () => {
     // Ensure user is authenticated
     if (!session) {
-      router.push('/login?callbackUrl=/kreator');
+      saveDraft();
+      router.push('/login?callbackUrl=/kreator?resume=1');
       return;
     }
 
@@ -458,6 +593,9 @@ export default function KreatorPage() {
       const result = await response.json();
 
       if (response.ok && result.success) {
+        // Clear draft after successful subscription creation
+        clearDraft();
+        
         // Redirect to panel with success message
         router.push('/panel?subscription=success');
       } else {
@@ -840,7 +978,10 @@ export default function KreatorPage() {
                 <Button
                   size="lg"
                   className="smakowalo-green w-full"
-                  onClick={() => router.push('/login?callbackUrl=/kreator')}
+                  onClick={() => {
+                    saveDraft();
+                    router.push('/login?callbackUrl=/kreator?resume=1');
+                  }}
                 >
                   Przejdź do logowania
                 </Button>
