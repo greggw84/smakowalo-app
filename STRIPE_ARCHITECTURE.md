@@ -104,7 +104,7 @@
 │                                      │
 │   • 3 people                         │
 │   • 4 days per week                  │
-│   • Diety: Keto                      │
+│   • Diets: Keto                      │
 │   • Period ends: 2024-XX-XX          │
 │                                      │
 │   360.00 zł / weekly                 │
