@@ -1,7 +1,7 @@
-'use client'
+use client
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { signIn, getSession, useSession } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -163,7 +163,7 @@ function LoginContent() {
       }
 
       // Validate Polish phone number format
-      const phoneRegex = /^(\+48)?[\s-]?(\d{3})[\s-]?(\d{3})[\s-]?(\d{3})$/
+      const phoneRegex = /^\(\+48)?[\s-]?(\d{3})[\s-]?(\d{3})[\s-]?(\d{3})$/
       if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
         setError('Podaj prawidłowy numer telefonu (9 cyfr lub +48 xxx xxx xxx)')
         return false
@@ -198,12 +198,23 @@ function LoginContent() {
           password: formData.password,
           firstName: formData.firstName,
           lastName: formData.lastName,
+          phone: formData.phone,
           isSignUp: 'true',
           redirect: false,
         })
 
-        // For signup, even if result is not ok, it might be successful
-        // (we return null to prevent auto sign in)
+        // If the backend returned an error for sign-up, surface it and stop
+        if (result?.error) {
+          if (result.error === 'EmailAlreadyExists') {
+            setError('Konto z tym adresem email już istnieje.')
+          } else if (result.error === 'VerificationEmailFailed') {
+            setError('Nie udało się wysłać emaila weryfikacyjnego. Spróbuj ponownie lub skontaktuj się z nami.')
+            setShowResendVerification(true)
+          } else {
+            setError(typeof result.error === 'string' ? result.error : 'Rejestracja nie powiodła się')
+          }
+          return
+        }
 
         // Check if we're in demo mode (Supabase not configured)
         const isDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -233,11 +244,14 @@ function LoginContent() {
         })
 
         if (result?.error) {
-          if (result.error === 'CredentialsSignin') {
-            setError('Nieprawidłowy email lub hasło. Jeśli dopiero się zarejestrowałeś, zweryfikuj swój email przed zalogowaniem.')
+          const code = result.error
+          if (code === 'EmailNotVerified' || code === 'UnverifiedEmail' || code === 'VerificationRequired') {
+            setError('Twój email nie został jeszcze zweryfikowany. Sprawdź swoją skrzynkę pocztową i kliknij link weryfikacyjny.')
             setShowResendVerification(true)
+          } else if (code === 'CredentialsSignin' || code === 'InvalidCredentials' || code === 'AuthInvalidCredentials') {
+            setError('Nieprawidłowy email lub hasło. Jeśli dopiero się zarejestrowałeś, zweryfikuj swój email przed zalogowaniem.')
           } else {
-            setError(result.error)
+            setError(typeof result.error === 'string' ? result.error : 'Logowanie nie powiodło się')
           }
         } else if (result?.ok) {
           console.log('✅ Login successful, redirecting immediately...')
@@ -629,7 +643,6 @@ function LoginContent() {
               </div>
             </CardContent>
           </Card>
-
 
         </div>
       </div>
