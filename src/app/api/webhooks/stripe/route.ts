@@ -1,12 +1,11 @@
+export const runtime = 'nodejs'
+
 import { type NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import Stripe from 'stripe'
 import { getServerStripe } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
 import { parsePlanKey } from '@/lib/pricing'
-
-// Force Node.js runtime (Stripe SDK not compatible with Edge)
-export const runtime = 'nodejs'
 
 // Initialize Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -15,6 +14,14 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null
+
+// Optional: respond to GET so visiting the URL in a browser doesn’t show 405
+export async function GET() {
+  return NextResponse.json(
+    { ok: true, message: 'Stripe webhook endpoint. Use POST from Stripe to deliver events.' },
+    { status: 200 }
+  )
+}
 
 /**
  * Stripe webhook handler for subscription events
