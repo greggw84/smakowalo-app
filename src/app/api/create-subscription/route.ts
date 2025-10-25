@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe subscription (if Stripe is configured)
-    let stripeSubscriptionId: string | null = null
+    const stripeSubscriptionId: string | null = null
     try {
       const stripeSecretKey = process.env.STRIPE_SECRET_KEY
       if (stripeSecretKey && stripeSecretKey.trim() !== '') {
