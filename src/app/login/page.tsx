@@ -1,4 +1,4 @@
-use client
+'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { signIn, useSession } from 'next-auth/react'
@@ -163,7 +163,14 @@ function LoginContent() {
       }
 
       // Validate Polish phone number format
-      const phoneRegex = /^\(\+48)?[\s-]?(\d{3})[\s-]?(\d{3})[\s-]?(\d{3})$/
+      const phoneRegex = /(^(
+      +48)[\s-]?(
+      d{3})[\s-]?(
+      d{3})[\s-]?(
+      d{3})$)|^(
+      d{3})[\s-]?(
+      d{3})[\s-]?(
+      d{3})$/
       if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
         setError('Podaj prawidłowy numer telefonu (9 cyfr lub +48 xxx xxx xxx)')
         return false
@@ -652,7 +659,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading...</div>}> 
       <LoginContent />
     </Suspense>
   )
