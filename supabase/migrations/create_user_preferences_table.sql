@@ -29,5 +29,5 @@ CREATE TRIGGER update_user_preferences_updated_at
 -- Add comment
 COMMENT ON TABLE user_preferences IS 'Stores user preferences for Kreator (meal creator) including diet preferences, allergen selections, and meal planning settings';
 COMMENT ON COLUMN user_preferences.email IS 'User email address (primary key)';
-COMMENT ON COLUMN user_preferences.preferences IS 'JSON object containing: numberOfPeople, numberOfDays, selectedDiets (array of IDs), selectedAllergies (array of strings)';
+COMMENT ON COLUMN user_preferences.preferences IS 'JSON object containing: numberOfPeople (2-4), numberOfDays (2-5), selectedDiets (array of up to 3 diet IDs), selectedAllergies (array of allergen strings: gluten, mleko, orzechy, soja, jaja, ryby, skorupiaki, sezam)';
 COMMENT ON COLUMN user_preferences.updated_at IS 'Timestamp of last update';
