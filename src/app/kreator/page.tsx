@@ -564,42 +564,40 @@ function KreatorPageComponent() {
     setIsProcessingPayment(true);
 
     try {
-      const selectedPlanData = subscriptionPlans.find(p => p.id === selectedPlan);
-      
-      // Create subscription data with selected meals
-      const subscriptionData = {
-        plan_type: selectedPlan,
-        price_per_delivery: selectedPlanData?.price || 0,
-        meal_plan_config: {
-          selectedDiets: selectedDiets.map(id => dietTypes.find(d => d.id === id)?.name).filter(Boolean),
-          selectedAllergies,
-          numberOfPeople,
-          numberOfDays,
-          // Include selected meals (names) for the subscription
-          selected_meals: selectedDishesSub.map(dish => dish.name),
-        },
+      // Create payload matching API specification
+      const payload = {
         customer_email: session.user?.email,
+        numberOfPeople,
+        numberOfDays,
       };
 
-      console.log('Creating subscription:', subscriptionData);
+      console.log('Creating subscription with payload:', payload);
 
       // Call the API to create subscription
       const response = await fetch('/api/create-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(subscriptionData),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
 
-      if (response.ok && result.success) {
-        // Clear draft after successful subscription creation
+      if (response.ok && result.url) {
+        // Clear draft after successful checkout session creation
         clearDraft();
         
-        // Redirect to panel with success message
-        router.push('/panel?subscription=success');
+        // Redirect to Stripe Checkout
+        window.location.href = result.url;
       } else {
-        throw new Error(result.error || 'Failed to create subscription');
+        // Log API error response to console
+        console.error('API error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: result.error,
+          result,
+        });
+        
+        throw new Error(result.error || 'Failed to create checkout session');
       }
 
     } catch (error) {
