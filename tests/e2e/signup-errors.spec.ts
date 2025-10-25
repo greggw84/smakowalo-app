@@ -35,8 +35,8 @@ test.describe('Signup Error Handling', () => {
     // Submit form
     await page.click('button:has-text("Utwórz konto")')
 
-    // Wait for response
-    await page.waitForTimeout(1000)
+    // Wait for success message to appear
+    await page.waitForSelector('text=Konto zostało utworzone', { timeout: 5000 })
 
     // Should show success message
     await expect(page.locator('text=Konto zostało utworzone')).toBeVisible()
@@ -74,8 +74,8 @@ test.describe('Signup Error Handling', () => {
     // Submit form
     await page.click('button:has-text("Utwórz konto")')
 
-    // Wait for response
-    await page.waitForTimeout(1000)
+    // Wait for error message to appear
+    await page.waitForSelector('text=Konto z tym adresem email już istnieje', { timeout: 5000 })
 
     // Should show error message
     await expect(page.locator('text=Konto z tym adresem email już istnieje')).toBeVisible()
@@ -106,8 +106,8 @@ test.describe('Signup Error Handling', () => {
     // Submit form
     await page.click('button:has-text("Utwórz konto")')
 
-    // Wait for response
-    await page.waitForTimeout(1000)
+    // Wait for demo mode success message to appear
+    await page.waitForSelector('text=DEMO MODE', { timeout: 5000 })
 
     // Should show demo mode success message
     await expect(page.locator('text=DEMO MODE')).toBeVisible()
@@ -142,8 +142,8 @@ test.describe('Signup Error Handling', () => {
     // Submit form
     await page.click('button:has-text("Utwórz konto")')
 
-    // Wait for response
-    await page.waitForTimeout(1000)
+    // Wait for success message to appear (treating CredentialsSignin as success during signup)
+    await page.waitForSelector('text=Konto zostało utworzone', { timeout: 5000 })
 
     // Should show success message (treating CredentialsSignin as success during signup)
     await expect(page.locator('text=Konto zostało utworzone')).toBeVisible()
@@ -222,8 +222,8 @@ test.describe('Sign In Error Handling', () => {
     // Submit form
     await page.click('button:has-text("Zaloguj się")')
 
-    // Wait for response
-    await page.waitForTimeout(1000)
+    // Wait for error message to appear
+    await page.waitForSelector('text=Nieprawidłowy email lub hasło', { timeout: 5000 })
 
     // Should show error message for sign-in (different from signup)
     await expect(page.locator('text=Nieprawidłowy email lub hasło')).toBeVisible()
@@ -250,8 +250,8 @@ test.describe('Sign In Error Handling', () => {
     // Submit form
     await page.click('button:has-text("Zaloguj się")')
 
-    // Wait for response
-    await page.waitForTimeout(1000)
+    // Wait for verification error message to appear
+    await page.waitForSelector('text=Twój email nie został jeszcze zweryfikowany', { timeout: 5000 })
 
     // Should show error message about verification
     await expect(page.locator('text=Twój email nie został jeszcze zweryfikowany')).toBeVisible()
