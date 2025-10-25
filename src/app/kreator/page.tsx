@@ -43,16 +43,16 @@ const dietTypes = [
   { id: 8, name: "Paleo", description: "Bazująca na naturalnych, nieprzetworzonych produktach", code: "paleo" },
 ];
 
-// Additional allergy options
+// Additional allergy options (IDs match allergen values in products API)
 const allergyOptions = [
   { id: 'gluten', name: 'Gluten' },
-  { id: 'lactose', name: 'Laktoza' },
-  { id: 'nuts', name: 'Orzechy' },
-  { id: 'soy', name: 'Soja' },
-  { id: 'eggs', name: 'Jaja' },
-  { id: 'fish', name: 'Ryby' },
-  { id: 'shellfish', name: 'Skorupiaki' },
-  { id: 'sesame', name: 'Sezam' },
+  { id: 'mleko', name: 'Mleko/Laktoza' },
+  { id: 'orzechy', name: 'Orzechy' },
+  { id: 'soja', name: 'Soja' },
+  { id: 'jaja', name: 'Jaja' },
+  { id: 'ryby', name: 'Ryby' },
+  { id: 'skorupiaki', name: 'Skorupiaki' },
+  { id: 'sezam', name: 'Sezam' },
 ];
 
 interface Product {
