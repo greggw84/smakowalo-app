@@ -66,6 +66,7 @@ interface Product {
   diets: string[];
   servings?: number;
   difficulty?: string;
+  allergens?: string[];
 }
 
 export default function KreatorPage() {
@@ -117,7 +118,8 @@ export default function KreatorPage() {
               calories: p.calories || 400,
               cook_time: p.cook_time || 30,
               price: p.price || 35,
-              diets: p.diets || []
+              diets: p.diets || [],
+              allergens: p.allergens || []
             }));
 
             console.log('✅ Loaded products:', products.length);
@@ -139,54 +141,140 @@ export default function KreatorPage() {
     fetchProducts();
   }, []);
 
+  // Load user preferences when session becomes available
+  useEffect(() => {
+    const loadPreferences = async () => {
+      // Only load preferences in subscription mode when user is authenticated
+      if (mode === 'subscription' && session?.user?.email) {
+        try {
+          console.log('📥 Loading user preferences...');
+          const response = await fetch('/api/user/preferences');
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Preferences loaded:', data);
+            
+            if (data.success && data.preferences) {
+              const prefs = data.preferences;
+              
+              // Update state with saved preferences
+              setNumberOfPeople(prefs.numberOfPeople || 2);
+              setNumberOfDays(prefs.numberOfDays || 3);
+              setSelectedDiets(prefs.selectedDiets || []);
+              setSelectedAllergies(prefs.selectedAllergies || []);
+              
+              console.log('✅ Preferences applied to state');
+            }
+          } else if (response.status === 401) {
+            // Not authenticated - try localStorage
+            const stored = localStorage.getItem('kreatorPreferences');
+            if (stored) {
+              const prefs = JSON.parse(stored);
+              setNumberOfPeople(prefs.numberOfPeople || 2);
+              setNumberOfDays(prefs.numberOfDays || 3);
+              setSelectedDiets(prefs.selectedDiets || []);
+              setSelectedAllergies(prefs.selectedAllergies || []);
+              console.log('✅ Preferences loaded from localStorage');
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error loading preferences:', error);
+          // Try localStorage as fallback
+          try {
+            const stored = localStorage.getItem('kreatorPreferences');
+            if (stored) {
+              const prefs = JSON.parse(stored);
+              setNumberOfPeople(prefs.numberOfPeople || 2);
+              setNumberOfDays(prefs.numberOfDays || 3);
+              setSelectedDiets(prefs.selectedDiets || []);
+              setSelectedAllergies(prefs.selectedAllergies || []);
+              console.log('✅ Preferences loaded from localStorage (fallback)');
+            }
+          } catch (localStorageError) {
+            console.error('❌ Error loading from localStorage:', localStorageError);
+          }
+        }
+      }
+    };
+
+    loadPreferences();
+  }, [session, status, mode]);
+
   // Price per portion is 30 PLN as requested
   const pricePerPortion = 30;
   const totalPortions = numberOfPeople * numberOfDays;
   const totalCost = totalPortions * pricePerPortion;
 
-  // Filter products based on selected diets
+  // Filter products based on selected diets and allergens
   const getFilteredProducts = () => {
-    if (selectedDiets.length === 0) {
-      // If no diets selected, show all products
-      return availableProducts;
+    let filtered = availableProducts;
+
+    // Filter by diets if any selected
+    if (selectedDiets.length > 0) {
+      // Get selected diet codes
+      const selectedDietCodes = selectedDiets.map(dietId => {
+        const diet = dietTypes.find(d => d.id === dietId);
+        return diet?.code;
+      }).filter(Boolean) as string[];
+
+      console.log('🔍 Selected diet codes:', selectedDietCodes);
+      console.log('📦 Available products:', availableProducts.length);
+      console.log('🍽️ Products with diets:', availableProducts.map(p => ({
+        name: p.name.substring(0, 30),
+        diets: p.diets
+      })));
+
+      // Filter products that match any of the selected diets
+      filtered = filtered.filter(product => {
+        // If product has no diet info, exclude it (we want to match specific diets)
+        if (!product.diets || product.diets.length === 0) {
+          return false;
+        }
+
+        // Convert product diets to lowercase for case-insensitive comparison
+        const productDietsLower = product.diets.map(d => d.toLowerCase());
+
+        // Check if product has any of the selected diets (case-insensitive)
+        const hasMatch = selectedDietCodes.some(selectedCode =>
+          productDietsLower.includes(selectedCode.toLowerCase())
+        );
+
+        if (hasMatch) {
+          console.log(`✅ Match found: ${product.name.substring(0, 30)} - ${product.diets.join(', ')}`);
+        }
+
+        return hasMatch;
+      });
+
+      console.log('✨ Filtered products count (after diet filter):', filtered.length);
     }
 
-    // Get selected diet codes
-    const selectedDietCodes = selectedDiets.map(dietId => {
-      const diet = dietTypes.find(d => d.id === dietId);
-      return diet?.code;
-    }).filter(Boolean) as string[];
+    // Filter out products with allergens if in subscription mode
+    if (mode === 'subscription' && selectedAllergies.length > 0) {
+      filtered = filtered.filter(product => {
+        // If product has no allergens, include it
+        if (!product.allergens || product.allergens.length === 0) {
+          return true;
+        }
 
-    console.log('🔍 Selected diet codes:', selectedDietCodes);
-    console.log('📦 Available products:', availableProducts.length);
-    console.log('🍽️ Products with diets:', availableProducts.map(p => ({
-      name: p.name.substring(0, 30),
-      diets: p.diets
-    })));
+        // Check if product has any of the selected allergens (case-insensitive)
+        const productAllergensLower = product.allergens.map(a => a.toLowerCase());
+        const selectedAllergiesLower = selectedAllergies.map(a => a.toLowerCase());
+        
+        const hasAllergen = productAllergensLower.some(allergen =>
+          selectedAllergiesLower.includes(allergen)
+        );
 
-    // Filter products that match any of the selected diets
-    const filtered = availableProducts.filter(product => {
-      // If product has no diet info, exclude it (we want to match specific diets)
-      if (!product.diets || product.diets.length === 0) {
-        return false;
-      }
+        if (hasAllergen) {
+          console.log(`🚫 Excluded due to allergen: ${product.name.substring(0, 30)} - ${product.allergens.join(', ')}`);
+        }
 
-      // Convert product diets to lowercase for case-insensitive comparison
-      const productDietsLower = product.diets.map(d => d.toLowerCase());
+        return !hasAllergen;
+      });
 
-      // Check if product has any of the selected diets (case-insensitive)
-      const hasMatch = selectedDietCodes.some(selectedCode =>
-        productDietsLower.includes(selectedCode.toLowerCase())
-      );
+      console.log('✨ Filtered products count (after allergen filter):', filtered.length);
+    }
 
-      if (hasMatch) {
-        console.log(`✅ Match found: ${product.name.substring(0, 30)} - ${product.diets.join(', ')}`);
-      }
-
-      return hasMatch;
-    });
-
-    console.log('✨ Filtered products count:', filtered.length);
     return filtered;
   };
 
@@ -255,6 +343,45 @@ export default function KreatorPage() {
   // Get the number of meals per week based on the user's selected numberOfDays
   const getSubscriptionMealCount = (): number => {
     return numberOfDays; // Use user's selection instead of plan's fixed meals_per_week
+  };
+
+  const savePreferences = async () => {
+    const preferences = {
+      numberOfPeople,
+      numberOfDays,
+      selectedDiets,
+      selectedAllergies
+    };
+
+    // Always save to localStorage as fallback
+    try {
+      localStorage.setItem('kreatorPreferences', JSON.stringify(preferences));
+      console.log('✅ Preferences saved to localStorage');
+    } catch (error) {
+      console.error('❌ Error saving to localStorage:', error);
+    }
+
+    // Try to save to server if authenticated
+    if (session?.user?.email) {
+      try {
+        console.log('💾 Saving preferences to server...');
+        const response = await fetch('/api/user/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(preferences)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Preferences saved:', data);
+        } else {
+          console.warn('⚠️ Server save failed, localStorage used');
+        }
+      } catch (error) {
+        console.error('❌ Error saving preferences to server:', error);
+        // localStorage already saved above as fallback
+      }
+    }
   };
 
   const handleAddToCart = async () => {
@@ -422,7 +549,7 @@ export default function KreatorPage() {
         );
 
       case 2:
-        // Step 2: Extended preferences (diets + allergies)
+        // Step 2: Extended preferences (people/days first, then diets + allergies)
         return (
           <>
             <h2 className="text-2xl font-bold text-[var(--smakowalo-green-dark)] mb-6 text-center">
@@ -430,60 +557,11 @@ export default function KreatorPage() {
             </h2>
             
             <div className="max-w-5xl mx-auto mb-8">
-              <h3 className="text-xl font-semibold text-[var(--smakowalo-green-dark)] mb-4">
-                Preferencje dietetyczne (maksymalnie 3)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {dietTypes.map((diet) => (
-                  <Card
-                    key={diet.id}
-                    className={`cursor-pointer transition-all ${
-                      selectedDiets.includes(diet.id)
-                        ? 'ring-2 ring-[var(--smakowalo-green-primary)] bg-green-50'
-                        : 'hover:shadow-md'
-                    }`}
-                    onClick={() => toggleDiet(diet.id)}
-                  >
-                    <CardContent className="p-4 flex items-start space-x-3">
-                      <div className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                        selectedDiets.includes(diet.id)
-                          ? 'bg-[var(--smakowalo-green-primary)] border-[var(--smakowalo-green-primary)]'
-                          : 'border-gray-300'
-                      }`}>
-                        {selectedDiets.includes(diet.id) && (
-                          <Check className="h-4 w-4 text-white" />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-[var(--smakowalo-green-dark)]">{diet.name}</h3>
-                        <p className="text-xs text-gray-500">{diet.description}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              <h3 className="text-xl font-semibold text-[var(--smakowalo-green-dark)] mb-4">
-                Alergie i nietolerancje
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
-                {allergyOptions.map((allergy) => (
-                  <Button
-                    key={allergy.id}
-                    variant={selectedAllergies.includes(allergy.id) ? "default" : "outline"}
-                    className={selectedAllergies.includes(allergy.id) ? "bg-[var(--smakowalo-green-primary)]" : ""}
-                    onClick={() => toggleAllergy(allergy.id)}
-                    size="sm"
-                  >
-                    {allergy.name}
-                  </Button>
-                ))}
-              </div>
-
+              {/* MOVED TO TOP: Liczba osób i dni w tygodniu */}
               <h3 className="text-xl font-semibold text-[var(--smakowalo-green-dark)] mb-4">
                 Liczba osób i dni w tygodniu
               </h3>
-              <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="bg-white rounded-lg shadow-md p-6 mb-8">
                 <div className="mb-6">
                   <p className="text-lg font-medium mb-4">Liczba osób:</p>
                   <div className="flex space-x-4">
@@ -545,6 +623,58 @@ export default function KreatorPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Preferencje dietetyczne */}
+              <h3 className="text-xl font-semibold text-[var(--smakowalo-green-dark)] mb-4">
+                Preferencje dietetyczne (maksymalnie 3)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {dietTypes.map((diet) => (
+                  <Card
+                    key={diet.id}
+                    className={`cursor-pointer transition-all ${
+                      selectedDiets.includes(diet.id)
+                        ? 'ring-2 ring-[var(--smakowalo-green-primary)] bg-green-50'
+                        : 'hover:shadow-md'
+                    }`}
+                    onClick={() => toggleDiet(diet.id)}
+                  >
+                    <CardContent className="p-4 flex items-start space-x-3">
+                      <div className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                        selectedDiets.includes(diet.id)
+                          ? 'bg-[var(--smakowalo-green-primary)] border-[var(--smakowalo-green-primary)]'
+                          : 'border-gray-300'
+                      }`}>
+                        {selectedDiets.includes(diet.id) && (
+                          <Check className="h-4 w-4 text-white" />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-[var(--smakowalo-green-dark)]">{diet.name}</h3>
+                        <p className="text-xs text-gray-500">{diet.description}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Alergie i nietolerancje */}
+              <h3 className="text-xl font-semibold text-[var(--smakowalo-green-dark)] mb-4">
+                Alergie i nietolerancje
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
+                {allergyOptions.map((allergy) => (
+                  <Button
+                    key={allergy.id}
+                    variant={selectedAllergies.includes(allergy.id) ? "default" : "outline"}
+                    className={selectedAllergies.includes(allergy.id) ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                    onClick={() => toggleAllergy(allergy.id)}
+                    size="sm"
+                  >
+                    {allergy.name}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             <div className="flex justify-between max-w-5xl mx-auto">
@@ -558,7 +688,10 @@ export default function KreatorPage() {
               <Button
                 size="lg"
                 className="smakowalo-green"
-                onClick={() => setStep(3)}
+                onClick={async () => {
+                  await savePreferences();
+                  setStep(3);
+                }}
               >
                 Dalej
               </Button>
