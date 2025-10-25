@@ -128,6 +128,12 @@ export const authOptions = {
               }
             } catch (error) {
               console.error('Sign up error:', error)
+              // Re-throw explicit error codes so they reach the frontend
+              if (error instanceof Error && 
+                  (error.message === 'EmailAlreadyExists' || 
+                   error.message === 'VerificationRequired')) {
+                throw error
+              }
               return null
             }
           } else {
@@ -194,6 +200,10 @@ export const authOptions = {
             }
           } catch (error) {
             console.error('❌ Authentication error:', error)
+            // Re-throw explicit error codes so they reach the frontend
+            if (error instanceof Error && error.message === 'VerificationRequired') {
+              throw error
+            }
             return null
           }
         }

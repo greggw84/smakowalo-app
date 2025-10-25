@@ -231,10 +231,16 @@ function LoginContent() {
         }
 
         // Successful signup with auto-login (development mode only)
-        setSuccess('Konto zostało utworzone pomyślnie! Logowanie...')
-        setTimeout(() => {
-          window.location.href = callbackUrl
-        }, 500)
+        // NextAuth will handle the redirect automatically if the authorize function returned a user
+        if (result?.ok) {
+          setSuccess('Konto zostało utworzone pomyślnie! Logowanie...')
+          setTimeout(() => {
+            window.location.href = callbackUrl
+          }, 500)
+        } else {
+          // This should not happen if backend is working correctly
+          console.warn('Signup succeeded but no error and not logged in')
+        }
       } else {
         // Handle sign in normally
         const result = await signIn('credentials', {
