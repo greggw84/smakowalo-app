@@ -1,7 +1,8 @@
 /**
  * Pricing utilities for Smakowało meal plans
  * 
- * Price rule: numberOfPeople × numberOfDays × 30 PLN (in grosze: × 3000)
+ * Price rule: numberOfPeople × numberOfDays × 30 PLN
+ * Conversion: PLN to grosze (1 PLN = 100 groszy)
  */
 
 /**
