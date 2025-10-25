@@ -564,49 +564,50 @@ function KreatorPageComponent() {
     setIsProcessingPayment(true);
 
     try {
-      const selectedPlanData = subscriptionPlans.find(p => p.id === selectedPlan);
-      
-      // Create subscription data with selected meals
-      const subscriptionData = {
-        plan_type: selectedPlan,
-        price_per_delivery: selectedPlanData?.price || 0,
-        meal_plan_config: {
-          selectedDiets: selectedDiets.map(id => dietTypes.find(d => d.id === id)?.name).filter(Boolean),
-          selectedAllergies,
-          numberOfPeople,
-          numberOfDays,
-          // Include selected meals (names) for the subscription
-          selected_meals: selectedDishesSub.map(dish => dish.name),
-        },
+      // Prepare diet names
+      const selectedDietNames = selectedDiets
+        .map(id => dietTypes.find(d => d.id === id)?.name)
+        .filter(Boolean) as string[]
+
+      // Prepare selected meal names
+      const selectedMealNames = selectedDishesSub.map(dish => dish.name)
+
+      // Create subscription payload for Stripe Checkout
+      const payload = {
         customer_email: session.user?.email,
-      };
+        numberOfPeople,
+        numberOfDays,
+        selectedDiets: selectedDietNames,
+        selectedAllergies,
+        selected_meals: selectedMealNames
+      }
 
-      console.log('Creating subscription:', subscriptionData);
+      console.log('Creating Stripe Checkout session:', payload)
 
-      // Call the API to create subscription
+      // Call API to create Stripe Checkout session
       const response = await fetch('/api/create-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(subscriptionData),
-      });
+        body: JSON.stringify(payload)
+      })
 
-      const result = await response.json();
+      const result = await response.json()
 
-      if (response.ok && result.success) {
-        // Clear draft after successful subscription creation
-        clearDraft();
+      if (response.ok && result.url) {
+        // Clear draft before redirecting to Stripe
+        clearDraft()
         
-        // Redirect to panel with success message
-        router.push('/panel?subscription=success');
+        // Redirect to Stripe Checkout
+        window.location.href = result.url
       } else {
-        throw new Error(result.error || 'Failed to create subscription');
+        throw new Error(result.error || 'Failed to create checkout session')
       }
 
     } catch (error) {
-      console.error('Error processing subscription payment:', error);
-      alert('Wystąpił błąd podczas przetwarzania płatności. Spróbuj ponownie.');
+      console.error('Error processing subscription payment:', error)
+      alert('Wystąpił błąd podczas przetwarzania płatności. Spróbuj ponownie.')
     } finally {
-      setIsProcessingPayment(false);
+      setIsProcessingPayment(false)
     }
   };
 
