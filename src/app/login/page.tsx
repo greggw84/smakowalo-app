@@ -190,31 +190,73 @@ function LoginContent() {
           redirect: false,
         })
 
-        // If the backend returned an error for sign-up, surface it and stop
+        // Handle specific error codes from sign-up
         if (result?.error) {
-          if (result.error === 'EmailAlreadyExists') {
-            setError('Konto z tym adresem email już istnieje.')
-          } else if (result.error === 'VerificationEmailFailed') {
-            setError('Nie udało się wysłać emaila weryfikacyjnego. Spróbuj ponownie lub skontaktuj się z nami.')
+          const errorCode = result.error
+          
+          // Verification Required - successful signup in production
+          if (errorCode === 'VerificationRequired') {
+            setSuccess('Konto zostało utworzone! Sprawdź swoją skrzynkę email i potwierdź adres, aby dokończyć rejestrację.')
             setShowResendVerification(true)
-          } else {
-            setError(typeof result.error === 'string' ? result.error : 'Rejestracja nie powiodła się')
+            setActiveTab('signin')
+            setFormData({
+              email: formData.email, // Keep email for easy login
+              password: '',
+              firstName: '',
+              lastName: '',
+              phone: '',
+              confirmPassword: ''
+            })
+            return
           }
+          
+          // Demo Mode Success
+          if (errorCode === 'DEMO_SIGNUP_SUCCESS') {
+            setSuccess('⚠️ DEMO MODE: Konto zostało utworzone (lokalnie). Możesz się teraz zalogować z dowolnym hasłem. Skonfiguruj Supabase dla pełnej funkcjonalności.')
+            setActiveTab('signin')
+            setFormData({
+              email: formData.email,
+              password: '',
+              firstName: '',
+              lastName: '',
+              phone: '',
+              confirmPassword: ''
+            })
+            return
+          }
+          
+          // Email Already Exists
+          if (errorCode === 'EmailAlreadyExists') {
+            setError('Konto z tym adresem email już istnieje.')
+            return
+          }
+          
+          // Treat CredentialsSignin after sign-up as verification-required (fallback for null return)
+          if (errorCode === 'CredentialsSignin') {
+            setSuccess('Konto zostało utworzone! Sprawdź swoją skrzynkę email i potwierdź adres, aby dokończyć rejestrację.')
+            setShowResendVerification(true)
+            setActiveTab('signin')
+            setFormData({
+              email: formData.email,
+              password: '',
+              firstName: '',
+              lastName: '',
+              phone: '',
+              confirmPassword: ''
+            })
+            return
+          }
+          
+          // Other signup errors
+          setError(typeof result.error === 'string' ? result.error : 'Rejestracja nie powiodła się')
           return
         }
 
-        // Check if we're in demo mode (Supabase not configured)
-        const isDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL
-
-        if (isDemo) {
-          setSuccess('⚠️ DEMO MODE: Konto zostało utworzone (lokalnie). Możesz się teraz zalogować z dowolnym hasłem. Skonfiguruj Supabase dla pełnej funkcjonalności.')
-        } else {
-          setSuccess('Konto zostało utworzone! Sprawdź swoją skrzynkę email i potwierdź adres, aby dokończyć rejestrację.')
-        }
-
+        // If no error and no redirect (shouldn't happen in normal flow)
+        setSuccess('Konto zostało utworzone! Możesz się teraz zalogować.')
         setActiveTab('signin')
         setFormData({
-          email: formData.email, // Keep email for easy login
+          email: formData.email,
           password: '',
           firstName: '',
           lastName: '',

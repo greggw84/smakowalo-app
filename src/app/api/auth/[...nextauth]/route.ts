@@ -70,7 +70,7 @@ export const authOptions = {
                 .single()
 
               if (existingUser) {
-                throw new Error('User already exists')
+                throw new Error('EmailAlreadyExists')
               }
 
               // Determine if we should auto-confirm email (for development)
@@ -90,7 +90,7 @@ export const authOptions = {
 
               if (authError || !authData.user) {
                 console.error('Error creating user:', authError)
-                throw new Error('Failed to create user')
+                throw new Error('SignupFailed')
               }
 
               // Create profile in profiles table
@@ -108,7 +108,7 @@ export const authOptions = {
                 console.error('❌ Error creating profile:', profileError)
                 // Try to clean up auth user if profile creation fails
                 await supabase.auth.admin.deleteUser(authData.user.id)
-                throw new Error('Failed to create user profile')
+                throw new Error('SignupFailed')
               }
 
               console.log('✅ User created successfully:', credentials.email)
@@ -127,10 +127,17 @@ export const authOptions = {
                 }
               }
               // In production, don't auto-login - require email verification
-              return null
+              throw new Error('VerificationRequired')
             } catch (error) {
               console.error('Sign up error:', error)
-              return null
+              // Re-throw known errors, or use a fallback
+              if (error instanceof Error) {
+                const knownErrors = ['EmailAlreadyExists', 'VerificationRequired', 'SignupFailed']
+                if (knownErrors.includes(error.message)) {
+                  throw error
+                }
+              }
+              throw new Error('SignupFailed')
             }
           } else {
             // FALLBACK: Demo mode without Supabase
