@@ -252,10 +252,9 @@ export default function KreatorPage() {
     });
   };
 
-  // Get the number of meals per week based on the subscription plan
+  // Get the number of meals per week based on the user's selected numberOfDays
   const getSubscriptionMealCount = (): number => {
-    const plan = subscriptionPlans.find(p => p.id === selectedPlan);
-    return plan?.meals_per_week || 3; // Default to 3 if no plan selected
+    return numberOfDays; // Use user's selection instead of plan's fixed meals_per_week
   };
 
   const handleAddToCart = async () => {
@@ -467,7 +466,7 @@ export default function KreatorPage() {
               <h3 className="text-xl font-semibold text-[var(--smakowalo-green-dark)] mb-4">
                 Alergie i nietolerancje
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
                 {allergyOptions.map((allergy) => (
                   <Button
                     key={allergy.id}
@@ -479,6 +478,72 @@ export default function KreatorPage() {
                     {allergy.name}
                   </Button>
                 ))}
+              </div>
+
+              <h3 className="text-xl font-semibold text-[var(--smakowalo-green-dark)] mb-4">
+                Liczba osób i dni w tygodniu
+              </h3>
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="mb-6">
+                  <p className="text-lg font-medium mb-4">Liczba osób:</p>
+                  <div className="flex space-x-4">
+                    <Button
+                      variant={numberOfPeople === 2 ? "default" : "outline"}
+                      className={numberOfPeople === 2 ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                      onClick={() => setNumberOfPeople(2)}
+                    >
+                      2 osoby
+                    </Button>
+                    <Button
+                      variant={numberOfPeople === 3 ? "default" : "outline"}
+                      className={numberOfPeople === 3 ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                      onClick={() => setNumberOfPeople(3)}
+                    >
+                      3 osoby
+                    </Button>
+                    <Button
+                      variant={numberOfPeople === 4 ? "default" : "outline"}
+                      className={numberOfPeople === 4 ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                      onClick={() => setNumberOfPeople(4)}
+                    >
+                      4 osoby
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-lg font-medium mb-4">Dni w tygodniu:</p>
+                  <div className="flex space-x-4">
+                    <Button
+                      variant={numberOfDays === 2 ? "default" : "outline"}
+                      className={numberOfDays === 2 ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                      onClick={() => setNumberOfDays(2)}
+                    >
+                      2 dni
+                    </Button>
+                    <Button
+                      variant={numberOfDays === 3 ? "default" : "outline"}
+                      className={numberOfDays === 3 ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                      onClick={() => setNumberOfDays(3)}
+                    >
+                      3 dni
+                    </Button>
+                    <Button
+                      variant={numberOfDays === 4 ? "default" : "outline"}
+                      className={numberOfDays === 4 ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                      onClick={() => setNumberOfDays(4)}
+                    >
+                      4 dni
+                    </Button>
+                    <Button
+                      variant={numberOfDays === 5 ? "default" : "outline"}
+                      className={numberOfDays === 5 ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                      onClick={() => setNumberOfDays(5)}
+                    >
+                      5 dni
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -822,6 +887,13 @@ export default function KreatorPage() {
                     2 osoby
                   </Button>
                   <Button
+                    variant={numberOfPeople === 3 ? "default" : "outline"}
+                    className={numberOfPeople === 3 ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                    onClick={() => setNumberOfPeople(3)}
+                  >
+                    3 osoby
+                  </Button>
+                  <Button
                     variant={numberOfPeople === 4 ? "default" : "outline"}
                     className={numberOfPeople === 4 ? "bg-[var(--smakowalo-green-primary)]" : ""}
                     onClick={() => setNumberOfPeople(4)}
@@ -834,6 +906,13 @@ export default function KreatorPage() {
               <div>
                 <p className="text-lg font-medium mb-4">Dni w tygodniu:</p>
                 <div className="flex space-x-4">
+                  <Button
+                    variant={numberOfDays === 2 ? "default" : "outline"}
+                    className={numberOfDays === 2 ? "bg-[var(--smakowalo-green-primary)]" : ""}
+                    onClick={() => setNumberOfDays(2)}
+                  >
+                    2 dni
+                  </Button>
                   <Button
                     variant={numberOfDays === 3 ? "default" : "outline"}
                     className={numberOfDays === 3 ? "bg-[var(--smakowalo-green-primary)]" : ""}
