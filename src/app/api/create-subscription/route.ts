@@ -1,16 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { createClient } from '@supabase/supabase-js'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { getServerStripe } from '@/lib/stripe'
+import { getPriceForPlan, getPlanKey, isValidPlan } from '@/lib/pricing'
 
-// Initialize Supabase only if environment variables are available
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-const supabase = supabaseUrl && supabaseKey
-  ? createClient(supabaseUrl, supabaseKey)
-  : null
+// Force Node.js runtime (Stripe SDK not compatible with Edge)
+export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,123 +19,145 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { plan_type, price_per_delivery, meal_plan_config } = body
+    const { 
+      customer_email, 
+      numberOfPeople, 
+      numberOfDays,
+      selectedDiets,
+      selectedAllergies,
+      selected_meals
+    } = body
 
     // Validate required fields
-    if (!plan_type || !price_per_delivery) {
+    if (!numberOfPeople || !numberOfDays) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: numberOfPeople and numberOfDays' },
         { status: 400 }
       )
     }
 
-    // Create Stripe subscription (if Stripe is configured)
-    const stripeSubscriptionId: string | null = null
-    try {
-      const stripeSecretKey = process.env.STRIPE_SECRET_KEY
-      if (stripeSecretKey && stripeSecretKey.trim() !== '') {
-        const stripe = getServerStripe()
-        
-        // In a real implementation, you would:
-        // 1. Create or retrieve a Stripe customer
-        // 2. Create a subscription with the appropriate price
-        // 3. Return the checkout session or subscription ID
-        
-        // For now, we'll just simulate it
-        console.log('Would create Stripe subscription for:', {
-          customer_email: session.user.email,
-          plan_type,
-          price: price_per_delivery
-        })
-        
-        // TODO: Uncomment when ready to integrate with Stripe
-        // const customer = await stripe.customers.create({
-        //   email: session.user.email,
-        //   metadata: {
-        //     plan_type,
-        //   }
-        // });
-        
-        // const subscription = await stripe.subscriptions.create({
-        //   customer: customer.id,
-        //   items: [{ price: 'price_xxx' }], // Use actual price ID
-        //   metadata: {
-        //     plan_type,
-        //     meal_plan_config: JSON.stringify(meal_plan_config)
-        //   }
-        // });
-        
-        // stripeSubscriptionId = subscription.id
-      }
-    } catch (stripeError: any) {
-      // Log the error but don't fail the request if Stripe is not properly configured
-      console.error('Stripe error:', stripeError)
-      
-      // If it's a configuration error, we can continue without Stripe
-      // If it's a payment processing error, we should fail
-      if (stripeError?.type === 'StripeAuthenticationError' || 
-          stripeError?.message?.includes('API key')) {
-        console.warn('Stripe not properly configured, continuing without payment processing')
-      } else if (stripeError?.type && stripeError.type !== 'StripeConfigurationError') {
-        // This is a real processing error, we should fail
-        return NextResponse.json(
-          { error: 'Payment processing failed', details: stripeError.message },
-          { status: 400 }
-        )
-      }
+    // Validate plan configuration
+    if (!isValidPlan(numberOfPeople, numberOfDays)) {
+      return NextResponse.json(
+        { error: `Invalid plan configuration: ${numberOfPeople} people, ${numberOfDays} days` },
+        { status: 400 }
+      )
     }
 
-    // Save subscription to database (if Supabase is configured)
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .insert({
-          customer_email: session.user.email,
-          plan_type,
-          price_per_delivery,
-          meal_plan_config,
-          stripe_subscription_id: stripeSubscriptionId,
-          status: 'active',
-          next_delivery_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-        })
-        .select()
-        .single()
+    // Get Stripe configuration
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY
+    const stripeProductId = process.env.STRIPE_PRODUCT_ID
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-      if (error) {
-        console.error('Database error:', error)
-        return NextResponse.json(
-          { error: 'Failed to create subscription' },
-          { status: 500 }
-        )
-      }
-
-      return NextResponse.json({
-        success: true,
-        subscription: data,
-        message: 'Subscription created successfully'
-      })
+    if (!stripeSecretKey || !stripeProductId) {
+      console.error('Missing Stripe configuration')
+      return NextResponse.json(
+        { error: 'Payment system not configured' },
+        { status: 500 }
+      )
     }
 
-    // If no database, return success with mock data
-    return NextResponse.json({
-      success: true,
-      subscription: {
-        id: Date.now(),
-        customer_email: session.user.email,
-        plan_type,
-        price_per_delivery,
-        meal_plan_config,
-        status: 'active',
-        created_at: new Date().toISOString(),
-      },
-      message: 'Subscription created successfully (mock)',
-      source: 'mock'
+    const stripe = getServerStripe()
+
+    // Build plan key and calculate price
+    const planKey = getPlanKey(numberOfPeople, numberOfDays)
+    const weeklyPriceGrosze = getPriceForPlan(numberOfPeople, numberOfDays)
+
+    console.log('Creating subscription:', {
+      customer_email: session.user.email,
+      planKey,
+      weeklyPriceGrosze,
+      numberOfPeople,
+      numberOfDays
     })
 
-  } catch (error) {
+    // Find or create Stripe Price with lookup_key
+    const lookupKey = planKey
+    let priceId: string | null = null
+
+    try {
+      // Try to find existing price by lookup_key
+      const prices = await stripe.prices.list({
+        lookup_keys: [lookupKey],
+        limit: 1
+      })
+
+      if (prices.data.length > 0) {
+        priceId = prices.data[0].id
+        console.log(`Found existing price: ${priceId}`)
+      }
+    } catch (error) {
+      console.warn('Error searching for existing price:', error)
+    }
+
+    // If no price found, create one
+    if (!priceId) {
+      console.log('Creating new Stripe price...')
+      const price = await stripe.prices.create({
+        product: stripeProductId,
+        unit_amount: weeklyPriceGrosze,
+        currency: 'pln',
+        recurring: {
+          interval: 'week',
+          interval_count: 1
+        },
+        lookup_key: lookupKey,
+        nickname: `Smakowalo Box ${planKey}`,
+        metadata: {
+          plan_key: planKey,
+          people: numberOfPeople.toString(),
+          days: numberOfDays.toString()
+        }
+      })
+      priceId = price.id
+      console.log(`Created new price: ${priceId}`)
+    }
+
+    // Create Checkout Session in subscription mode
+    const checkoutSession = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      customer_email: session.user.email,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1
+        }
+      ],
+      subscription_data: {
+        metadata: {
+          plan_key: planKey,
+          people: numberOfPeople.toString(),
+          days: numberOfDays.toString(),
+          diets: selectedDiets ? JSON.stringify(selectedDiets) : '[]',
+          allergies: selectedAllergies ? JSON.stringify(selectedAllergies) : '[]',
+          selected_meals: selected_meals ? JSON.stringify(selected_meals) : '[]'
+        }
+      },
+      success_url: `${appUrl}/panel?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/kreator?resume=1`,
+      allow_promotion_codes: true,
+      billing_address_collection: 'required',
+      metadata: {
+        plan_key: planKey,
+        people: numberOfPeople.toString(),
+        days: numberOfDays.toString()
+      }
+    })
+
+    console.log('Checkout session created:', checkoutSession.id)
+
+    // Return checkout URL for frontend redirect
+    return NextResponse.json({
+      url: checkoutSession.url
+    })
+
+  } catch (error: any) {
     console.error('Error creating subscription:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Failed to create subscription',
+        details: error.message 
+      },
       { status: 500 }
     )
   }

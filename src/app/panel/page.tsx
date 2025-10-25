@@ -59,12 +59,22 @@ interface Order {
 
 interface Subscription {
   id: number
+  stripe_subscription_id?: string
+  stripe_customer_id?: string
   status: string
-  plan_type: string
+  plan_type?: string
+  plan_key?: string
+  people?: number
+  days?: number
+  amount?: number
   price_per_delivery: number
   next_delivery_date?: string
+  current_period_end?: string
   meal_plan_config?: any
-  stripe_subscription_id?: string
+  diets?: string[]
+  allergies?: string[]
+  selected_meals?: string[]
+  cancel_at_period_end?: boolean
   created_at: string
   pause_until?: string
 }
@@ -344,6 +354,28 @@ export default function PanelPage() {
     } catch (error) {
       console.error('Error canceling subscription:', error)
       alert('Błąd podczas anulowania subskrypcji')
+    }
+  }
+
+  const handleOpenCustomerPortal = async (customerId: string) => {
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId })
+      })
+
+      if (response.ok) {
+        const { url } = await response.json()
+        if (url) {
+          window.location.href = url
+        }
+      } else {
+        alert('Nie udało się otworzyć portalu zarządzania subskrypcją')
+      }
+    } catch (error) {
+      console.error('Error opening customer portal:', error)
+      alert('Wystąpił błąd podczas otwierania portalu')
     }
   }
 
@@ -826,21 +858,57 @@ export default function PanelPage() {
                             <div className="space-y-3">
                               <div className="flex items-center space-x-3">
                                 <h3 className="text-lg font-semibold text-gray-900">
-                                  {subscription.plan_type} - Subskrypcja
+                                  {subscription.plan_key 
+                                    ? `Smakowalo Box ${subscription.plan_key}`
+                                    : `${subscription.plan_type} - Subskrypcja`
+                                  }
                                 </h3>
                                 <Badge className={
                                   subscription.status === 'active'
                                     ? 'bg-green-100 text-green-800'
                                     : subscription.status === 'paused'
                                     ? 'bg-yellow-100 text-yellow-800'
+                                    : subscription.status === 'canceled'
+                                    ? 'bg-red-100 text-red-800'
                                     : 'bg-gray-100 text-gray-800'
                                 }>
                                   {subscription.status === 'active' ? 'Aktywna' :
-                                   subscription.status === 'paused' ? 'Wstrzymana' : 'Nieaktywna'}
+                                   subscription.status === 'paused' ? 'Wstrzymana' : 
+                                   subscription.status === 'canceled' ? 'Anulowana' : 'Nieaktywna'}
                                 </Badge>
                               </div>
 
-                              {subscription.next_delivery_date && (
+                              {/* Show people and days if available */}
+                              {subscription.people && subscription.days && (
+                                <div className="text-sm text-gray-600">
+                                  <div className="flex items-center mb-1">
+                                    <Users className="w-4 h-4 mr-1" />
+                                    {subscription.people} {subscription.people === 1 ? 'osoba' : subscription.people <= 4 ? 'osoby' : 'osób'}
+                                  </div>
+                                  <div className="flex items-center">
+                                    <CalendarDays className="w-4 h-4 mr-1" />
+                                    {subscription.days} {subscription.days === 1 ? 'dzień' : 'dni'} w tygodniu
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Show diets if available */}
+                              {subscription.diets && subscription.diets.length > 0 && (
+                                <p className="text-sm text-gray-600">
+                                  <strong>Diety:</strong> {subscription.diets.join(', ')}
+                                </p>
+                              )}
+
+                              {/* Show period end date */}
+                              {subscription.current_period_end && (
+                                <p className="text-sm text-gray-600 flex items-center">
+                                  <Calendar className="w-4 h-4 mr-1" />
+                                  Koniec okresu: {new Date(subscription.current_period_end).toLocaleDateString('pl-PL')}
+                                </p>
+                              )}
+
+                              {/* Legacy next delivery date */}
+                              {!subscription.current_period_end && subscription.next_delivery_date && (
                                 <p className="text-sm text-gray-600 flex items-center">
                                   <Calendar className="w-4 h-4 mr-1" />
                                   Następna dostawa: {new Date(subscription.next_delivery_date).toLocaleDateString('pl-PL')}
@@ -854,7 +922,15 @@ export default function PanelPage() {
                                 </p>
                               )}
 
-                              {subscription.meal_plan_config && (
+                              {subscription.cancel_at_period_end && (
+                                <p className="text-sm text-orange-600 flex items-center">
+                                  <AlertCircle className="w-4 h-4 mr-1" />
+                                  Anulowana na koniec okresu rozliczeniowego
+                                </p>
+                              )}
+
+                              {/* Legacy meal plan config */}
+                              {!subscription.people && subscription.meal_plan_config && (
                                 <div className="text-sm text-gray-600">
                                   <div className="flex items-center mb-1">
                                     <Users className="w-4 h-4 mr-1" />
@@ -875,12 +951,26 @@ export default function PanelPage() {
                             <div className="text-right space-y-3">
                               <div>
                                 <p className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
-                                  {subscription.price_per_delivery.toFixed(2)} zł
+                                  {(subscription.amount || subscription.price_per_delivery)?.toFixed(2)} zł
                                 </p>
-                                <p className="text-sm text-gray-500">za dostawę</p>
+                                <p className="text-sm text-gray-500">tygodniowo</p>
                               </div>
 
-                              {subscription.status === 'active' && (
+                              {/* Stripe Customer Portal button for active subscriptions */}
+                              {subscription.status === 'active' && subscription.stripe_customer_id && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => handleOpenCustomerPortal(subscription.stripe_customer_id!)}
+                                  className="w-full smakowalo-green"
+                                >
+                                  <Settings className="w-4 h-4 mr-1" />
+                                  Zarządzaj subskrypcją
+                                </Button>
+                              )}
+
+                              {/* Legacy action buttons (for old non-Stripe subscriptions) */}
+                              {subscription.status === 'active' && !subscription.stripe_customer_id && (
                                 <div className="space-y-2">
                                   <div className="flex gap-2">
                                     <Button
