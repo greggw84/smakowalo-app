@@ -201,6 +201,7 @@ export const authOptions = {
           } catch (error) {
             console.error('❌ Authentication error:', error)
             // Re-throw explicit error codes so they reach the frontend
+            // Note: Only VerificationRequired is possible during login flow
             if (error instanceof Error && error.message === 'VerificationRequired') {
               throw error
             }
