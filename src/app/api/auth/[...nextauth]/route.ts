@@ -70,7 +70,7 @@ export const authOptions = {
                 .single()
 
               if (existingUser) {
-                throw new Error('User already exists')
+                throw new Error('EmailAlreadyExists')
               }
 
               // Determine if we should auto-confirm email (for development)
@@ -116,18 +116,16 @@ export const authOptions = {
 
               if (!isDevelopment) {
                 console.log('📧 Email verification required - user must verify email before login')
+                // In production, throw explicit code for email verification
+                throw new Error('VerificationRequired')
               }
 
               // Return user to allow automatic sign in (only in dev mode)
-              if (isDevelopment) {
-                return {
-                  id: authData.user.id,
-                  email: credentials.email,
-                  name: `${credentials.firstName} ${credentials.lastName}`.trim()
-                }
+              return {
+                id: authData.user.id,
+                email: credentials.email,
+                name: `${credentials.firstName} ${credentials.lastName}`.trim()
               }
-              // In production, don't auto-login - require email verification
-              return null
             } catch (error) {
               console.error('Sign up error:', error)
               return null
@@ -156,6 +154,12 @@ export const authOptions = {
 
             if (error || !data.user) {
               console.error('❌ Login failed:', error?.message)
+              // Check if error is due to unverified email
+              if (error?.message?.includes('Email not confirmed') || 
+                  error?.message?.includes('email_not_confirmed') ||
+                  error?.message?.includes('not verified')) {
+                throw new Error('VerificationRequired')
+              }
               return null
             }
 
