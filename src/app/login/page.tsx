@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { signIn, useSession } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
@@ -32,7 +32,6 @@ import Logo from '@/components/Logo'
 
 function LoginContent() {
   const { data: session, status } = useSession()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams?.get('callbackUrl') || '/panel'
 
@@ -58,27 +57,14 @@ function LoginContent() {
 
   // Redirect if already authenticated - ONE TIME CHECK
   useEffect(() => {
-    // Only check once
-    if (redirectCheckDone.current) {
-      return
-    }
+    if (redirectCheckDone.current) return
 
-    console.log('🔄 Login Page - Auth Check:', {
-      status,
-      hasSession: !!session,
-      userEmail: session?.user?.email,
-      callbackUrl
-    })
-
-    // If authenticated, redirect immediately
     if (status === 'authenticated' && session) {
-      console.log('✅ Already authenticated, redirecting to:', callbackUrl)
       redirectCheckDone.current = true
       window.location.href = callbackUrl
       return
     }
 
-    // If not loading anymore, mark check as done
     if (status !== 'loading') {
       redirectCheckDone.current = true
     }
@@ -162,16 +148,10 @@ function LoginContent() {
         return false
       }
 
-      // Validate Polish phone number format
-      const phoneRegex = /(^(
-      +48)[\s-]?(
-      d{3})[\s-]?(
-      d{3})[\s-]?(
-      d{3})$)|^(
-      d{3})[\s-]?(
-      d{3})[\s-]?(
-      d{3})$/
-      if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
+      // Normalize and validate Polish phone number
+      const digits = formData.phone.replace(/\D/g, '')
+      const valid = digits.length === 9 || (digits.length === 11 && digits.startsWith('48'))
+      if (!valid) {
         setError('Podaj prawidłowy numer telefonu (9 cyfr lub +48 xxx xxx xxx)')
         return false
       }
@@ -659,7 +639,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}> 
+    <Suspense fallback={<div>Loading...</div>}>
       <LoginContent />
     </Suspense>
   )
