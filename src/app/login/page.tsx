@@ -37,6 +37,27 @@ function LoginPageContent() {
   const [oauthProviderLoading, setOauthProviderLoading] = useState<'google' | 'facebook' | null>(null)
   const lastOAuthClickRef = useRef(0)
 
+  // Check OAuth guard before starting request
+  const checkOAuthGuard = (provider: 'google' | 'facebook'): boolean => {
+    const now = Date.now()
+    
+    if (oauthInFlightRef.current) {
+      console.warn(`OAuth request already in flight, ignoring duplicate ${provider} click`)
+      return false
+    }
+    
+    if (now - lastOAuthClickRef.current < 300) {
+      console.warn('OAuth click debounced (< 300ms since last click)')
+      return false
+    }
+    
+    lastOAuthClickRef.current = now
+    oauthInFlightRef.current = true
+    setOauthProviderLoading(provider)
+    console.info(`OAuth start: ${provider}`)
+    return true
+  }
+
   // Validate callbackUrl to prevent open redirect attacks
   const getValidCallbackUrl = useCallback((): string => {
     const callbackUrl = searchParams.get('callbackUrl') || '/panel'
@@ -155,22 +176,9 @@ function LoginPageContent() {
 
   const handleGoogleLogin = async () => {
     // Single-flight guard: prevent duplicate requests
-    const now = Date.now()
-    if (oauthInFlightRef.current) {
-      console.warn('OAuth request already in flight, ignoring duplicate Google click')
+    if (!checkOAuthGuard('google')) {
       return
     }
-    
-    // Debounce: require 300ms between clicks
-    if (now - lastOAuthClickRef.current < 300) {
-      console.warn('OAuth click debounced (< 300ms since last click)')
-      return
-    }
-    
-    lastOAuthClickRef.current = now
-    oauthInFlightRef.current = true
-    setOauthProviderLoading('google')
-    console.info('OAuth start: Google')
     
     // Honor callbackUrl parameter - redirect back to login page after OAuth (validated)
     const callbackUrl = getValidCallbackUrl()
@@ -191,22 +199,9 @@ function LoginPageContent() {
 
   const handleFacebookLogin = async () => {
     // Single-flight guard: prevent duplicate requests
-    const now = Date.now()
-    if (oauthInFlightRef.current) {
-      console.warn('OAuth request already in flight, ignoring duplicate Facebook click')
+    if (!checkOAuthGuard('facebook')) {
       return
     }
-    
-    // Debounce: require 300ms between clicks
-    if (now - lastOAuthClickRef.current < 300) {
-      console.warn('OAuth click debounced (< 300ms since last click)')
-      return
-    }
-    
-    lastOAuthClickRef.current = now
-    oauthInFlightRef.current = true
-    setOauthProviderLoading('facebook')
-    console.info('OAuth start: Facebook')
     
     // Honor callbackUrl parameter - redirect back to login page after OAuth (validated)
     const callbackUrl = getValidCallbackUrl()
