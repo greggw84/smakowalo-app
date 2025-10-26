@@ -1,19 +1,9 @@
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import type { NextRequest, NextResponse as NextResponseType } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-// Type for cookie options
-type CookieOptions = {
-  name: string
-  value: string
-  path?: string
-  domain?: string
-  maxAge?: number
-  expires?: Date
-  httpOnly?: boolean
-  secure?: boolean
-  sameSite?: 'lax' | 'strict' | 'none'
-}
+// Use ResponseCookie type from Next.js for proper cookie options
+type CookieOptions = Parameters<NextResponseType['cookies']['set']>[1]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

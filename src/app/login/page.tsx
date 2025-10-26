@@ -43,9 +43,16 @@ function LoginPageContent() {
     
     // Check if it's a full URL from the same origin
     try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+      if (!siteUrl) {
+        // In production, NEXT_PUBLIC_SITE_URL must be set
+        console.error('NEXT_PUBLIC_SITE_URL is not set, defaulting to /panel')
+        return '/panel'
+      }
+      
       const url = new URL(callbackUrl)
-      const siteUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')
-      if (url.origin === siteUrl.origin) {
+      const site = new URL(siteUrl)
+      if (url.origin === site.origin) {
         return callbackUrl
       }
     } catch {
