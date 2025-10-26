@@ -32,6 +32,30 @@ function LoginPageContent() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Validate callbackUrl to prevent open redirect attacks
+  const getValidCallbackUrl = (): string => {
+    const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+    
+    // Only allow relative URLs (starting with /) or URLs from the same origin
+    if (callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) {
+      return callbackUrl
+    }
+    
+    // Check if it's a full URL from the same origin
+    try {
+      const url = new URL(callbackUrl)
+      const siteUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')
+      if (url.origin === siteUrl.origin) {
+        return callbackUrl
+      }
+    } catch {
+      // Invalid URL, fall through to default
+    }
+    
+    // Default to /panel for any invalid or external URLs
+    return '/panel'
+  }
+
   // ✅ Naprawa pętli redirectów (Supabase init delay fix)
   useEffect(() => {
     let cancelled = false
@@ -40,14 +64,14 @@ function LoginPageContent() {
       const { data } = await supabase.auth.getSession()
       if (!cancelled) {
         if (data?.session) {
-          // Honor callbackUrl parameter from query string
-          const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+          // Honor callbackUrl parameter from query string (validated)
+          const callbackUrl = getValidCallbackUrl()
           router.replace(callbackUrl)
         } else {
           const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session && !cancelled) {
-              // Honor callbackUrl parameter from query string
-              const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+              // Honor callbackUrl parameter from query string (validated)
+              const callbackUrl = getValidCallbackUrl()
               router.replace(callbackUrl)
             }
           })
@@ -77,8 +101,8 @@ function LoginPageContent() {
       console.error(error)
     } else if (data?.session) {
       setSuccess('Zalogowano pomyślnie! Przekierowywanie...')
-      // Honor callbackUrl parameter from query string
-      const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+      // Honor callbackUrl parameter from query string (validated)
+      const callbackUrl = getValidCallbackUrl()
       setTimeout(() => router.replace(callbackUrl), 800)
     }
   }
@@ -112,8 +136,8 @@ function LoginPageContent() {
   }
 
   const handleGoogleLogin = async () => {
-    // Honor callbackUrl parameter - redirect back to login page after OAuth
-    const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+    // Honor callbackUrl parameter - redirect back to login page after OAuth (validated)
+    const callbackUrl = getValidCallbackUrl()
     const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
     
     const { error } = await supabase.auth.signInWithOAuth({
@@ -124,8 +148,8 @@ function LoginPageContent() {
   }
 
   const handleFacebookLogin = async () => {
-    // Honor callbackUrl parameter - redirect back to login page after OAuth
-    const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+    // Honor callbackUrl parameter - redirect back to login page after OAuth (validated)
+    const callbackUrl = getValidCallbackUrl()
     const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
     
     const { error } = await supabase.auth.signInWithOAuth({
