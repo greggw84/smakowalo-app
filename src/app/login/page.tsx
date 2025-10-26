@@ -1,6 +1,6 @@
 'use client' 
 
-import { Suspense, useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
@@ -31,9 +31,35 @@ function LoginPageContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  
+  // Single-flight OAuth guards
+  const oauthInFlightRef = useRef(false)
+  const [oauthProviderLoading, setOauthProviderLoading] = useState<'google' | 'facebook' | null>(null)
+  const lastOAuthClickRef = useRef(0)
+
+  // Check OAuth guard before starting request
+  const checkOAuthGuard = (provider: 'google' | 'facebook'): boolean => {
+    const now = Date.now()
+    
+    if (oauthInFlightRef.current) {
+      console.warn(`OAuth request already in flight, ignoring duplicate ${provider} click`)
+      return false
+    }
+    
+    if (now - lastOAuthClickRef.current < 300) {
+      console.warn('OAuth click debounced (< 300ms since last click)')
+      return false
+    }
+    
+    lastOAuthClickRef.current = now
+    oauthInFlightRef.current = true
+    setOauthProviderLoading(provider)
+    console.info(`OAuth start: ${provider}`)
+    return true
+  }
 
   // Validate callbackUrl to prevent open redirect attacks
-  const getValidCallbackUrl = (): string => {
+  const getValidCallbackUrl = useCallback((): string => {
     const callbackUrl = searchParams.get('callbackUrl') || '/panel'
     
     // Only allow relative URLs (starting with /) or URLs from the same origin
@@ -67,7 +93,7 @@ function LoginPageContent() {
     
     // Default to /panel for any invalid or external URLs
     return '/panel'
-  }
+  }, [searchParams])
 
   // ✅ Naprawa pętli redirectów (Supabase init delay fix)
   useEffect(() => {
@@ -98,7 +124,7 @@ function LoginPageContent() {
       cancelled = true
       clearTimeout(timeout)
     }
-  }, [router, searchParams])
+  }, [router, getValidCallbackUrl])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -141,7 +167,7 @@ function LoginPageContent() {
     setLoading(false)
 
     if (error) {
-      setError('Rejestracja nie powiodła się: ' + error.message)
+      setError(`Rejestracja nie powiodła się: ${error.message}`)
     } else {
       setSuccess('Sprawdź swoją skrzynkę email i potwierdź adres, aby aktywować konto.')
       setTab('login')
@@ -149,6 +175,11 @@ function LoginPageContent() {
   }
 
   const handleGoogleLogin = async () => {
+    // Single-flight guard: prevent duplicate requests
+    if (!checkOAuthGuard('google')) {
+      return
+    }
+    
     // Honor callbackUrl parameter - redirect back to login page after OAuth (validated)
     const callbackUrl = getValidCallbackUrl()
     const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
@@ -157,10 +188,21 @@ function LoginPageContent() {
       provider: 'google',
       options: { redirectTo: redirectUrl },
     })
-    if (error) setError('Błąd podczas logowania przez Google.')
+    
+    if (error) {
+      setError('Błąd podczas logowania przez Google.')
+      oauthInFlightRef.current = false
+      setOauthProviderLoading(null)
+    }
+    // Note: On success, browser will redirect, so we don't reset the flag
   }
 
   const handleFacebookLogin = async () => {
+    // Single-flight guard: prevent duplicate requests
+    if (!checkOAuthGuard('facebook')) {
+      return
+    }
+    
     // Honor callbackUrl parameter - redirect back to login page after OAuth (validated)
     const callbackUrl = getValidCallbackUrl()
     const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
@@ -169,7 +211,13 @@ function LoginPageContent() {
       provider: 'facebook',
       options: { redirectTo: redirectUrl },
     })
-    if (error) setError('Błąd podczas logowania przez Facebook.')
+    
+    if (error) {
+      setError('Błąd podczas logowania przez Facebook.')
+      oauthInFlightRef.current = false
+      setOauthProviderLoading(null)
+    }
+    // Note: On success, browser will redirect, so we don't reset the flag
   }
 
   return (
@@ -326,11 +374,37 @@ function LoginPageContent() {
             <div className="text-center text-gray-500 text-sm mt-6">lub kontynuuj z</div>
 
             <div className="grid grid-cols-2 gap-3 mt-3">
-              <Button variant="outline" onClick={handleFacebookLogin} className="w-full">
-                Facebook
+              <Button 
+                variant="outline" 
+                onClick={handleFacebookLogin} 
+                disabled={oauthProviderLoading !== null}
+                aria-busy={oauthProviderLoading === 'facebook'}
+                className="w-full"
+                style={oauthProviderLoading !== null ? { pointerEvents: 'none' } : undefined}
+              >
+                {oauthProviderLoading === 'facebook' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Facebook
+                  </>
+                ) : (
+                  'Facebook'
+                )}
               </Button>
-              <Button variant="outline" onClick={handleGoogleLogin} className="w-full">
-                Google
+              <Button 
+                variant="outline" 
+                onClick={handleGoogleLogin} 
+                disabled={oauthProviderLoading !== null}
+                aria-busy={oauthProviderLoading === 'google'}
+                className="w-full"
+                style={oauthProviderLoading !== null ? { pointerEvents: 'none' } : undefined}
+              >
+                {oauthProviderLoading === 'google' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Google
+                  </>
+                ) : (
+                  'Google'
+                )}
               </Button>
             </div>
 
