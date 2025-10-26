@@ -32,6 +32,43 @@ function LoginPageContent() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Validate callbackUrl to prevent open redirect attacks
+  const getValidCallbackUrl = (): string => {
+    const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+    
+    // Only allow relative URLs (starting with /) or URLs from the same origin
+    if (callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')) {
+      return callbackUrl
+    }
+    
+    // Check if it's a full URL from the same origin
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+      if (!siteUrl) {
+        // In production, NEXT_PUBLIC_SITE_URL must be set
+        if (process.env.NODE_ENV === 'production') {
+          console.error('CRITICAL: NEXT_PUBLIC_SITE_URL is not set in production')
+          // Fail safely - only allow /panel redirect
+          return '/panel'
+        }
+        // In development, allow the callback but warn
+        console.warn('NEXT_PUBLIC_SITE_URL is not set, defaulting to /panel')
+        return '/panel'
+      }
+      
+      const url = new URL(callbackUrl)
+      const site = new URL(siteUrl)
+      if (url.origin === site.origin) {
+        return callbackUrl
+      }
+    } catch {
+      // Invalid URL, fall through to default
+    }
+    
+    // Default to /panel for any invalid or external URLs
+    return '/panel'
+  }
+
   // ✅ Naprawa pętli redirectów (Supabase init delay fix)
   useEffect(() => {
     let cancelled = false
@@ -40,11 +77,15 @@ function LoginPageContent() {
       const { data } = await supabase.auth.getSession()
       if (!cancelled) {
         if (data?.session) {
-          router.replace('/panel')
+          // Honor callbackUrl parameter from query string (validated)
+          const callbackUrl = getValidCallbackUrl()
+          router.replace(callbackUrl)
         } else {
           const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session && !cancelled) {
-              router.replace('/panel')
+              // Honor callbackUrl parameter from query string (validated)
+              const callbackUrl = getValidCallbackUrl()
+              router.replace(callbackUrl)
             }
           })
           return () => listener.subscription.unsubscribe()
@@ -57,7 +98,7 @@ function LoginPageContent() {
       cancelled = true
       clearTimeout(timeout)
     }
-  }, [router])
+  }, [router, searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,7 +114,9 @@ function LoginPageContent() {
       console.error(error)
     } else if (data?.session) {
       setSuccess('Zalogowano pomyślnie! Przekierowywanie...')
-      setTimeout(() => router.replace('/panel'), 800)
+      // Honor callbackUrl parameter from query string (validated)
+      const callbackUrl = getValidCallbackUrl()
+      setTimeout(() => router.replace(callbackUrl), 800)
     }
   }
 
@@ -106,17 +149,25 @@ function LoginPageContent() {
   }
 
   const handleGoogleLogin = async () => {
+    // Honor callbackUrl parameter - redirect back to login page after OAuth (validated)
+    const callbackUrl = getValidCallbackUrl()
+    const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login` },
+      options: { redirectTo: redirectUrl },
     })
     if (error) setError('Błąd podczas logowania przez Google.')
   }
 
   const handleFacebookLogin = async () => {
+    // Honor callbackUrl parameter - redirect back to login page after OAuth (validated)
+    const callbackUrl = getValidCallbackUrl()
+    const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'facebook',
-      options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login` },
+      options: { redirectTo: redirectUrl },
     })
     if (error) setError('Błąd podczas logowania przez Facebook.')
   }
