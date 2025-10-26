@@ -1,273 +1,223 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
-import { signIn, useSession } from 'next-auth/react'
-import { useSearchParams, useRouter } from 'next/navigation' // 🔧 DODANO useRouter (dla redirectów)
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-import {
-  Facebook,
-  Mail,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-  ArrowLeft,
-  User,
-  Phone
-} from "lucide-react"
-import Link from "next/link"
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { AlertCircle, CheckCircle, Loader2, Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import Logo from '@/components/Logo'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
-function LoginContent() {
-  const router = useRouter() // 🔧 DODANO – zamiast window.location.href
-  const { data: session, status } = useSession()
+// ✅ Stwórz klienta Supabase raz
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: true, storageKey: 'smakowalo_auth' },
+})
+
+export default function LoginPage() {
+  const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams?.get('callbackUrl') || '/panel'
-
-  const [activeTab, setActiveTab] = useState('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isResendingVerification, setIsResendingVerification] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [showResendVerification, setShowResendVerification] = useState(false)
+  const [session, setSession] = useState<any>(null)
 
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    firstName: '',
-    lastName: '',
-    phone: '',
-    confirmPassword: ''
-  })
-
-  const redirectCheckDone = useRef(false)
-
-  // 🔧 Usprawnione przekierowanie (bez window.location)
+  // ✅ Sprawdzenie czy użytkownik już zalogowany
   useEffect(() => {
-    if (redirectCheckDone.current) return
-
-    if (status === 'authenticated' && session) {
-      redirectCheckDone.current = true
-      router.replace(callbackUrl)
-      return
-    }
-
-    if (status !== 'loading') {
-      redirectCheckDone.current = true
-    }
-  }, [status, session, router, callbackUrl])
-
-  // 🔧 uproszczono - bez zbędnego if chainingu
-  useEffect(() => {
-    const verified = searchParams?.get('verified')
-    const reset = searchParams?.get('reset')
-    const errorParam = searchParams?.get('error')
-
-    if (verified === 'true') {
-      setSuccess('✅ Email został pomyślnie zweryfikowany! Możesz się teraz zalogować.')
-      setActiveTab('signin')
-    } else if (reset === 'success') {
-      setSuccess('✅ Hasło zostało pomyślnie zmienione! Zaloguj się używając nowego hasła.')
-      setActiveTab('signin')
-    } else if (errorParam) {
-      const errorMap: Record<string, string> = {
-        InvalidToken: 'Link weryfikacyjny jest nieprawidłowy.',
-        TokenExpired: 'Link weryfikacyjny wygasł. Wyślij nowy link weryfikacyjny.',
-        VerificationFailed: 'Weryfikacja nie powiodła się. Spróbuj ponownie.',
-      }
-      if (errorMap[errorParam]) {
-        setError(errorMap[errorParam])
-        setShowResendVerification(true)
+    const getSession = async () => {
+      const { data } = await supabase.auth.getSession()
+      if (data?.session) {
+        setSession(data.session)
+        router.replace('/panel')
       }
     }
-  }, [searchParams])
+    getSession()
+  }, [router])
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    setError('')
-  }
-
-  const handleResendVerification = async () => {
-    if (!formData.email) {
-      setError('Podaj adres email, aby wysłać ponownie link weryfikacyjny')
-      return
+  // ✅ Odbieranie tokenów z Supabase (redirect z Google/Facebook)
+  useEffect(() => {
+    const handleAuth = async () => {
+      const hashParams = window.location.hash
+      if (hashParams.includes('access_token')) {
+        const { data, error } = await supabase.auth.getSession()
+        if (!error && data?.session) {
+          router.replace('/panel')
+        }
+      }
     }
+    handleAuth()
+  }, [router])
 
-    setIsResendingVerification(true)
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
     setError('')
     setSuccess('')
+    setLoading(true)
 
-    try {
-      const response = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email }),
-      })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
-      const data = await response.json()
-      if (response.ok) {
-        setSuccess(data.message || 'Email weryfikacyjny został wysłany!')
-        setShowResendVerification(false)
-      } else {
-        setError(data.error || 'Nie udało się wysłać emaila weryfikacyjnego')
-      }
-    } catch {
-      setError('Wystąpił błąd podczas wysyłania emaila')
-    } finally {
-      setIsResendingVerification(false)
+    setLoading(false)
+
+    if (error) {
+      setError('Nieprawidłowy email lub hasło.')
+      console.error(error)
+    } else if (data?.session) {
+      setSuccess('Zalogowano pomyślnie! Przekierowywanie...')
+      setTimeout(() => router.replace('/panel'), 800)
     }
   }
 
-  // 🔧 Poprawiony redirect po logowaniu (zamiast window.location.href)
-  const redirectAfterLogin = () => {
-    setTimeout(() => router.replace(callbackUrl), 500)
-  }
-
-  const validateForm = () => {
-    if (!formData.email || !formData.password) {
-      setError('Email i hasło są wymagane')
-      return false
-    }
-
-    if (activeTab === 'signup') {
-      if (!formData.firstName || !formData.lastName) {
-        setError('Imię i nazwisko są wymagane')
-        return false
-      }
-      if (!formData.phone) {
-        setError('Numer telefonu jest wymagany')
-        return false
-      }
-      const digits = formData.phone.replace(/\D/g, '')
-      const valid = digits.length === 9 || (digits.length === 11 && digits.startsWith('48'))
-      if (!valid) {
-        setError('Podaj prawidłowy numer telefonu (9 cyfr lub +48 xxx xxx xxx)')
-        return false
-      }
-      if (formData.password !== formData.confirmPassword) {
-        setError('Hasła nie są identyczne')
-        return false
-      }
-      if (formData.password.length < 6) {
-        setError('Hasło musi mieć co najmniej 6 znaków')
-        return false
-      }
-    }
-
-    return true
-  }
-
-  const handleCredentialsAuth = async (isSignUp = false) => {
-    if (!validateForm()) return
-
-    setIsLoading(true)
+  const handleGoogleLogin = async () => {
     setError('')
-    setSuccess('')
-
-    try {
-      const result = await signIn('credentials', {
-        ...formData,
-        isSignUp: isSignUp ? 'true' : 'false',
-        redirect: false,
-      })
-
-      if (result?.error) {
-        const code = result.error
-        const errorMap: Record<string, string> = {
-          VerificationRequired: 'Konto utworzone. Sprawdź email, by je potwierdzić.',
-          EmailAlreadyExists: 'Konto z tym adresem email już istnieje.',
-          CredentialsSignin: 'Nieprawidłowy email lub hasło.',
-          InvalidCredentials: 'Nieprawidłowe dane logowania.',
-          AuthInvalidCredentials: 'Nieprawidłowe dane logowania.',
-          UnverifiedEmail: 'Zweryfikuj email, zanim się zalogujesz.',
-        }
-
-        if (errorMap[code]) {
-          setError(errorMap[code])
-          if (['VerificationRequired', 'UnverifiedEmail'].includes(code)) {
-            setShowResendVerification(true)
-          }
-        } else {
-          setError(typeof result.error === 'string' ? result.error : 'Wystąpił nieoczekiwany błąd logowania')
-        }
-        return
-      }
-
-      if (result?.ok) {
-        setSuccess('✅ Logowanie pomyślne! Przekierowywanie...')
-        redirectAfterLogin()
-      } else if (!result?.error && isSignUp) {
-        setSuccess('Konto zostało utworzone! Sprawdź email w celu weryfikacji.')
-        setActiveTab('signin')
-      }
-    } catch (error) {
-      console.error('Auth error:', error)
-      setError(error instanceof Error ? error.message : 'Wystąpił nieoczekiwany błąd')
-    } finally {
-      setIsLoading(false)
-    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login`,
+      },
+    })
+    if (error) setError('Błąd podczas logowania przez Google.')
   }
 
-  const handleOAuthSignIn = async (provider: string) => {
-    setIsLoading(true)
+  const handleFacebookLogin = async () => {
     setError('')
-    try {
-      await signIn(provider, { callbackUrl })
-    } catch {
-      setError(`Błąd podczas logowania przez ${provider}`)
-      setIsLoading(false)
-    }
-  }
-
-  if (status === 'loading' && !redirectCheckDone.current) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-smakowalo-cream to-white">
-        <Loader2 className="w-8 h-8 animate-spin text-[var(--smakowalo-green-primary)]" />
-      </div>
-    )
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login`,
+      },
+    })
+    if (error) setError('Błąd podczas logowania przez Facebook.')
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/">
-              <Logo width={120} height={32} />
-            </Link>
-            <Link href="/">
-              <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Strona główna
-              </Button>
-            </Link>
-          </div>
+      <nav className="bg-white border-b shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Link href="/">
+            <Logo width={120} height={32} />
+          </Link>
+          <Link href="/">
+            <Button variant="outline" className="text-[var(--smakowalo-green-primary)] border-[var(--smakowalo-green-primary)]">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Strona główna
+            </Button>
+          </Link>
         </div>
       </nav>
 
-      {/* 🔧 Cała logika UI pozostaje bez zmian */}
-      {/* ... (Twoje Tabs, Alerts, Formularze) ... */}
-    </div>
-  )
-}
+      <div className="flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
+        <Card className="max-w-md w-full shadow-md">
+          <CardHeader>
+            <h2 className="text-2xl font-bold text-center text-[var(--smakowalo-green-dark)]">
+              Witaj w Smakowało!
+            </h2>
+            <p className="text-center text-gray-600 mt-1">Zaloguj się, aby kontynuować</p>
+          </CardHeader>
 
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <LoginContent />
-    </Suspense>
+          <CardContent className="space-y-5">
+            {error && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-700">{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-700">{success}</AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  placeholder="jan@przyklad.pl"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label>Hasło</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-400" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <Button type="submit" disabled={loading} className="w-full smakowalo-green">
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Logowanie...
+                  </>
+                ) : (
+                  'Zaloguj się'
+                )}
+              </Button>
+            </form>
+
+            <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+              <span>lub</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" onClick={handleFacebookLogin} className="w-full">
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22 12a10 10 0 1 0-11.5 9.9v-7h-2v-3h2v-2c0-2 1.2-3.1 3-3.1.9 0 1.8.1 1.8.1v2h-1c-1 0-1.3.6-1.3 1.2v1.8h2.6l-.4 3h-2.2v7A10 10 0 0 0 22 12Z" />
+                </svg>
+                Facebook
+              </Button>
+              <Button variant="outline" onClick={handleGoogleLogin} className="w-full">
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                </svg>
+                Google
+              </Button>
+            </div>
+
+            <p className="text-xs text-gray-500 text-center mt-6">
+              Tworząc konto, akceptujesz nasze{' '}
+              <Link href="/terms" className="underline">Warunki użytkowania</Link> i{' '}
+              <Link href="/privacy" className="underline">Politykę prywatności</Link>.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }
