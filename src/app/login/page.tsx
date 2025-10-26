@@ -46,7 +46,13 @@ function LoginPageContent() {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
       if (!siteUrl) {
         // In production, NEXT_PUBLIC_SITE_URL must be set
-        console.error('NEXT_PUBLIC_SITE_URL is not set, defaulting to /panel')
+        if (process.env.NODE_ENV === 'production') {
+          console.error('CRITICAL: NEXT_PUBLIC_SITE_URL is not set in production')
+          // Fail safely - only allow /panel redirect
+          return '/panel'
+        }
+        // In development, allow the callback but warn
+        console.warn('NEXT_PUBLIC_SITE_URL is not set, defaulting to /panel')
         return '/panel'
       }
       
