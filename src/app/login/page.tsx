@@ -40,11 +40,15 @@ function LoginPageContent() {
       const { data } = await supabase.auth.getSession()
       if (!cancelled) {
         if (data?.session) {
-          router.replace('/panel')
+          // Honor callbackUrl parameter from query string
+          const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+          router.replace(callbackUrl)
         } else {
           const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session && !cancelled) {
-              router.replace('/panel')
+              // Honor callbackUrl parameter from query string
+              const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+              router.replace(callbackUrl)
             }
           })
           return () => listener.subscription.unsubscribe()
@@ -57,7 +61,7 @@ function LoginPageContent() {
       cancelled = true
       clearTimeout(timeout)
     }
-  }, [router])
+  }, [router, searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,7 +77,9 @@ function LoginPageContent() {
       console.error(error)
     } else if (data?.session) {
       setSuccess('Zalogowano pomyślnie! Przekierowywanie...')
-      setTimeout(() => router.replace('/panel'), 800)
+      // Honor callbackUrl parameter from query string
+      const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+      setTimeout(() => router.replace(callbackUrl), 800)
     }
   }
 
@@ -106,17 +112,25 @@ function LoginPageContent() {
   }
 
   const handleGoogleLogin = async () => {
+    // Honor callbackUrl parameter - redirect back to login page after OAuth
+    const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+    const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login` },
+      options: { redirectTo: redirectUrl },
     })
     if (error) setError('Błąd podczas logowania przez Google.')
   }
 
   const handleFacebookLogin = async () => {
+    // Honor callbackUrl parameter - redirect back to login page after OAuth
+    const callbackUrl = searchParams.get('callbackUrl') || '/panel'
+    const redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'facebook',
-      options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login` },
+      options: { redirectTo: redirectUrl },
     })
     if (error) setError('Błąd podczas logowania przez Facebook.')
   }

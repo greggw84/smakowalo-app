@@ -88,6 +88,9 @@ RESEND_FROM_EMAIL=onboarding@resend.dev
 8. Click **Save and Continue**
 
 ### 2.4 Create OAuth Credentials
+
+⚠️ **IMPORTANT**: This app uses **Supabase OAuth**, not NextAuth OAuth.
+
 1. Go to **APIs & Services** → **Credentials**
 2. Click **Create Credentials** → **OAuth client ID**
 3. Application type: **Web application**
@@ -95,18 +98,28 @@ RESEND_FROM_EMAIL=onboarding@resend.dev
 5. **Authorized JavaScript origins**:
    - `https://www.smakowalo.pl`
    - `https://smakowalo.pl`
-6. **Authorized redirect URIs**:
-   - `https://www.smakowalo.pl/api/auth/callback/google`
-   - `https://smakowalo.pl/api/auth/callback/google`
+6. **Authorized redirect URIs** (Supabase OAuth callback format):
+   - `https://[YOUR_SUPABASE_PROJECT_ID].supabase.co/auth/v1/callback`
+   - Example: `https://abcdefghijk.supabase.co/auth/v1/callback`
+   - ℹ️ Find your project ID in Supabase Dashboard → Settings → API
 7. Click **Create**
-8. **Copy the Client ID and Client Secret** (you'll need these for Vercel)
+8. **Copy the Client ID and Client Secret** (you'll need these for Supabase)
 
-### 2.5 Add to Vercel Environment Variables
+### 2.5 Configure Google OAuth in Supabase
+
+1. Go to Supabase Dashboard → Authentication → Providers
+2. Find **Google** and click **Enable**
+3. Enter:
+   - **Client ID**: Your Google OAuth Client ID
+   - **Client Secret**: Your Google OAuth Client Secret
+4. Click **Save**
+
+### 2.6 Add to Vercel Environment Variables
 Go to Vercel Dashboard → Your Project → Settings → Environment Variables:
 
 ```bash
-GOOGLE_CLIENT_ID=your-google-client-id-here.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-google-client-secret-here
+# These are already configured in Supabase, no need to add to Vercel
+# The app uses Supabase Auth which handles OAuth internally
 ```
 
 ---
@@ -131,10 +144,14 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret-here
 5. Click **Save** → **Continue**
 
 ### 3.3 Configure Facebook Login Settings
+
+⚠️ **IMPORTANT**: This app uses **Supabase OAuth**, not NextAuth OAuth.
+
 1. Go to **Products** → **Facebook Login** → **Settings**
-2. **Valid OAuth Redirect URIs**:
-   - Add: `https://www.smakowalo.pl/api/auth/callback/facebook`
-   - Add: `https://smakowalo.pl/api/auth/callback/facebook`
+2. **Valid OAuth Redirect URIs** (Supabase OAuth callback format):
+   - Add: `https://[YOUR_SUPABASE_PROJECT_ID].supabase.co/auth/v1/callback`
+   - Example: `https://abcdefghijk.supabase.co/auth/v1/callback`
+   - ℹ️ Find your project ID in Supabase Dashboard → Settings → API
 3. **Allowed Domains for the JavaScript SDK**:
    - Add: `smakowalo.pl`
 4. Click **Save Changes**
@@ -145,18 +162,19 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret-here
 3. **Copy App Secret** (click **Show** to reveal)
    - ⚠️ Keep this secret secure!
 
-### 3.5 Set App to Live Mode
+### 3.5 Configure Facebook OAuth in Supabase
+
+1. Go to Supabase Dashboard → Authentication → Providers
+2. Find **Facebook** and click **Enable**
+3. Enter:
+   - **Client ID**: Your Facebook App ID
+   - **Client Secret**: Your Facebook App Secret
+4. Click **Save**
+
+### 3.6 Set App to Live Mode
 1. At the top of the dashboard, find the toggle switch
 2. Change from **Development** to **Live**
 3. You may need to provide additional business verification
-
-### 3.6 Add to Vercel Environment Variables
-Go to Vercel Dashboard → Your Project → Settings → Environment Variables:
-
-```bash
-FACEBOOK_CLIENT_ID=your-facebook-app-id
-FACEBOOK_CLIENT_SECRET=your-facebook-app-secret
-```
 
 ---
 
@@ -178,17 +196,14 @@ RESEND_FROM_EMAIL=noreply@smakowalo.pl
 # OR use test domain temporarily:
 # RESEND_FROM_EMAIL=onboarding@resend.dev
 
-# Google OAuth
-GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-
-# Facebook OAuth
-FACEBOOK_CLIENT_ID=your-facebook-app-id
-FACEBOOK_CLIENT_SECRET=your-facebook-app-secret
-
-# Supabase (if you have it)
+# Supabase (REQUIRED for OAuth)
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+
+# Google and Facebook OAuth are configured in Supabase Dashboard
+# No need to add GOOGLE_CLIENT_ID or FACEBOOK_CLIENT_ID to Vercel
+# The app uses Supabase Auth which handles OAuth internally
 ```
 
 **IMPORTANT:** Make sure to select **Production** environment when adding variables.
