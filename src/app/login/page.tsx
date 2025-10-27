@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
+import { signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -95,36 +96,48 @@ function LoginPageContent() {
     return '/panel'
   }, [searchParams])
 
-  // ✅ Naprawa pętli redirectów (Supabase init delay fix)
+  // Handle logout=1 query parameter
+  useEffect(() => {
+    const logout = searchParams.get('logout')
+    if (logout === '1') {
+      // Clear both Supabase and NextAuth sessions
+      const clearSessions = async () => {
+        await supabase.auth.signOut()
+        await signOut({ redirect: false })
+        setSuccess('Sesje zostały wyczyszczone.')
+      }
+      clearSessions()
+    }
+  }, [searchParams])
+
+  // ✅ Fixed: Only redirect on SIGNED_IN event, not on mount
   useEffect(() => {
     let cancelled = false
-
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (!cancelled) {
-        if (data?.session) {
-          // Honor callbackUrl parameter from query string (validated)
-          const callbackUrl = getValidCallbackUrl()
-          router.replace(callbackUrl)
-        } else {
-          const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (session && !cancelled) {
-              // Honor callbackUrl parameter from query string (validated)
-              const callbackUrl = getValidCallbackUrl()
-              router.replace(callbackUrl)
-            }
-          })
-          return () => listener.subscription.unsubscribe()
-        }
-      }
+    
+    // Check if stay=1 parameter is present (for debugging)
+    const stay = searchParams.get('stay')
+    if (stay === '1') {
+      console.log('stay=1 detected - auto-redirect disabled for debugging')
+      return
     }
 
-    const timeout = setTimeout(() => checkSession(), 300)
+    // Subscribe to auth state changes - only redirect on SIGNED_IN event
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event)
+      
+      // Only redirect on SIGNED_IN event, not on other events like INITIAL_SESSION
+      if (event === 'SIGNED_IN' && session && !cancelled) {
+        const callbackUrl = getValidCallbackUrl()
+        console.log('Redirecting to:', callbackUrl)
+        router.replace(callbackUrl)
+      }
+    })
+
     return () => {
       cancelled = true
-      clearTimeout(timeout)
+      listener.subscription.unsubscribe()
     }
-  }, [router, getValidCallbackUrl])
+  }, [router, getValidCallbackUrl, searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
