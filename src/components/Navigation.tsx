@@ -17,10 +17,11 @@ export default function Navigation({ currentPage }: NavigationProps) {
   const { totalItems } = useCart()
   const { favoritesCount } = useFavorites()
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: true, storageKey: 'smakowalo_auth' },
+  })
 
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -153,7 +154,7 @@ export default function Navigation({ currentPage }: NavigationProps) {
                   <Button
                     variant={isActive('/panel') ? 'default' : 'outline'}
                     className={isActive('/panel')
-                      ? 'bg-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-dark)]'
+                      ? 'bg-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-dark)'
                       : 'border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]'
                     }
                   >
