@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSession } from 'next-auth/react'
+import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -163,7 +163,7 @@ function FavoritesTabContent() {
                   {new Date(favorite.addedAt).toLocaleDateString('pl-PL')}
                 </span>
               </div>
-              <Link href={`/danie/${favorite.id}`}>
+              <Link href={`/danie/${favorite.id}`}> 
                 <Button variant="outline" size="sm" className="w-full">
                   Zobacz przepis
                 </Button>
@@ -185,15 +185,43 @@ function FavoritesTabContent() {
 }
 
 export default function PanelPage() {
-  const { data: session, status } = useSession()
   const router = useRouter()
   const { favoritesCount } = useFavorites()
 
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getSession()
+      if (data.session) {
+        const user = data.session.user
+        setUser(user)
+        setProfile(prev => ({
+          ...prev,
+          email: user.email || '',
+          first_name: user.user_metadata?.name?.split(' ')[0] || '',
+          last_name: user.user_metadata?.name?.split(' ').slice(1).join(' ') || ''
+        }))
+        setLoading(false)
+      } else {
+        router.replace('/login?callbackUrl=/panel')
+      }
+    }
+    checkUser()
+  }, [router])
+
+  if (loading) return <div>Ładowanie...</div>
+  if (!user) return null
+
   const [activeTab, setActiveTab] = useState('profile')
   const [isEditing, setIsEditing] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [hasRedirected, setHasRedirected] = useState(false)
   const [subscriptionAction, setSubscriptionAction] = useState<{
     id: number | null
     action: 'pause' | 'resume' | 'edit_delivery' | 'edit_meals' | null
@@ -235,84 +263,6 @@ export default function PanelPage() {
     activeSubscriptions: 0
   })
 
-  const dataLoadedRef = useRef(false)
-  const authCheckDoneRef = useRef(false)
-
-  // Authentication check - SIMPLIFIED TO PREVENT LOOPS
-  useEffect(() => {
-    // Only run authentication check ONCE
-    if (authCheckDoneRef.current) {
-      return
-    }
-
-    console.log('🔄 Panel - One-time Auth Check:', {
-      status,
-      hasSession: !!session,
-      userEmail: session?.user?.email,
-      timestamp: new Date().toISOString()
-    })
-
-    // AUTHENTICATED - show panel and load data
-    if (status === 'authenticated' && session?.user) {
-      console.log('✅ Panel - User authenticated:', session.user.email)
-      authCheckDoneRef.current = true
-      setIsLoading(false)
-      loadUserData()
-      return
-    }
-
-    // UNAUTHENTICATED - redirect to login
-    if (status === 'unauthenticated') {
-      console.log('🚫 Panel - Not authenticated, redirecting to login')
-      authCheckDoneRef.current = true
-      setHasRedirected(true)
-      window.location.href = '/login?callbackUrl=/panel'
-      return
-    }
-
-    // LOADING - set a one-time timeout
-    if (status === 'loading') {
-      console.log('⏳ Panel - Session loading...')
-      const timer = setTimeout(() => {
-        if (status === 'loading') {
-          console.warn('⚠️  Panel - Session timeout, redirecting')
-          authCheckDoneRef.current = true
-          setHasRedirected(true)
-          window.location.href = '/login?callbackUrl=/panel'
-        }
-      }, 5000) // 5 seconds is enough
-
-      return () => clearTimeout(timer)
-    }
-  }, [status, session])
-
-  const loadUserData = () => {
-    // Only load once to prevent infinite loops
-    if (dataLoadedRef.current) {
-      console.log('⏹️  Data already loaded, skipping')
-      return
-    }
-
-    // Set session data immediately - NO WAITING
-    if (session?.user) {
-      console.log('📋 Loading user data for:', session.user.email)
-
-      setProfile(prev => ({
-        ...prev,
-        email: session.user.email || '',
-        first_name: session.user.name?.split(' ')[0] || '',
-        last_name: session.user.name?.split(' ').slice(1).join(' ') || ''
-      }))
-
-      // Mark as loaded
-      dataLoadedRef.current = true
-
-      // DON'T load API data - endpoints not implemented yet
-      // This prevents infinite error loops
-      console.log('✅ Panel loaded with session data only (API endpoints disabled)')
-    }
-  }
-
   const handleProfileUpdate = async () => {
     setIsSaving(true)
     try {
@@ -346,7 +296,6 @@ export default function PanelPage() {
       })
 
       if (response.ok) {
-        loadUserData()
         alert('Subskrypcja została anulowana')
       } else {
         alert('Błąd podczas anulowania subskrypcji')
@@ -394,7 +343,6 @@ export default function PanelPage() {
       })
 
       if (response.ok) {
-        loadUserData()
         setSubscriptionAction({ id: null, action: null, isLoading: false })
 
         const actionMessages = {
@@ -494,55 +442,6 @@ export default function PanelPage() {
     return statusMap[status] || status
   }
 
-  // REDIRECTING - show nothing to prevent "jumping"
-  if (hasRedirected) {
-    return null
-  }
-
-  // LOADING - show skeleton for better UX
-  if (status === 'loading' && !authCheckDoneRef.current && !hasRedirected) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-        <Navigation currentPage="/panel" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8 animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-48"></div>
-          </div>
-
-          {/* Skeleton stats cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            {[1, 2, 3, 4].map(i => (
-              <Card key={i}>
-                <CardContent className="p-6 animate-pulse">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-gray-200 rounded"></div>
-                    <div className="ml-3 flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
-                      <div className="h-6 bg-gray-200 rounded w-16"></div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <div className="text-center mt-8">
-            <div className="inline-flex items-center gap-2">
-              <RefreshCw className="w-4 h-4 animate-spin text-[var(--smakowalo-green-primary)]" />
-              <p className="text-gray-600 text-sm">Sprawdzanie sesji...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // NOT AUTHENTICATED - show nothing while redirecting
-  if (status === 'unauthenticated' || !session) {
-    return null
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
       <Navigation currentPage="/panel" />
@@ -552,7 +451,7 @@ export default function PanelPage() {
 
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-[var(--smakowalo-green-dark)]">
-            Witaj, {profile.first_name || session?.user?.name?.split(' ')[0] || 'Użytkowniku'}!
+            Witaj, {profile.first_name || user?.user_metadata?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'Użytkowniku'}!
           </h1>
           <p className="text-gray-600 mt-2">Zarządzaj swoim kontem i zamówieniami</p>
         </div>
@@ -737,7 +636,6 @@ export default function PanelPage() {
                       variant="outline"
                       onClick={() => {
                         setIsEditing(false)
-                        loadUserData() // Reload original data
                       }}
                       disabled={isSaving}
                     >
@@ -873,8 +771,8 @@ export default function PanelPage() {
                                     : 'bg-gray-100 text-gray-800'
                                 }>
                                   {subscription.status === 'active' ? 'Aktywna' :
-                                   subscription.status === 'paused' ? 'Wstrzymana' : 
-                                   subscription.status === 'canceled' ? 'Anulowana' : 'Nieaktywna'}
+                                    subscription.status === 'paused' ? 'Wstrzymana' : 
+                                    subscription.status === 'canceled' ? 'Anulowana' : 'Nieaktywna'}
                                 </Badge>
                               </div>
 
