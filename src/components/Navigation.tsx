@@ -6,7 +6,8 @@ import { ShoppingCart, User, Heart, LogOut } from 'lucide-react'
 import Logo from './Logo'
 import { useCart } from '@/contexts/CartContext'
 import { useFavorites } from '@/contexts/FavoritesContext'
-import { useSession, signOut } from 'next-auth/react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 
 interface NavigationProps {
   currentPage?: string
@@ -15,7 +16,31 @@ interface NavigationProps {
 export default function Navigation({ currentPage }: NavigationProps) {
   const { totalItems } = useCart()
   const { favoritesCount } = useFavorites()
-  const { data: session, status } = useSession()
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const getSession = async () => {
+      const { data } = await supabase.auth.getSession()
+      setUser(data.session?.user || null)
+      setLoading(false)
+    }
+
+    getSession()
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null)
+      setLoading(false)
+    })
+
+    return () => listener.subscription.unsubscribe()
+  }, [])
 
   const isActive = (path: string) => currentPage === path
 
@@ -109,10 +134,14 @@ export default function Navigation({ currentPage }: NavigationProps) {
           </div>
 
           <div className="flex items-center space-x-4">
-            {status === 'authenticated' && session ? (
-              <>
+            {loading ? (
+              <Button variant="outline" disabled className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
+                <User className="w-4 h-4 mr-2 animate-pulse" />
+              </Button>
+            ) : user ? (
+              <> 
                 <Button
-                  onClick={() => signOut({ callbackUrl: '/' })}
+                  onClick={() => supabase.auth.signOut()}
                   variant="outline"
                   className="border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
@@ -133,10 +162,6 @@ export default function Navigation({ currentPage }: NavigationProps) {
                   </Button>
                 </Link>
               </>
-            ) : status === 'loading' ? (
-              <Button variant="outline" disabled className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
-                <User className="w-4 h-4 mr-2 animate-pulse" />
-              </Button>
             ) : (
               <Link href="/login">
                 <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
