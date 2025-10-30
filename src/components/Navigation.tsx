@@ -8,6 +8,7 @@ import { useCart } from '@/contexts/CartContext'
 import { useFavorites } from '@/contexts/FavoritesContext'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { useRouter } from 'next/navigation'
 
 interface NavigationProps {
   currentPage?: string
@@ -16,6 +17,7 @@ interface NavigationProps {
 export default function Navigation({ currentPage }: NavigationProps) {
   const { totalItems } = useCart()
   const { favoritesCount } = useFavorites()
+  const router = useRouter()
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -42,6 +44,11 @@ export default function Navigation({ currentPage }: NavigationProps) {
 
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
 
   const isActive = (path: string) => currentPage === path
 
@@ -142,7 +149,7 @@ export default function Navigation({ currentPage }: NavigationProps) {
             ) : user ? (
               <> 
                 <Button
-                  onClick={() => supabase.auth.signOut()}
+                  onClick={handleLogout}
                   variant="outline"
                   className="border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
