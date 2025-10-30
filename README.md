@@ -42,30 +42,30 @@ A modern, full-stack meal kit delivery platform built with Next.js 15, TypeScrip
 ### Installation
 
 1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/smakowalo-app.git
-   cd smakowalo-app
-   ```
+    ```bash
+    git clone https://github.com/yourusername/smakowalo-app.git
+    cd smakowalo-app
+    ```
 
 2. **Install dependencies**
-   ```bash
-   bun install
-   ```
+    ```bash
+    bun install
+    ```
 
 3. **Environment setup**
-   ```bash
-   cp .env.example .env.local
-   ```
+    ```bash
+    cp .env.example .env.local
+    ```
 
-   Edit `.env.local` with your configuration values.
+    Edit `.env.local` with your configuration values.
 
 4. **Run the development server**
-   ```bash
-   bun run dev
-   ```
+    ```bash
+    bun run dev
+    ```
 
 5. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+    Navigate to [http://localhost:3000](http://localhost:3000)
 
 ## 🏗️ Tech Stack
 
@@ -123,48 +123,48 @@ smakowalo-app/
 ### Deploy to Vercel (Recommended)
 
 1. **Push to GitHub**
-   ```bash
-   git add .
-   git commit -m "Ready for deployment"
-   git push origin main
-   ```
+    ```bash
+    git add .
+    git commit -m "Ready for deployment"
+    git push origin main
+    ```
 
 2. **Connect to Vercel**
-   - Visit [vercel.com](https://vercel.com)
-   - Import your GitHub repository
-   - Vercel will auto-detect Next.js
+    - Visit [vercel.com](https://vercel.com)
+    - Import your GitHub repository
+    - Vercel will auto-detect Next.js
 
 3. **Configure Environment Variables**
-   In your Vercel dashboard, add these environment variables:
+    In your Vercel dashboard, add these environment variables:
 
-   ```bash
-   # Required
-   NEXT_PUBLIC_SITE_URL=https://your-domain.vercel.app
-   NEXTAUTH_SECRET=your-generated-secret
+    ```bash
+    # Required
+    NEXT_PUBLIC_SITE_URL=https://your-domain.vercel.app
+    NEXTAUTH_SECRET=your-generated-secret
 
-   # Optional (for full functionality)
-   NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
-   NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
-   SUPABASE_SERVICE_ROLE_KEY=your-supabase-key
-   SENDGRID_API_KEY=your-sendgrid-key
-   ```
+    # Optional (for full functionality)
+    NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+    NEXT_PUBLIC_SUPABASE_URL=your_supabase-url
+    SUPABASE_SERVICE_ROLE_KEY=your-supabase-key
+    SENDGRID_API_KEY=your-sendgrid-key
+    ```
 
 4. **Deploy**
-   ```bash
-   vercel --prod
-   ```
+    ```bash
+    vercel --prod
+    ```
 
 ### Manual Deployment
 
 1. **Build the project**
-   ```bash
-   bun run build
-   ```
+    ```bash
+    bun run build
+    ```
 
 2. **Start production server**
-   ```bash
-   bun start
-   ```
+    ```bash
+    bun start
+    ```
 
 ## 📧 Email Configuration (Optional but Recommended)
 
@@ -191,16 +191,16 @@ If no email service is configured, the app will use a mock service that logs ema
 ### Google Analytics
 1. Create a GA4 property
 2. Add your Measurement ID:
-   ```bash
-   NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
-   ```
+    ```bash
+    NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+    ```
 
 ### Facebook Pixel
 1. Create a Facebook Pixel
 2. Add your Pixel ID:
-   ```bash
-   NEXT_PUBLIC_FACEBOOK_PIXEL_ID=123456789012345
-   ```
+    ```bash
+    NEXT_PUBLIC_FACEBOOK_PIXEL_ID=123456789012345
+    ```
 
 ## 🗄️ Database Setup (Optional but Recommended)
 
@@ -212,11 +212,11 @@ See **[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)** for complete instructions.
 1. **Create a Supabase project** at [supabase.com](https://supabase.com)
 2. **Run the database schema** from `supabase/schema.sql`
 3. **Add your credentials**:
-   ```bash
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-   ```
+    ```bash
+    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+    ```
 
 **What you get:**
 - User authentication & profiles
@@ -277,22 +277,22 @@ NEXT_PUBLIC_ENABLE_BLOG=false
 ### Common Issues
 
 1. **Build Errors**
-   ```bash
-   # Clear cache and reinstall
-   rm -rf .next node_modules
-   bun install
-   bun run build
-   ```
+    ```bash
+    # Clear cache and reinstall
+    rm -rf .next node_modules
+    bun install
+    bun run build
+    ```
 
 2. **Environment Variables Not Working**
-   - Ensure `.env.local` exists
-   - Check variable names (must start with `NEXT_PUBLIC_` for client-side)
-   - Restart development server
+    - Ensure `.env.local` exists
+    - Check variable names (must start with `NEXT_PUBLIC_` for client-side)
+    - Restart development server
 
 3. **Email Not Sending**
-   - Check email service configuration
-   - Verify API keys
-   - Check logs for error messages
+    - Check email service configuration
+    - Verify API keys
+    - Check logs for error messages
 
 ## 📝 License
 
@@ -315,3 +315,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 Built with ❤️ for the Smakowało community
+
+# Deployment triggered on 2025-10-30
