@@ -1,8 +1,7 @@
 'use client'
-
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@supabase/supabase-js'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -36,13 +35,22 @@ import {
   CalendarDays,
   Users,
   UtensilsCrossed,
-  Heart
+  Heart,
+  Loader2
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import Navigation from '@/components/Navigation'
 import { useFavorites } from '@/contexts/FavoritesContext'
 import FavoriteButton from '@/components/FavoriteButton'
+import Logo from '@/components/Logo'
+
+// ✅ Supabase client - TEN SAM co w /login
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: true, storageKey: 'smakowalo_auth' },
+})
 
 interface Order {
   id: number
@@ -94,7 +102,6 @@ interface Profile {
 // Favorites Tab Component
 function FavoritesTabContent() {
   const { favorites, favoritesCount, clearFavorites } = useFavorites()
-
   if (favoritesCount === 0) {
     return (
       <div className="text-center py-16">
@@ -115,7 +122,6 @@ function FavoritesTabContent() {
       </div>
     )
   }
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -134,7 +140,6 @@ function FavoritesTabContent() {
           Wyczyść wszystkie
         </Button>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {favorites.map((favorite) => (
           <Card key={favorite.id} className="overflow-hidden hover:shadow-md transition-shadow">
@@ -172,7 +177,6 @@ function FavoritesTabContent() {
           </Card>
         ))}
       </div>
-
       <div className="text-center pt-6">
         <Link href="/ulubione">
           <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
@@ -185,35 +189,12 @@ function FavoritesTabContent() {
 }
 
 export default function PanelPage() {
-  const { data: session, status } = useSession()
   const router = useRouter()
   const { favoritesCount } = useFavorites()
-
-  const [activeTab, setActiveTab] = useState('profile')
-  const [isEditing, setIsEditing] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [hasRedirected, setHasRedirected] = useState(false)
-  const [subscriptionAction, setSubscriptionAction] = useState<{
-    id: number | null
-    action: 'pause' | 'resume' | 'edit_delivery' | 'edit_meals' | null
-    isLoading: boolean
-  }>({ id: null, action: null, isLoading: false })
-
-  const [subscriptionEditData, setSubscriptionEditData] = useState<{
-    nextDeliveryDate: string
-    numberOfPeople: number
-    numberOfDays: number
-    selectedMeals: string[]
-    dietPreferences: string[]
-  }>({
-    nextDeliveryDate: '',
-    numberOfPeople: 2,
-    numberOfDays: 3,
-    selectedMeals: [],
-    dietPreferences: []
-  })
-
+  
+  // ✅ SUPABASE STATES - ZMIEŃ Z useSession()
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<Profile>({
     first_name: '',
     last_name: '',
@@ -225,7 +206,6 @@ export default function PanelPage() {
     dietary_preferences: [],
     newsletter_subscribed: false
   })
-
   const [orders, setOrders] = useState<Order[]>([])
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [stats, setStats] = useState({
@@ -235,272 +215,119 @@ export default function PanelPage() {
     activeSubscriptions: 0
   })
 
-  const dataLoadedRef = useRef(false)
-  const authCheckDoneRef = useRef(false)
+  const [activeTab, setActiveTab] = useState('profile')
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  
+  const [subscriptionAction, setSubscriptionAction] = useState<{
+    id: number | null
+    action: 'pause' | 'resume' | 'edit_delivery' | 'edit_meals' | null
+    isLoading: boolean
+  }>({ id: null, action: null, isLoading: false })
 
-  // Authentication check - SIMPLIFIED TO PREVENT LOOPS
+  // ✅ SUPABASE AUTH CHECK - BEZ PĘTLI
   useEffect(() => {
-    // Only run authentication check ONCE
-    if (authCheckDoneRef.current) {
-      return
-    }
-
-    console.log('🔄 Panel - One-time Auth Check:', {
-      status,
-      hasSession: !!session,
-      userEmail: session?.user?.email,
-      timestamp: new Date().toISOString()
-    })
-
-    // AUTHENTICATED - show panel and load data
-    if (status === 'authenticated' && session?.user) {
-      console.log('✅ Panel - User authenticated:', session.user.email)
-      authCheckDoneRef.current = true
-      setIsLoading(false)
-      loadUserData()
-      return
-    }
-
-    // UNAUTHENTICATED - redirect to login
-    if (status === 'unauthenticated') {
-      console.log('🚫 Panel - Not authenticated, redirecting to login')
-      authCheckDoneRef.current = true
-      setHasRedirected(true)
-      window.location.href = '/login?callbackUrl=/panel'
-      return
-    }
-
-    // LOADING - set a one-time timeout
-    if (status === 'loading') {
-      console.log('⏳ Panel - Session loading...')
-      const timer = setTimeout(() => {
-        if (status === 'loading') {
-          console.warn('⚠️  Panel - Session timeout, redirecting')
-          authCheckDoneRef.current = true
-          setHasRedirected(true)
-          window.location.href = '/login?callbackUrl=/panel'
-        }
-      }, 5000) // 5 seconds is enough
-
-      return () => clearTimeout(timer)
-    }
-  }, [status, session])
-
-  const loadUserData = () => {
-    // Only load once to prevent infinite loops
-    if (dataLoadedRef.current) {
-      console.log('⏹️  Data already loaded, skipping')
-      return
-    }
-
-    // Set session data immediately - NO WAITING
-    if (session?.user) {
-      console.log('📋 Loading user data for:', session.user.email)
-
-      setProfile(prev => ({
-        ...prev,
-        email: session.user.email || '',
-        first_name: session.user.name?.split(' ')[0] || '',
-        last_name: session.user.name?.split(' ').slice(1).join(' ') || ''
-      }))
-
-      // Mark as loaded
-      dataLoadedRef.current = true
-
-      // DON'T load API data - endpoints not implemented yet
-      // This prevents infinite error loops
-      console.log('✅ Panel loaded with session data only (API endpoints disabled)')
-    }
-  }
-
-  const handleProfileUpdate = async () => {
-    setIsSaving(true)
-    try {
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile)
-      })
-
-      if (response.ok) {
-        setIsEditing(false)
-        // Show success message
-        alert('Profil został zaktualizowany!')
-      } else {
-        alert('Błąd podczas aktualizacji profilu')
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error)
-      alert('Błąd podczas aktualizacji profilu')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleCancelSubscription = async (subscriptionId: number) => {
-    if (!confirm('Czy na pewno chcesz anulować subskrypcję?')) return
-
-    try {
-      const response = await fetch(`/api/user/subscriptions/${subscriptionId}`, {
-        method: 'DELETE'
-      })
-
-      if (response.ok) {
-        loadUserData()
-        alert('Subskrypcja została anulowana')
-      } else {
-        alert('Błąd podczas anulowania subskrypcji')
-      }
-    } catch (error) {
-      console.error('Error canceling subscription:', error)
-      alert('Błąd podczas anulowania subskrypcji')
-    }
-  }
-
-  const handleOpenCustomerPortal = async (customerId: string) => {
-    try {
-      const response = await fetch('/api/stripe/portal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId })
-      })
-
-      if (response.ok) {
-        const { url } = await response.json()
-        if (url) {
-          window.location.href = url
-        }
-      } else {
-        alert('Nie udało się otworzyć portalu zarządzania subskrypcją')
-      }
-    } catch (error) {
-      console.error('Error opening customer portal:', error)
-      alert('Wystąpił błąd podczas otwierania portalu')
-    }
-  }
-
-  const handleSubscriptionAction = async (
-    subscriptionId: number,
-    action: 'pause' | 'resume' | 'update_delivery_date' | 'update_meal_plan',
-    data?: any
-  ) => {
-    setSubscriptionAction({ id: subscriptionId, action: action as any, isLoading: true })
-
-    try {
-      const response = await fetch(`/api/user/subscriptions/${subscriptionId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, ...data })
-      })
-
-      if (response.ok) {
-        loadUserData()
-        setSubscriptionAction({ id: null, action: null, isLoading: false })
-
-        const actionMessages = {
-          pause: 'Subskrypcja została wstrzymana',
-          resume: 'Subskrypcja została wznowiona',
-          update_delivery_date: 'Data dostawy została zaktualizowana',
-          update_meal_plan: 'Plan posiłków został zaktualizowany'
+    let cancelled = false
+    
+    const checkAuth = async () => {
+      try {
+        // 1. Sprawdź sesję Supabase
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (cancelled) return
+        
+        if (error) {
+          console.error('Supabase auth error:', error)
+          router.replace('/login?callbackUrl=/panel')
+          return
         }
 
-        alert(actionMessages[action] || 'Subskrypcja została zaktualizowana')
-      } else {
-        const errorData = await response.json()
-        alert(errorData.error || 'Błąd podczas aktualizacji subskrypcji')
-      }
-    } catch (error) {
-      console.error('Error updating subscription:', error)
-      alert('Błąd podczas aktualizacji subskrypcji')
-    } finally {
-      setSubscriptionAction({ id: null, action: null, isLoading: false })
-    }
-  }
+        if (session?.user) {
+          console.log('✅ User authenticated:', session.user.email)
+          setUser(session.user)
+          
+          // 2. Ustaw podstawowe dane profilu
+          setProfile(prev => ({
+            ...prev,
+            email: session.user.email || '',
+            first_name: session.user.user_metadata?.first_name || session.user.name?.split(' ')[0] || '',
+            last_name: session.user.user_metadata?.last_name || session.user.name?.split(' ').slice(1).join(' ') || ''
+          }))
+          
+          // 3. Listener na zmiany autoryzacji
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (cancelled) return
+            
+            if (event === 'SIGNED_OUT') {
+              router.replace('/login?callbackUrl=/panel')
+            }
+          })
 
-  const handlePauseSubscription = (subscriptionId: number) => {
-    const pauseUntil = prompt('Do kiedy wstrzymać subskrypcję? (YYYY-MM-DD) Pozostaw puste dla nieokreślonego czasu:')
-
-    if (pauseUntil !== null) { // User didn't cancel
-      handleSubscriptionAction(subscriptionId, 'pause', {
-        pause_until: pauseUntil || null
-      })
-    }
-  }
-
-  const handleResumeSubscription = (subscriptionId: number) => {
-    const nextDelivery = prompt('Kiedy zaplanować następną dostawę? (YYYY-MM-DD)')
-
-    if (nextDelivery) {
-      handleSubscriptionAction(subscriptionId, 'resume', {
-        next_delivery_date: nextDelivery
-      })
-    }
-  }
-
-  const handleUpdateDeliveryDate = (subscriptionId: number, currentDate: string) => {
-    const newDate = prompt('Nowa data dostawy (YYYY-MM-DD):', currentDate)
-
-    if (newDate && newDate !== currentDate) {
-      handleSubscriptionAction(subscriptionId, 'update_delivery_date', {
-        next_delivery_date: newDate
-      })
-    }
-  }
-
-  const handleUpdateMealPlan = (subscriptionId: number, currentConfig: any) => {
-    // This would typically open a modal with meal selection
-    // For now, we'll use simple prompts
-    const numberOfPeople = prompt('Liczba osób:', currentConfig?.numberOfPeople?.toString() || '2')
-    const numberOfDays = prompt('Liczba dni:', currentConfig?.numberOfDays?.toString() || '3')
-
-    if (numberOfPeople && numberOfDays) {
-      const updatedConfig = {
-        meal_plan_config: {
-          ...currentConfig,
-          numberOfPeople: Number.parseInt(numberOfPeople),
-          numberOfDays: Number.parseInt(numberOfDays)
+          // 4. Załaduj dane użytkownika
+          await loadUserData()
+          
+          setLoading(false)
+        } else {
+          // Brak sesji - redirect
+          console.log('🚫 No session, redirecting to login')
+          router.replace('/login?callbackUrl=/panel')
+        }
+      } catch (error) {
+        console.error('Auth check error:', error)
+        if (!cancelled) {
+          router.replace('/login?callbackUrl=/panel')
         }
       }
+    }
 
-      handleSubscriptionAction(subscriptionId, 'update_meal_plan', updatedConfig)
+    // Opóźnienie 100ms dla stabilności
+    const timer = setTimeout(checkAuth, 100)
+    
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [router])
+
+  // ✅ Ładuj dane użytkownika
+  const loadUserData = async () => {
+    if (!user) return
+    
+    try {
+      // Profile z Supabase
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      if (profileData) {
+        setProfile(prev => ({ ...prev, ...profileData }))
+      }
+
+      // Zamówienia (mock - zastąp swoim API)
+      // const { data: ordersData } = await supabase.from('orders').select('*')
+      // setOrders(ordersData || [])
+
+      // Subskrypcje (mock - zastąp swoim API)
+      // const { data: subsData } = await supabase.from('subscriptions').select('*')
+      // setSubscriptions(subsData || [])
+
+      // Statystyki (mock)
+      setStats({
+        totalOrders: 3,
+        totalSpent: 245.50,
+        totalSaved: 45.00,
+        activeSubscriptions: 1
+      })
+
+    } catch (error) {
+      console.error('Error loading user data:', error)
     }
   }
 
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'delivered':
-        return 'bg-green-100 text-green-800'
-      case 'confirmed':
-      case 'preparing':
-        return 'bg-blue-100 text-blue-800'
-      case 'shipped':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'canceled':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getStatusText = (status: string) => {
-    const statusMap: { [key: string]: string } = {
-      'pending': 'Oczekujące',
-      'confirmed': 'Potwierdzone',
-      'preparing': 'Przygotowywane',
-      'shipped': 'Wysłane',
-      'delivered': 'Dostarczone',
-      'canceled': 'Anulowane'
-    }
-    return statusMap[status] || status
-  }
-
-  // REDIRECTING - show nothing to prevent "jumping"
-  if (hasRedirected) {
-    return null
-  }
-
-  // LOADING - show skeleton for better UX
-  if (status === 'loading' && !authCheckDoneRef.current && !hasRedirected) {
+  // LOADING
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
         <Navigation currentPage="/panel" />
@@ -509,8 +336,6 @@ export default function PanelPage() {
             <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
             <div className="h-4 bg-gray-200 rounded w-48"></div>
           </div>
-
-          {/* Skeleton stats cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             {[1, 2, 3, 4].map(i => (
               <Card key={i}>
@@ -526,11 +351,10 @@ export default function PanelPage() {
               </Card>
             ))}
           </div>
-
           <div className="text-center mt-8">
             <div className="inline-flex items-center gap-2">
-              <RefreshCw className="w-4 h-4 animate-spin text-[var(--smakowalo-green-primary)]" />
-              <p className="text-gray-600 text-sm">Sprawdzanie sesji...</p>
+              <Loader2 className="w-4 h-4 animate-spin text-[var(--smakowalo-green-primary)]" />
+              <p className="text-gray-600 text-sm">Ładowanie panelu...</p>
             </div>
           </div>
         </div>
@@ -538,21 +362,56 @@ export default function PanelPage() {
     )
   }
 
-  // NOT AUTHENTICATED - show nothing while redirecting
-  if (status === 'unauthenticated' || !session) {
+  // UNAUTHENTICATED - pokaż nic (redirect już się wykonał)
+  if (!user) {
     return null
+  }
+
+  const handleProfileUpdate = async () => {
+    setIsSaving(true)
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(profile)
+        .eq('id', user.id)
+
+      if (error) throw error
+      
+      setIsEditing(false)
+      alert('Profil został zaktualizowany!')
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      alert('Błąd podczas aktualizacji profilu')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'delivered': return 'bg-green-100 text-green-800'
+      case 'confirmed': case 'preparing': return 'bg-blue-100 text-blue-800'
+      case 'shipped': return 'bg-yellow-100 text-yellow-800'
+      case 'canceled': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'pending': 'Oczekujące', 'confirmed': 'Potwierdzone', 'preparing': 'Przygotowywane',
+      'shipped': 'Wysłane', 'delivered': 'Dostarczone', 'canceled': 'Anulowane'
+    }
+    return statusMap[status] || status
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
       <Navigation currentPage="/panel" />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-[var(--smakowalo-green-dark)]">
-            Witaj, {profile.first_name || session?.user?.name?.split(' ')[0] || 'Użytkowniku'}!
+            Witaj, {profile.first_name || 'Użytkowniku'}!
           </h1>
           <p className="text-gray-600 mt-2">Zarządzaj swoim kontem i zamówieniami</p>
         </div>
@@ -570,7 +429,6 @@ export default function PanelPage() {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -582,7 +440,6 @@ export default function PanelPage() {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -594,7 +451,6 @@ export default function PanelPage() {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -656,7 +512,6 @@ export default function PanelPage() {
                     {isSaving ? 'Zapisywanie...' : isEditing ? 'Zapisz' : 'Edytuj'}
                   </Button>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="firstName">Imię</Label>
@@ -678,12 +533,7 @@ export default function PanelPage() {
                   </div>
                   <div>
                     <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profile.email}
-                      disabled
-                    />
+                    <Input id="email" type="email" value={profile.email} disabled />
                   </div>
                   <div>
                     <Label htmlFor="phone">Telefon</Label>
@@ -699,7 +549,7 @@ export default function PanelPage() {
                     <Label htmlFor="streetAddress">Adres</Label>
                     <Input
                       id="streetAddress"
-                      value={profile.street_address}
+                      value={profile.street_address || ''}
                       onChange={(e) => setProfile(prev => ({ ...prev, street_address: e.target.value }))}
                       disabled={!isEditing}
                     />
@@ -708,7 +558,7 @@ export default function PanelPage() {
                     <Label htmlFor="city">Miasto</Label>
                     <Input
                       id="city"
-                      value={profile.city}
+                      value={profile.city || ''}
                       onChange={(e) => setProfile(prev => ({ ...prev, city: e.target.value }))}
                       disabled={!isEditing}
                     />
@@ -717,27 +567,22 @@ export default function PanelPage() {
                     <Label htmlFor="postalCode">Kod pocztowy</Label>
                     <Input
                       id="postalCode"
-                      value={profile.postal_code}
+                      value={profile.postal_code || ''}
                       onChange={(e) => setProfile(prev => ({ ...prev, postal_code: e.target.value }))}
                       disabled={!isEditing}
                     />
                   </div>
                 </div>
-
                 {isEditing && (
                   <div className="flex space-x-3">
-                    <Button
-                      onClick={handleProfileUpdate}
-                      disabled={isSaving}
-                      className="smakowalo-green"
-                    >
+                    <Button onClick={handleProfileUpdate} disabled={isSaving} className="smakowalo-green">
                       Zapisz zmiany
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => {
                         setIsEditing(false)
-                        loadUserData() // Reload original data
+                        loadUserData()
                       }}
                       disabled={isSaving}
                     >
@@ -760,7 +605,6 @@ export default function PanelPage() {
                     </Button>
                   </Link>
                 </div>
-
                 {orders.length === 0 ? (
                   <div className="text-center py-12">
                     <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -774,52 +618,32 @@ export default function PanelPage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {orders.map((order) => (
-                      <Card key={order.id}>
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-3">
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                  Zamówienie #{order.id}
-                                </h3>
-                                <Badge className={getStatusBadgeColor(order.status)}>
-                                  {getStatusText(order.status)}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-gray-600">
-                                Data: {new Date(order.created_at).toLocaleDateString('pl-PL')}
-                              </p>
-                              {order.delivery_date && (
-                                <p className="text-sm text-gray-600">
-                                  Dostawa: {new Date(order.delivery_date).toLocaleDateString('pl-PL')}
-                                </p>
-                              )}
-                              {order.discount_amount > 0 && (
-                                <div className="flex items-center text-green-600">
-                                  <Percent className="w-4 h-4 mr-1" />
-                                  <span className="text-sm">
-                                    Zaoszczędzono: {order.discount_amount.toFixed(2)} zł
-                                  </span>
-                                </div>
-                              )}
+                  orders.map((order) => (
+                    <Card key={order.id}>
+                      <CardContent className="p-6">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-3">
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                Zamówienie #{order.id}
+                              </h3>
+                              <Badge className={getStatusBadgeColor(order.status)}>
+                                {getStatusText(order.status)}
+                              </Badge>
                             </div>
-                            <div className="text-right">
-                              <p className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
-                                {order.total_amount.toFixed(2)} zł
-                              </p>
-                              {order.discount_amount > 0 && (
-                                <p className="text-sm text-gray-500 line-through">
-                                  {order.subtotal.toFixed(2)} zł
-                                </p>
-                              )}
-                            </div>
+                            <p className="text-sm text-gray-600">
+                              Data: {new Date(order.created_at).toLocaleDateString('pl-PL')}
+                            </p>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
+                              {order.total_amount.toFixed(2)} zł
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
                 )}
               </div>
             )}
@@ -836,7 +660,6 @@ export default function PanelPage() {
                     </Button>
                   </Link>
                 </div>
-
                 {subscriptions.length === 0 ? (
                   <div className="text-center py-12">
                     <RefreshCw className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -850,216 +673,48 @@ export default function PanelPage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {subscriptions.map((subscription) => (
-                      <Card key={subscription.id}>
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-3">
-                              <div className="flex items-center space-x-3">
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                  {subscription.plan_key 
-                                    ? `Smakowalo Box ${subscription.plan_key}`
-                                    : `${subscription.plan_type} - Subskrypcja`
-                                  }
-                                </h3>
-                                <Badge className={
-                                  subscription.status === 'active'
-                                    ? 'bg-green-100 text-green-800'
-                                    : subscription.status === 'paused'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : subscription.status === 'canceled'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-gray-100 text-gray-800'
-                                }>
-                                  {subscription.status === 'active' ? 'Aktywna' :
-                                   subscription.status === 'paused' ? 'Wstrzymana' : 
-                                   subscription.status === 'canceled' ? 'Anulowana' : 'Nieaktywna'}
-                                </Badge>
-                              </div>
-
-                              {/* Show people and days if available */}
-                              {subscription.people && subscription.days && (
-                                <div className="text-sm text-gray-600">
-                                  <div className="flex items-center mb-1">
-                                    <Users className="w-4 h-4 mr-1" />
-                                    {subscription.people} {subscription.people === 1 ? 'osoba' : subscription.people <= 4 ? 'osoby' : 'osób'}
-                                  </div>
-                                  <div className="flex items-center">
-                                    <CalendarDays className="w-4 h-4 mr-1" />
-                                    {subscription.days} {subscription.days === 1 ? 'dzień' : 'dni'} w tygodniu
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Show diets if available */}
-                              {subscription.diets && subscription.diets.length > 0 && (
-                                <p className="text-sm text-gray-600">
-                                  <strong>Diety:</strong> {subscription.diets.join(', ')}
-                                </p>
-                              )}
-
-                              {/* Show period end date */}
-                              {subscription.current_period_end && (
-                                <p className="text-sm text-gray-600 flex items-center">
-                                  <Calendar className="w-4 h-4 mr-1" />
-                                  Koniec okresu: {new Date(subscription.current_period_end).toLocaleDateString('pl-PL')}
-                                </p>
-                              )}
-
-                              {/* Legacy next delivery date */}
-                              {!subscription.current_period_end && subscription.next_delivery_date && (
-                                <p className="text-sm text-gray-600 flex items-center">
-                                  <Calendar className="w-4 h-4 mr-1" />
-                                  Następna dostawa: {new Date(subscription.next_delivery_date).toLocaleDateString('pl-PL')}
-                                </p>
-                              )}
-
-                              {subscription.pause_until && (
-                                <p className="text-sm text-yellow-600 flex items-center">
-                                  <Pause className="w-4 h-4 mr-1" />
-                                  Wstrzymana do: {new Date(subscription.pause_until).toLocaleDateString('pl-PL')}
-                                </p>
-                              )}
-
-                              {subscription.cancel_at_period_end && (
-                                <p className="text-sm text-orange-600 flex items-center">
-                                  <AlertCircle className="w-4 h-4 mr-1" />
-                                  Anulowana na koniec okresu rozliczeniowego
-                                </p>
-                              )}
-
-                              {/* Legacy meal plan config */}
-                              {!subscription.people && subscription.meal_plan_config && (
-                                <div className="text-sm text-gray-600">
-                                  <div className="flex items-center mb-1">
-                                    <Users className="w-4 h-4 mr-1" />
-                                    {subscription.meal_plan_config.numberOfPeople || 2} osoby
-                                  </div>
-                                  <div className="flex items-center">
-                                    <CalendarDays className="w-4 h-4 mr-1" />
-                                    {subscription.meal_plan_config.numberOfDays || 3} dni w tygodniu
-                                  </div>
-                                </div>
-                              )}
-
-                              <p className="text-sm text-gray-600">
-                                Utworzona: {new Date(subscription.created_at).toLocaleDateString('pl-PL')}
-                              </p>
+                  subscriptions.map((subscription) => (
+                    <Card key={subscription.id}>
+                      <CardContent className="p-6">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-3">
+                            <div className="flex items-center space-x-3">
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {subscription.plan_key ? `Smakowalo Box ${subscription.plan_key}` : `${subscription.plan_type} - Subskrypcja`}
+                              </h3>
+                              <Badge className={
+                                subscription.status === 'active'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }>
+                                {subscription.status === 'active' ? 'Aktywna' : 'Nieaktywna'}
+                              </Badge>
                             </div>
-
-                            <div className="text-right space-y-3">
-                              <div>
-                                <p className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
-                                  {(subscription.amount || subscription.price_per_delivery)?.toFixed(2)} zł
-                                </p>
-                                <p className="text-sm text-gray-500">tygodniowo</p>
-                              </div>
-
-                              {/* Stripe Customer Portal button for active subscriptions */}
-                              {subscription.status === 'active' && subscription.stripe_customer_id && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => handleOpenCustomerPortal(subscription.stripe_customer_id!)}
-                                  className="w-full smakowalo-green"
-                                >
-                                  <Settings className="w-4 h-4 mr-1" />
-                                  Zarządzaj subskrypcją
-                                </Button>
-                              )}
-
-                              {/* Legacy action buttons (for old non-Stripe subscriptions) */}
-                              {subscription.status === 'active' && !subscription.stripe_customer_id && (
-                                <div className="space-y-2">
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handlePauseSubscription(subscription.id)}
-                                      disabled={subscriptionAction.id === subscription.id && subscriptionAction.isLoading}
-                                      className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
-                                    >
-                                      <Pause className="w-4 h-4 mr-1" />
-                                      Wstrzymaj
-                                    </Button>
-
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleUpdateDeliveryDate(subscription.id, subscription.next_delivery_date || '')}
-                                      disabled={subscriptionAction.id === subscription.id && subscriptionAction.isLoading}
-                                      className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                                    >
-                                      <CalendarDays className="w-4 h-4 mr-1" />
-                                      Zmień datę
-                                    </Button>
-                                  </div>
-
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleUpdateMealPlan(subscription.id, subscription.meal_plan_config)}
-                                      disabled={subscriptionAction.id === subscription.id && subscriptionAction.isLoading}
-                                      className="text-purple-600 border-purple-300 hover:bg-purple-50"
-                                    >
-                                      <UtensilsCrossed className="w-4 h-4 mr-1" />
-                                      Edytuj plan
-                                    </Button>
-
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleCancelSubscription(subscription.id)}
-                                      className="text-red-600 border-red-300 hover:bg-red-50"
-                                    >
-                                      <X className="w-4 h-4 mr-1" />
-                                      Anuluj
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {subscription.status === 'paused' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleResumeSubscription(subscription.id)}
-                                  disabled={subscriptionAction.id === subscription.id && subscriptionAction.isLoading}
-                                  className="text-green-600 border-green-300 hover:bg-green-50"
-                                >
-                                  <Play className="w-4 h-4 mr-1" />
-                                  Wznów
-                                </Button>
-                              )}
-
-                              {subscriptionAction.id === subscription.id && subscriptionAction.isLoading && (
-                                <div className="flex items-center text-sm text-gray-500">
-                                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
-                                  Aktualizowanie...
-                                </div>
-                              )}
-                            </div>
+                            <p className="text-sm text-gray-600">
+                              Utworzona: {new Date(subscription.created_at).toLocaleDateString('pl-PL')}
+                            </p>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
+                              {subscription.amount?.toFixed(2)} zł
+                            </p>
+                            <p className="text-sm text-gray-500">tygodniowo</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
                 )}
               </div>
             )}
 
             {/* Favorites Tab */}
-            {activeTab === 'favorites' && (
-              <FavoritesTabContent />
-            )}
+            {activeTab === 'favorites' && <FavoritesTabContent />}
 
             {/* Settings Tab */}
             {activeTab === 'settings' && (
               <div className="space-y-6">
                 <h2 className="text-xl font-bold text-gray-900">Ustawienia konta</h2>
-
                 <Card>
                   <CardHeader>
                     <CardTitle>Newsletter</CardTitle>
@@ -1068,9 +723,7 @@ export default function PanelPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">Subskrypcja newslettera</p>
-                        <p className="text-sm text-gray-600">
-                          Otrzymuj informacje o nowościach i promocjach
-                        </p>
+                        <p className="text-sm text-gray-600">Otrzymuj informacje o nowościach i promocjach</p>
                       </div>
                       <input
                         type="checkbox"
@@ -1081,7 +734,6 @@ export default function PanelPage() {
                     </div>
                   </CardContent>
                 </Card>
-
                 <Card>
                   <CardHeader>
                     <CardTitle>Bezpieczeństwo</CardTitle>
