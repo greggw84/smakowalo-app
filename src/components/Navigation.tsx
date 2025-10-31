@@ -6,9 +6,8 @@ import { ShoppingCart, User, Heart, LogOut } from 'lucide-react'
 import Logo from './Logo'
 import { useCart } from '@/contexts/CartContext'
 import { useFavorites } from '@/contexts/FavoritesContext'
-import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface NavigationProps {
   currentPage?: string
@@ -19,35 +18,17 @@ export default function Navigation({ currentPage }: NavigationProps) {
   const { favoritesCount } = useFavorites()
   const router = useRouter()
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: true, storageKey: 'smakowalo_auth' },
-  })
-
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      setUser(data.session?.user || null)
-      setLoading(false)
-    }
-
-    getSession()
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null)
-      setLoading(false)
-    })
-
-    return () => listener.subscription.unsubscribe()
-  }, [])
+  // Use centralized auth from AuthProvider
+  const { user, loading, signOut } = useAuth()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
+    try {
+      await signOut()
+      // optional redirect to home after sign out
+      router.push('/')
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
   }
 
   const isActive = (path: string) => currentPage === path
@@ -147,7 +128,7 @@ export default function Navigation({ currentPage }: NavigationProps) {
                 <User className="w-4 h-4 mr-2 animate-pulse" />
               </Button>
             ) : user ? (
-              <> 
+              <>
                 <Button
                   onClick={handleLogout}
                   variant="outline"
@@ -160,9 +141,10 @@ export default function Navigation({ currentPage }: NavigationProps) {
                 <Link href="/panel">
                   <Button
                     variant={isActive('/panel') ? 'default' : 'outline'}
-                    className={isActive('/panel')
-                      ? 'bg-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-dark)'
-                      : 'border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]'
+                    className={
+                      isActive('/panel')
+                        ? 'bg-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-dark)]'
+                        : 'border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]'
                     }
                   >
                     <User className="w-4 h-4 mr-2" />
