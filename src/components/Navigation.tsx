@@ -9,7 +9,7 @@ import { useCart } from '@/contexts/CartContext'
 import { useFavorites } from '@/contexts/FavoritesContext'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface NavigationProps {
   currentPage?: string
@@ -21,6 +21,7 @@ export default function Navigation({ currentPage }: NavigationProps) {
   const router = useRouter()
   const { user, loading, signOut } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleLogout = async () => {
     try {
@@ -34,7 +35,41 @@ export default function Navigation({ currentPage }: NavigationProps) {
 
   const isActive = (path: string) => currentPage === path
 
-  const closeMobileMenu = () => setIsMobileMenuOpen(false)
+  // Handle escape key to close menu and manage focus
+  useEffect(() => {
+    const closeMobileMenu = () => {
+      setIsMobileMenuOpen(false)
+      // Restore focus to menu button when closing
+      setTimeout(() => {
+        menuButtonRef.current?.focus()
+      }, 100)
+    }
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMobileMenuOpen) {
+        closeMobileMenu()
+      }
+    }
+
+    if (isMobileMenuOpen) {
+      document.addEventListener('keydown', handleEscape)
+      // Prevent body scroll when menu is open
+      document.body.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+      document.body.style.overflow = 'unset'
+    }
+  }, [isMobileMenuOpen])
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false)
+    // Restore focus to menu button when closing
+    setTimeout(() => {
+      menuButtonRef.current?.focus()
+    }, 100)
+  }
 
   return (
     <nav className="bg-white shadow-sm border-b">
@@ -136,11 +171,14 @@ export default function Navigation({ currentPage }: NavigationProps) {
 
             {/* Mobile Menu Button */}
             <Button
+              ref={menuButtonRef}
               variant="outline"
               size="icon"
               className="md:hidden border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle menu"
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="mobile-menu"
             >
               {isMobileMenuOpen ? (
                 <X className="w-5 h-5" />
@@ -159,13 +197,28 @@ export default function Navigation({ currentPage }: NavigationProps) {
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
             onClick={closeMobileMenu}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                closeMobileMenu()
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Close menu"
           />
           
           {/* Drawer */}
-          <div className="fixed top-0 right-0 h-full w-80 bg-white shadow-xl z-50 md:hidden overflow-y-auto">
+          <div 
+            id="mobile-menu"
+            className="fixed top-0 right-0 h-full w-80 bg-white shadow-xl z-50 md:hidden overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-menu-title"
+          >
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex justify-between items-center p-4 border-b">
+                <div id="mobile-menu-title" className="sr-only">Navigation Menu</div>
                 <Logo width={100} height={26} />
                 <Button
                   variant="ghost"

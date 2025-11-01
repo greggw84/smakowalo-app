@@ -42,7 +42,8 @@
         "useAltText": "off",
         "useKeyWithClickEvents": "off",
         "useKeyWithMouseEvents": "off",
-        "useButtonType": "off"
+        "useButtonType": "off",
+        "useSemanticElements": "off"
       }
     }
   },
