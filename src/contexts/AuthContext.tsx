@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createContext, useContext, useEffect, useState, useMemo } from 'react'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { User } from '@supabase/supabase-js'
 
 interface AuthContextType {
@@ -11,6 +11,16 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+// Helper function to create Supabase client with consistent configuration
+function createSupabaseClient(url: string, key: string): SupabaseClient {
+  return createClient(url, key, {
+    auth: {
+      persistSession: true,
+      storageKey: 'smakowalo_auth',
+    },
+  })
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -25,19 +35,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     !supabaseUrl.includes('placeholder') &&
     !supabaseAnonKey.includes('placeholder')
 
-  useEffect(() => {
+  // Create Supabase client once and memoize it
+  const supabase = useMemo(() => {
     if (!isConfigured || !supabaseUrl || !supabaseAnonKey) {
+      return null
+    }
+    return createSupabaseClient(supabaseUrl, supabaseAnonKey)
+  }, [isConfigured, supabaseUrl, supabaseAnonKey])
+
+  useEffect(() => {
+    if (!supabase) {
       setLoading(false)
       return
     }
-
-    // Create Supabase client with storageKey
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        storageKey: 'smakowalo_auth',
-      },
-    })
 
     // Get initial session
     const getInitialSession = async () => {
@@ -65,19 +75,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     )
 
     return () => subscription.unsubscribe()
-  }, [isConfigured, supabaseUrl, supabaseAnonKey])
+  }, [supabase])
 
   const signOut = async () => {
-    if (!isConfigured || !supabaseUrl || !supabaseAnonKey) {
+    if (!supabase) {
       throw new Error('Supabase is not configured')
     }
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        storageKey: 'smakowalo_auth',
-      },
-    })
 
     const { error } = await supabase.auth.signOut()
     if (error) {
