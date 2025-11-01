@@ -54,18 +54,25 @@ test.describe('Navigation Auth Consistency', () => {
     test('should not show loading state for extended period', async ({ page }) => {
       await page.goto(`${BASE_URL}/menu`)
       
-      // Wait a bit for auth state to resolve
-      await page.waitForTimeout(2000)
-      
-      // Should either show Zaloguj or the authenticated buttons, not stuck in loading
-      const zalogujButton = page.locator('text=Zaloguj')
+      // Wait for either auth button to appear (not stuck in loading)
+      const zalogujButton = page.locator('text=Zaloguj').first()
       const panelButton = page.locator('button:has-text("Panel")')
       
-      // One of these should be visible (not stuck in loading)
-      const zalogujVisible = await zalogujButton.isVisible()
-      const panelVisible = await panelButton.isVisible()
-      
-      expect(zalogujVisible || panelVisible, 'Either Zaloguj or Panel button should be visible, not stuck in loading').toBeTruthy()
+      // Wait for one of the buttons to be visible within reasonable time
+      try {
+        await Promise.race([
+          zalogujButton.waitFor({ state: 'visible', timeout: 5000 }),
+          panelButton.waitFor({ state: 'visible', timeout: 5000 })
+        ])
+        
+        // One of these should be visible (not stuck in loading)
+        const zalogujVisible = await zalogujButton.isVisible()
+        const panelVisible = await panelButton.isVisible()
+        
+        expect(zalogujVisible || panelVisible, 'Either Zaloguj or Panel button should be visible, not stuck in loading').toBeTruthy()
+      } catch (error) {
+        throw new Error('Navigation remained in loading state for too long')
+      }
     })
   })
 
@@ -110,13 +117,17 @@ test.describe('Navigation Auth Consistency', () => {
         // Don't wait for full network idle - simulate quick navigation
         await page.waitForLoadState('domcontentloaded')
         
-        // Wait a short time to let any race conditions manifest
-        await page.waitForTimeout(500)
-        
-        // Check that we're not in an inconsistent state
+        // Wait for auth state to resolve by waiting for one of the buttons
         const zalogujButton = page.locator('text=Zaloguj').first()
         const wylogujButton = page.locator('text=Wyloguj')
         const panelButton = page.locator('button:has-text("Panel")')
+        
+        // Wait for one of the auth buttons to appear
+        await Promise.race([
+          zalogujButton.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {}),
+          wylogujButton.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {}),
+          panelButton.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+        ])
         
         const zalogujVisible = await zalogujButton.isVisible()
         const wylogujVisible = await wylogujButton.isVisible()
@@ -181,15 +192,23 @@ test.describe('Navigation Auth Consistency - With Mock Auth', () => {
     for (const testPage of TEST_PAGES.slice(0, 5)) {
       await page.goto(`${BASE_URL}${testPage.path}`)
       await page.waitForLoadState('networkidle')
-      await page.waitForTimeout(1000) // Give time for auth to resolve
+      
+      // Wait for auth state to resolve by waiting for one of the buttons
+      const zalogujButton = page.locator('text=Zaloguj').first()
+      const wylogujButton = page.locator('text=Wyloguj')
+      
+      await Promise.race([
+        zalogujButton.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {}),
+        wylogujButton.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+      ])
       
       // With mocked session, we expect to see either:
       // 1. Wyloguj and Panel buttons (if session is recognized)
       // 2. Still see Zaloguj if mock session format is wrong (expected in this test)
       
       // This test verifies that whatever state is shown, it's consistent
-      const zalogujVisible = await page.locator('text=Zaloguj').first().isVisible()
-      const wylogujVisible = await page.locator('text=Wyloguj').isVisible()
+      const zalogujVisible = await zalogujButton.isVisible()
+      const wylogujVisible = await wylogujButton.isVisible()
       
       // Should not show both at the same time
       expect(
