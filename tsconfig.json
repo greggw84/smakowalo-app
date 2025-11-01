@@ -27,8 +27,7 @@
         "./src/*"
       ]
     },
-    "baseUrl": ".",
-    "jsxImportSource": "bippy/dist"
+    "baseUrl": "."
   },
   "include": [
     "**/*.ts",
