@@ -1,83 +1,150 @@
-// contexts/AuthContext.tsx
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { createSupabaseComponentClient } from '@/lib/supabase'
+import type { User, Session, AuthResponse } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-// TEN SAM storageKey co w /login i /panel
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    storageKey: 'smakowalo_auth',
-    storage: typeof window !== 'undefined' ? window.localStorage : null,
-  },
-})
+interface UserData {
+  firstName: string
+  lastName: string
+  phone: string
+  newsletter: boolean
+}
 
 interface AuthContextType {
-  user: any | null
+  user: User | null
+  session: Session | null
   loading: boolean
+  signUp: (email: string, password: string, userData: UserData) => Promise<AuthResponse>
+  signIn: (email: string, password: string) => Promise<AuthResponse>
   signOut: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  signOut: async () => {},
-})
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any | null>(null)
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let mounted = true
+  const supabase = createSupabaseComponentClient()
 
-    // Sprawdź sesję przy starcie
-    const initAuth = async () => {
+  // Check if Supabase is configured
+  const isConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
+
+  useEffect(() => {
+    if (!isConfigured || !supabase) {
+      setLoading(false)
+      return
+    }
+
+    // Get initial session
+    const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (mounted) {
-          console.log('AuthProvider: Initial session:', session?.user?.email || 'none')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          console.error('Error getting session:', error)
+        } else {
+          setSession(session)
+          setUser(session?.user ?? null)
+        }
+      } catch (error) {
+        console.error('Supabase not available:', error)
+      }
+      setLoading(false)
+    }
+
+    getInitialSession()
+
+    // Listen for auth changes
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          setSession(session)
           setUser(session?.user ?? null)
           setLoading(false)
         }
-      } catch (error) {
-        console.error('Auth init error:', error)
-        if (mounted) setLoading(false)
-      }
+      )
+
+      return () => subscription.unsubscribe()
+    } catch (error) {
+      console.error('Supabase auth subscription failed:', error)
+    }
+  }, [supabase, isConfigured])
+
+  const signUp = async (email: string, password: string, userData: UserData) => {
+    if (!isConfigured || !supabase) {
+      throw new Error('Supabase is not configured')
     }
 
-    initAuth()
-
-    // Nasłuchuj zmian (login/logout)
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth event:', event, session?.user?.email || 'no user')
-      if (mounted) {
-        setUser(session?.user ?? null)
-        setLoading(false)
-      }
+    // Call signup API endpoint
+    const response = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        phone: userData.phone,
+        newsletter: userData.newsletter
+      })
     })
 
-    return () => {
-      mounted = false
-      listener.subscription.unsubscribe()
-    }
-  }, [])
+    const result = await response.json()
 
-  const signOut = async () => {
-    console.log('Signing out...')
-    await supabase.auth.signOut()
-    setUser(null)
+    if (!response.ok || result.error) {
+      throw new Error(result.error || 'Nie udało się utworzyć konta')
+    }
+
+    return { data: result.data, error: null }
   }
 
-  return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  const signIn = async (email: string, password: string) => {
+    if (!isConfigured || !supabase) {
+      throw new Error('Supabase is not configured')
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      throw error
+    }
+
+    return { data, error }
+  }
+
+  const signOut = async () => {
+    if (!isConfigured || !supabase) {
+      throw new Error('Supabase is not configured')
+    }
+
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      throw error
+    }
+  }
+
+  const value = {
+    user,
+    session,
+    loading,
+    signUp,
+    signIn,
+    signOut,
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export const useAuth = () => useContext(AuthContext)
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
