@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import Navigation from "@/components/Navigation"
 import { Footer } from "@/components/Footer"
 import { Mail, Scale } from "lucide-react"
 import type { Metadata } from "next"
@@ -20,7 +19,6 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      <Navigation currentPage="/terms" />
 
       {/* Hero Section */}
       <section className="py-20 bg-gradient-to-r from-[var(--smakowalo-green-primary)] to-[var(--smakowalo-green-dark)]">

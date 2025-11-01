@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Users, ChefHat, Loader, ShoppingCart, Plus, Flame } from "lucide-react"
+import { Clock, Users, ChefHat, Loader, Plus, Flame } from "lucide-react"
 import { MenuGridSkeleton } from "@/components/Loading"
 import { ErrorFallback } from "@/components/ErrorBoundary"
 import { trackEvent } from "@/components/Analytics"
 import FavoriteButton from "@/components/FavoriteButton"
 import Link from "next/link"
 import Image from "next/image"
-import Logo from "@/components/Logo"
 import { useCart } from "@/contexts/CartContext"
 
 // Product interface matching our Supabase types
@@ -182,59 +181,6 @@ export default function MenuPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/">
-              <Logo width={120} height={32} />
-            </Link>
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                <Link href="/menu" className="text-[var(--smakowalo-green-primary)] hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium border-b-2 border-[var(--smakowalo-green-primary)]">
-                  Menu
-                </Link>
-                <Link href="/dlaczego-my" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Dlaczego my
-                </Link>
-                <Link href="/jak-to-dziala" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Jak to działa
-                </Link>
-                <Link href="/faq" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  FAQ
-                </Link>
-                <Link href="/dostawa" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Dostawa
-                </Link>
-                <Link href="/kreator" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Kreator
-                </Link>
-                <Link href="/ulubione" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Ulubione
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/login">
-                <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
-                  Zaloguj
-                </Button>
-              </Link>
-              <Link href="/cart">
-                <Button className="smakowalo-green relative">
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  Koszyk
-                  {totalItems > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {totalItems}
-                    </span>
-                  )}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* OpenCart Connection Banner */}

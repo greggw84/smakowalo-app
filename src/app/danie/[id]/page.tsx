@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import Navigation from "@/components/Navigation"
 import { ArrowLeft, Clock, Users, ChefHat, Zap, ShoppingCart } from "lucide-react"
 import { ProductDetailSkeleton } from "@/components/Loading"
 import { ErrorFallback } from "@/components/ErrorBoundary"
@@ -653,8 +652,6 @@ function DishPageClient({ dishId }: { dishId: string }) {
 
   return (
     <div className="min-h-screen bg-[var(--smakowalo-cream)]">
-      <Navigation currentPage="/menu" />
-
       {/* Breadcrumb */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">

@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import { Footer } from "@/components/Footer";
+import Navigation from "@/components/Navigation";
 
 export default function ClientBody({
   children,
@@ -26,6 +27,7 @@ export default function ClientBody({
       <CartProvider>
         <FavoritesProvider>
           <div className="antialiased">
+            <Navigation />
             {children}
             <Footer />
           </div>
