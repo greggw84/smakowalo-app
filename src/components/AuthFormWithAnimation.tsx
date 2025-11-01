@@ -46,7 +46,6 @@ export default function AuthFormWithAnimation({ initialMode = 'login' }: AuthFor
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const { signUp } = useAuth()
   const router = useRouter()
 
   const switchMode = (newMode: AuthMode) => {
@@ -133,12 +132,25 @@ export default function AuthFormWithAnimation({ initialMode = 'login' }: AuthFor
     }
 
     try {
-      const result = await signUp(registerData.email, registerData.password, {
-        firstName: registerData.firstName,
-        lastName: registerData.lastName,
-        phone: registerData.phone,
-        newsletter: registerData.newsletter
+      // Call signup API endpoint directly
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: registerData.email,
+          password: registerData.password,
+          firstName: registerData.firstName,
+          lastName: registerData.lastName,
+          phone: registerData.phone,
+          newsletter: registerData.newsletter
+        })
       })
+
+      const result = await response.json()
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Nie udało się utworzyć konta')
+      }
 
       // Check if email verification is required
       const requiresVerification = result?.data?.requiresEmailVerification
