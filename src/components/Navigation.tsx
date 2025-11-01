@@ -67,7 +67,7 @@ export default function Navigation({ currentPage }: NavigationProps) {
                 >
                   {item.icon && <item.icon className="w-4 h-4 inline mr-1" />}
                   {item.label}
-                  {item.count! > 0 && (
+                  {item.count && item.count > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                       {item.count}
                     </span>
@@ -202,7 +202,7 @@ export default function Navigation({ currentPage }: NavigationProps) {
                       {item.icon && <item.icon className="w-5 h-5 mr-2" />}
                       {item.label}
                     </span>
-                    {item.count! > 0 && (
+                    {item.count && item.count > 0 && (
                       <span className="bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
                         {item.count}
                       </span>

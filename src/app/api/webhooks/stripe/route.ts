@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 
 import { type NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
-import Stripe from 'stripe'
+import type Stripe from 'stripe'
 import { getServerStripe } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
 import { parsePlanKey } from '@/lib/pricing'
