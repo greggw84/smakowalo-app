@@ -1,30 +1,3 @@
-// app/layout.tsx
-import './globals.css'
-import { AuthProvider } from '@/contexts/AuthContext'
-import { CartProvider } from '@/contexts/CartContext'
-import { FavoritesProvider } from '@/contexts/FavoritesContext'
-import Navigation from '@/components/Navigation'
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <html lang="pl">
-      <body>
-        <AuthProvider>
-          <CartProvider>
-            <FavoritesProvider>
-              <Navigation />
-              <main>{children}</main>
-            </FavoritesProvider>
-          </CartProvider>
-        </AuthProvider>
-      </body>
-    </html>
-  )
-}
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
