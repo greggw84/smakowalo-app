@@ -5,6 +5,7 @@ import ClientBody from "./ClientBody";
 import Script from "next/script";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { AnalyticsProvider } from "@/components/Analytics";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -122,11 +123,13 @@ export default function RootLayout({
           "--smakowalo-brown-light": "#f2eee6",
         } as React.CSSProperties}
       >
-        <AnalyticsProvider>
-          <ErrorBoundary>
-            <ClientBody>{children}</ClientBody>
-          </ErrorBoundary>
-        </AnalyticsProvider>
+        <AuthProvider>
+          <AnalyticsProvider>
+            <ErrorBoundary>
+              <ClientBody>{children}</ClientBody>
+            </ErrorBoundary>
+          </AnalyticsProvider>
+        </AuthProvider>
       </body>
     </html>
   );

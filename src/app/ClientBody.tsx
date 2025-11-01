@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { SessionProvider } from "next-auth/react";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import { Footer } from "@/components/Footer";
@@ -24,16 +23,14 @@ export default function ClientBody({
       refetchOnWindowFocus={false}
       refetchWhenOffline={false}
     >
-      <AuthProvider>
-        <CartProvider>
-          <FavoritesProvider>
-            <div className="antialiased">
-              {children}
-              <Footer />
-            </div>
-          </FavoritesProvider>
-        </CartProvider>
-      </AuthProvider>
+      <CartProvider>
+        <FavoritesProvider>
+          <div className="antialiased">
+            {children}
+            <Footer />
+          </div>
+        </FavoritesProvider>
+      </CartProvider>
     </SessionProvider>
   );
 }

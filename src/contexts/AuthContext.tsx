@@ -1,40 +1,50 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { createSupabaseComponentClient } from '@/lib/supabase'
-import type { User, Session, AuthResponse } from '@supabase/supabase-js'
-
-interface UserData {
-  firstName: string
-  lastName: string
-  phone: string
-  newsletter: boolean
-}
+import { createContext, useContext, useEffect, useState, useMemo } from 'react'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import type { User } from '@supabase/supabase-js'
 
 interface AuthContextType {
   user: User | null
-  session: Session | null
   loading: boolean
-  signUp: (email: string, password: string, userData: UserData) => Promise<AuthResponse>
-  signIn: (email: string, password: string) => Promise<AuthResponse>
   signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Helper function to create Supabase client with consistent configuration
+function createSupabaseClient(url: string, key: string): SupabaseClient {
+  return createClient(url, key, {
+    auth: {
+      persistSession: true,
+      storageKey: 'smakowalo_auth',
+    },
+  })
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const supabase = createSupabaseComponentClient()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   // Check if Supabase is configured
-  const isConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
+  const isConfigured = supabaseUrl &&
+    supabaseAnonKey &&
+    !supabaseUrl.includes('placeholder') &&
+    !supabaseAnonKey.includes('placeholder')
+
+  // Create Supabase client once and memoize it
+  const supabase = useMemo(() => {
+    if (!isConfigured || !supabaseUrl || !supabaseAnonKey) {
+      return null
+    }
+    return createSupabaseClient(supabaseUrl, supabaseAnonKey)
+  }, [isConfigured, supabaseUrl, supabaseAnonKey])
 
   useEffect(() => {
-    if (!isConfigured || !supabase) {
+    if (!supabase) {
       setLoading(false)
       return
     }
@@ -46,7 +56,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           console.error('Error getting session:', error)
         } else {
-          setSession(session)
           setUser(session?.user ?? null)
         }
       } catch (error) {
@@ -58,68 +67,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialSession()
 
     // Listen for auth changes
-    try {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          setSession(session)
-          setUser(session?.user ?? null)
-          setLoading(false)
-        }
-      )
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
+    )
 
-      return () => subscription.unsubscribe()
-    } catch (error) {
-      console.error('Supabase auth subscription failed:', error)
-    }
-  }, [supabase, isConfigured])
-
-  const signUp = async (email: string, password: string, userData: UserData) => {
-    if (!isConfigured || !supabase) {
-      throw new Error('Supabase is not configured')
-    }
-
-    // Call signup API endpoint
-    const response = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        password,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        phone: userData.phone,
-        newsletter: userData.newsletter
-      })
-    })
-
-    const result = await response.json()
-
-    if (!response.ok || result.error) {
-      throw new Error(result.error || 'Nie udało się utworzyć konta')
-    }
-
-    return { data: result.data, error: null }
-  }
-
-  const signIn = async (email: string, password: string) => {
-    if (!isConfigured || !supabase) {
-      throw new Error('Supabase is not configured')
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (error) {
-      throw error
-    }
-
-    return { data, error }
-  }
+    return () => subscription.unsubscribe()
+  }, [supabase])
 
   const signOut = async () => {
-    if (!isConfigured || !supabase) {
+    if (!supabase) {
       throw new Error('Supabase is not configured')
     }
 
@@ -131,10 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     user,
-    session,
     loading,
-    signUp,
-    signIn,
     signOut,
   }
 
