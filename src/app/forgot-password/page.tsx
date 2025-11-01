@@ -12,11 +12,10 @@ import { AlertCircle, CheckCircle, Loader2, ArrowLeft, Mail } from "lucide-react
 import Link from "next/link"
 import Logo from '@/components/Logo'
 
-// ✅ Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// ✅ Initialize Supabase client conditionally
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -44,6 +43,12 @@ export default function ForgotPasswordPage() {
     setIsLoading(true)
 
     try {
+      if (!supabase) {
+        setError('Supabase is not configured. Please set environment variables.');
+        setIsLoading(false);
+        return;
+      }
+
       // ✅ Use Supabase’s built-in password reset
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: 'https://www.smakowalo.pl/reset-password',

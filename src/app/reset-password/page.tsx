@@ -12,10 +12,9 @@ import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff, Lock } from "lucide-rea
 import Link from "next/link"
 import Logo from '@/components/Logo'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
 
 function ResetPasswordContent() {
   const router = useRouter()
