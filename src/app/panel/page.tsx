@@ -40,10 +40,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import Navigation from '@/components/Navigation'
 import { useFavorites } from '@/contexts/FavoritesContext'
 import FavoriteButton from '@/components/FavoriteButton'
-import Logo from '@/components/Logo'
 
 // ✅ Supabase client - TEN SAM co w /login
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -330,7 +328,6 @@ export default function PanelPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-        <Navigation currentPage="/panel" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8 animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
@@ -407,7 +404,6 @@ export default function PanelPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      <Navigation currentPage="/panel" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-[var(--smakowalo-green-dark)]">

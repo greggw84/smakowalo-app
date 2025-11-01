@@ -3,11 +3,10 @@
 import { useState, useEffect, Suspense } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Check, ChefHat, Clock, Heart, Loader, ShoppingCart, User, AlertCircle, Zap, CreditCard, Crown, Package } from "lucide-react"
+import { Check, ChefHat, Clock, Heart, Loader, AlertCircle, Zap, CreditCard, Crown, Package } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Badge } from '@/components/ui/badge'
-import Logo from '@/components/Logo'
 import { useCart } from '@/contexts/CartContext'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -1427,71 +1426,6 @@ function KreatorPageComponent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/">
-                <Logo width={120} height={32} />
-              </Link>
-            </div>
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                <Link href="/menu" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Menu
-                </Link>
-                <Link href="/dlaczego-my" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Dlaczego my
-                </Link>
-                <Link href="/jak-to-dziala" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Jak to działa
-                </Link>
-                <Link href="/faq" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  FAQ
-                </Link>
-                <Link href="/dostawa" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Dostawa
-                </Link>
-                <Link href="/kreator" className="text-[var(--smakowalo-green-primary)] hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium border-b-2 border-[var(--smakowalo-green-primary)]">
-                  Kreator
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              {!session ? (
-                <Link href="/login">
-                  <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-primary)] hover:text-white">
-                    Zaloguj
-                  </Button>
-                </Link>
-              ) : (
-                <Link href="/panel">
-                  <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-primary)] hover:text-white">
-                    <User className="w-4 h-4 mr-2" />
-                    Panel
-                  </Button>
-                </Link>
-              )}
-
-              {/* Only show basket button if user is logged in */}
-              {session && (
-                <Link href="/cart">
-                  <Button className="smakowalo-green relative">
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                    Koszyk
-                    {totalItems > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        {totalItems}
-                      </span>
-                    )}
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-8">

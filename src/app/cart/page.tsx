@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Minus, Plus, Trash2, ShoppingCart, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import Navigation from "@/components/Navigation"
 import { useCart } from "@/contexts/CartContext"
 
 export default function CartPage() {
@@ -25,7 +24,6 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      <Navigation currentPage="/cart" />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}

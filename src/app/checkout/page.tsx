@@ -18,14 +18,12 @@ import {
   CheckCircle,
   ArrowLeft,
   ShoppingCart,
-  User,
   Loader2,
   Tag,
   AlertCircle,
   Percent
 } from "lucide-react"
 import Link from "next/link"
-import Logo from "@/components/Logo"
 import { useCart } from '@/contexts/CartContext'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
@@ -583,26 +581,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/">
-                <Logo width={120} height={32} />
-              </Link>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/panel">
-                <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
-                  <User className="w-4 h-4 mr-2" />
-                  Panel
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="mb-8">

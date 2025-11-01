@@ -18,6 +18,7 @@ function createSupabaseClient(url: string, key: string): SupabaseClient {
     auth: {
       persistSession: true,
       storageKey: 'smakowalo_auth',
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     },
   })
 }
