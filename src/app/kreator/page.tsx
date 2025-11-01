@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Check, ChefHat, Clock, Heart, Loader, AlertCircle, Zap, CreditCard, Crown, Package } from "lucide-react"
+import { Check, ChefHat, Clock, Heart, Loader, AlertCircle, Zap, CreditCard, Crown, Package, ShoppingCart, User } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Badge } from '@/components/ui/badge'
