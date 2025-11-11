@@ -960,6 +960,11 @@ function KreatorPageComponent() {
 
       case 4:
         // Step 4: Login and payment
+        // Don't render anything while session is loading to prevent showing login prompt to already logged-in users
+        if (status === 'loading') {
+          return null;
+        }
+
         return (
           <div className="max-w-3xl mx-auto">
             <h2 className="text-2xl font-bold text-[var(--smakowalo-green-dark)] mb-6 text-center">
