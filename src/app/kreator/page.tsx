@@ -87,7 +87,7 @@ interface Product {
 }
 
 function KreatorPageComponent() {
-  const { data: session, status } = useSession()
+  const { data: session, status, update: updateSession } = useSession()
   const { totalItems, addItem } = useCart()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -171,6 +171,35 @@ function KreatorPageComponent() {
       console.error('Failed to clear draft:', error);
     }
   };
+
+  // Handle resume=1 parameter to fix login loop
+  useEffect(() => {
+    const resume = searchParams.get('resume');
+    
+    if (resume === '1') {
+      console.log('🔄 Resume parameter detected, checking session...');
+      
+      // If session is not available yet, force a reload
+      if (status === 'loading') {
+        console.log('⏳ Session still loading...');
+        return;
+      }
+      
+      if (!session && status === 'unauthenticated') {
+        console.log('🔄 No session found, forcing session update...');
+        // Force NextAuth to check the session again
+        updateSession().then(() => {
+          console.log('✅ Session update triggered');
+        });
+      } else if (session && status === 'authenticated') {
+        console.log('✅ Session found after login, reloading page to update state...');
+        // Clear the resume parameter and reload to ensure authenticated state is recognized
+        const url = new URL(window.location.href);
+        url.searchParams.delete('resume');
+        window.location.href = url.toString(); // Full page reload to ensure state sync
+      }
+    }
+  }, [session, status, searchParams, updateSession]);
 
   // Fetch real OpenCart products
   useEffect(() => {
@@ -282,7 +311,40 @@ function KreatorPageComponent() {
       const shouldResume = searchParams.get('resume') === '1';
       
       if (shouldResume && availableProducts.length > 0) {
-        const draft = loadDraft();
+        // Inline loadDraft logic to avoid dependency issues
+        let draft: KreatorDraft | null = null;
+        try {
+          const stored = localStorage.getItem(DRAFT_KEY);
+          if (stored) {
+            draft = JSON.parse(stored) as KreatorDraft;
+            
+            // Check expiry
+            if (Date.now() - draft.ts > DRAFT_EXPIRY_MS) {
+              console.log('⏰ Draft expired, clearing...');
+              try {
+                localStorage.removeItem(DRAFT_KEY);
+                console.log('🗑️ Draft cleared');
+              } catch (error) {
+                console.error('Failed to clear draft:', error);
+              }
+              draft = null;
+            } else if (draft.v !== 1) {
+              console.log('⚠️ Draft version mismatch, clearing...');
+              try {
+                localStorage.removeItem(DRAFT_KEY);
+                console.log('🗑️ Draft cleared');
+              } catch (error) {
+                console.error('Failed to clear draft:', error);
+              }
+              draft = null;
+            } else {
+              console.log('📂 Draft loaded:', draft);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load draft:', error);
+          draft = null;
+        }
         
         if (draft) {
           console.log('🔄 Restoring draft state...');
@@ -327,7 +389,7 @@ function KreatorPageComponent() {
 
     loadPreferences();
     restoreDraft();
-  }, [session, status, mode, searchParams, availableProducts]);
+  }, [session, mode, searchParams, availableProducts]);
 
   // Price per portion is 30 PLN as requested
   const pricePerPortion = 30;
@@ -837,7 +899,7 @@ function KreatorPageComponent() {
           </>
         );
 
-      case 3:
+      case 3: {
         // Step 3: Select meals for subscription (active selection, not passive preview)
         const targetMealCount = getSubscriptionMealCount();
         
@@ -957,6 +1019,7 @@ function KreatorPageComponent() {
             </div>
           </div>
         );
+      }
 
       case 4:
         // Step 4: Login and payment

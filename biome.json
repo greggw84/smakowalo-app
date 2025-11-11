@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.5/schema.json",
   "vcs": {
     "enabled": false,
     "clientKind": "git",
@@ -7,15 +7,19 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["dist", ".next", "node_modules", "build", "src/generated/**"],
-    "include": ["src/**/*.ts", "src/**/*.tsx"]
+    "includes": [
+      "**/src/**/*.ts",
+      "**/src/**/*.tsx",
+      "!**/dist",
+      "!**/.next",
+      "!**/node_modules",
+      "!**/build",
+      "!**/src/generated/**"
+    ]
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space"
-  },
-  "organizeImports": {
-    "enabled": true
   },
   "linter": {
     "enabled": true,
@@ -23,9 +27,6 @@
       "recommended": true,
       "correctness": {
         "noUnusedVariables": "off"
-      },
-      "nursery": {
-        "noImgElement": "off"
       },
       "a11y": {
         "noAutofocus": "off",
