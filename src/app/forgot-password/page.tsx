@@ -1,95 +1,92 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle, Loader2, ArrowLeft, Mail } from "lucide-react"
-import Link from "next/link"
-import Logo from '@/components/Logo'
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { createClient } from "@supabase/supabase-js";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle,
+  Loader2,
+  Mail,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 // ✅ Initialize Supabase client conditionally
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabase =
+  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default function ForgotPasswordPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSuccess('')
+    e.preventDefault();
+    setError("");
+    setSuccess("");
 
     if (!email) {
-      setError('Podaj adres email')
-      return
+      setError("Podaj adres email");
+      return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Podaj prawidłowy adres email')
-      return
+      setError("Podaj prawidłowy adres email");
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
       if (!supabase) {
-        setError('Supabase is not configured. Please set environment variables.');
+        setError(
+          "Supabase is not configured. Please set environment variables.",
+        );
         setIsLoading(false);
         return;
       }
 
       // ✅ Use Supabase’s built-in password reset
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://www.smakowalo.pl/reset-password',
-      })
+        redirectTo: "https://www.smakowalo.pl/reset-password",
+      });
 
       if (error) {
-        console.error('Supabase reset error:', error)
-        setError('Nie udało się wysłać wiadomości: ' + error.message)
+        console.error("Supabase reset error:", error);
+        setError(`Nie udało się wysłać wiadomości: ${error.message}`);
       } else {
-        setSuccess('✅ Email z linkiem do resetowania hasła został wysłany! Sprawdź swoją skrzynkę.')
-        setEmail('')
+        setSuccess(
+          "✅ Email z linkiem do resetowania hasła został wysłany! Sprawdź swoją skrzynkę.",
+        );
+        setEmail("");
       }
     } catch (err) {
-      console.error('Reset password error:', err)
-      setError('Wystąpił nieoczekiwany błąd. Spróbuj ponownie.')
+      console.error("Reset password error:", err);
+      setError("Wystąpił nieoczekiwany błąd. Spróbuj ponownie.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/">
-                <Logo width={120} height={32} />
-              </Link>
-            </div>
-            <Link href="/login">
-              <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Powrót do logowania
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       <div className="flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
@@ -163,8 +160,11 @@ export default function ForgotPasswordPage() {
 
               <div className="mt-6 text-center text-sm">
                 <p className="text-gray-600">
-                  Pamiętasz hasło?{' '}
-                  <Link href="/login" className="text-[var(--smakowalo-green-primary)] hover:underline font-medium">
+                  Pamiętasz hasło?{" "}
+                  <Link
+                    href="/login"
+                    className="text-[var(--smakowalo-green-primary)] hover:underline font-medium"
+                  >
                     Zaloguj się
                   </Link>
                 </p>
@@ -174,5 +174,5 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

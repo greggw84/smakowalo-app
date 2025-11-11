@@ -1,82 +1,24 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import Image from 'next/image'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  ShoppingCart,
+  Award,
   Clock,
   Heart,
-  Truck,
   Leaf,
   Shield,
   Star,
+  TrendingUp,
+  Truck,
   Users,
-  Award,
-  TrendingUp
-} from "lucide-react"
-import Logo from '@/components/Logo'
-import { useCart } from '@/contexts/CartContext'
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function WhyUsPage() {
-  const { totalItems } = useCart()
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/">
-                <Logo width={120} height={32} />
-              </Link>
-            </div>
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                <Link href="/menu" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Menu
-                </Link>
-                <Link href="/dlaczego-my" className="text-[var(--smakowalo-green-primary)] hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium border-b-2 border-[var(--smakowalo-green-primary)]">
-                  Dlaczego my
-                </Link>
-                <Link href="/jak-to-dziala" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Jak to działa
-                </Link>
-                <Link href="/faq" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  FAQ
-                </Link>
-                <Link href="/dostawa" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Dostawa
-                </Link>
-                <Link href="/kreator" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Kreator
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/login">
-                <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-primary)] hover:text-white">
-                  Zaloguj
-                </Button>
-              </Link>
-              <Link href="/cart">
-                <Button className="smakowalo-green relative">
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  Koszyk
-                  {totalItems > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {totalItems}
-                    </span>
-                  )}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Section */}
       <section className="relative pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -85,7 +27,8 @@ export default function WhyUsPage() {
               Dlaczego warto wybrać Smakowało?
             </h1>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              Odkryj, co wyróżnia nas na tle konkurencji i dlaczego tysiące klientów ufa naszej jakości każdego dnia
+              Odkryj, co wyróżnia nas na tle konkurencji i dlaczego tysiące
+              klientów ufa naszej jakości każdego dnia
             </p>
           </div>
         </div>
@@ -105,7 +48,8 @@ export default function WhyUsPage() {
                   Oszczędność czasu
                 </h3>
                 <p className="text-gray-600">
-                  Nie tracisz czasu na planowanie posiłków, kompletowanie listy zakupów i chodzenie po sklepach.
+                  Nie tracisz czasu na planowanie posiłków, kompletowanie listy
+                  zakupów i chodzenie po sklepach.
                 </p>
               </CardContent>
             </Card>
@@ -120,7 +64,8 @@ export default function WhyUsPage() {
                   Redukcja stresu
                 </h3>
                 <p className="text-gray-600">
-                  Dostarczamy wszystko, czego potrzebujesz, prosto pod Twoje drzwi w dogodnym dla Ciebie terminie.
+                  Dostarczamy wszystko, czego potrzebujesz, prosto pod Twoje
+                  drzwi w dogodnym dla Ciebie terminie.
                 </p>
               </CardContent>
             </Card>
@@ -135,7 +80,8 @@ export default function WhyUsPage() {
                   Zero marnowania
                 </h3>
                 <p className="text-gray-600">
-                  Brak marnowania jedzenia dzięki dokładnie odmierzonym składnikom i precyzyjnie zaplanowanym porcjom.
+                  Brak marnowania jedzenia dzięki dokładnie odmierzonym
+                  składnikom i precyzyjnie zaplanowanym porcjom.
                 </p>
               </CardContent>
             </Card>
@@ -150,7 +96,8 @@ export default function WhyUsPage() {
                   Ekologia
                 </h3>
                 <p className="text-gray-600">
-                  Składniki najlepszej jakości prosto od rolnika w ekologicznych opakowaniach.
+                  Składniki najlepszej jakości prosto od rolnika w ekologicznych
+                  opakowaniach.
                 </p>
               </CardContent>
             </Card>
@@ -175,7 +122,9 @@ export default function WhyUsPage() {
               <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-[var(--smakowalo-green-primary)] to-[var(--smakowalo-green-dark)] rounded-full flex items-center justify-center">
                 <Users className="w-10 h-10 text-white" />
               </div>
-              <div className="text-3xl font-bold text-[var(--smakowalo-green-dark)] mb-2">50,000+</div>
+              <div className="text-3xl font-bold text-[var(--smakowalo-green-dark)] mb-2">
+                50,000+
+              </div>
               <div className="text-gray-600">Zadowolonych klientów</div>
             </div>
 
@@ -183,7 +132,9 @@ export default function WhyUsPage() {
               <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
                 <Award className="w-10 h-10 text-white" />
               </div>
-              <div className="text-3xl font-bold text-[var(--smakowalo-green-dark)] mb-2">1,000,000+</div>
+              <div className="text-3xl font-bold text-[var(--smakowalo-green-dark)] mb-2">
+                1,000,000+
+              </div>
               <div className="text-gray-600">Dostarczonych posiłków</div>
             </div>
 
@@ -191,7 +142,9 @@ export default function WhyUsPage() {
               <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
                 <Star className="w-10 h-10 text-white" />
               </div>
-              <div className="text-3xl font-bold text-[var(--smakowalo-green-dark)] mb-2">4.9/5</div>
+              <div className="text-3xl font-bold text-[var(--smakowalo-green-dark)] mb-2">
+                4.9/5
+              </div>
               <div className="text-gray-600">Średnia ocen klientów</div>
             </div>
 
@@ -199,7 +152,9 @@ export default function WhyUsPage() {
               <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center">
                 <TrendingUp className="w-10 h-10 text-white" />
               </div>
-              <div className="text-3xl font-bold text-[var(--smakowalo-green-dark)] mb-2">98%</div>
+              <div className="text-3xl font-bold text-[var(--smakowalo-green-dark)] mb-2">
+                98%
+              </div>
               <div className="text-gray-600">Klientów poleca nas znajomym</div>
             </div>
           </div>
@@ -214,7 +169,8 @@ export default function WhyUsPage() {
               Nasze gwarancje jakości
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Zobowiązujemy się do najwyższych standardów w każdym aspekcie naszej działalności
+              Zobowiązujemy się do najwyższych standardów w każdym aspekcie
+              naszej działalności
             </p>
           </div>
 
@@ -228,7 +184,8 @@ export default function WhyUsPage() {
                   100% Gwarancja świeżości
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Jeśli nie jesteś zadowolony ze świeżości składników, zwrócimy Ci pieniądze bez pytań.
+                  Jeśli nie jesteś zadowolony ze świeżości składników, zwrócimy
+                  Ci pieniądze bez pytań.
                 </p>
                 <ul className="text-sm text-gray-500 space-y-1">
                   <li>• Składniki prosto od producentów</li>
@@ -247,7 +204,8 @@ export default function WhyUsPage() {
                   Punktualność dostaw
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Dostarczamy w wybranym przez Ciebie terminie lub oferujemy rekompensatę.
+                  Dostarczamy w wybranym przez Ciebie terminie lub oferujemy
+                  rekompensatę.
                 </p>
                 <ul className="text-sm text-gray-500 space-y-1">
                   <li>• Elastyczne okna czasowe</li>
@@ -266,7 +224,8 @@ export default function WhyUsPage() {
                   Satysfakcja gwarantowana
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Jeśli nie jesteś w 100% zadowolony, skontaktuj się z nami - znajdziemy rozwiązanie.
+                  Jeśli nie jesteś w 100% zadowolony, skontaktuj się z nami -
+                  znajdziemy rozwiązanie.
                 </p>
                 <ul className="text-sm text-gray-500 space-y-1">
                   <li>• Obsługa klienta 24/7</li>
@@ -286,7 +245,8 @@ export default function WhyUsPage() {
             Przekonaj się sam!
           </h2>
           <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
-            Dołącz do tysięcy zadowolonych klientów i rozpocznij swoją przygodę ze zdrowymi posiłkami już dziś
+            Dołącz do tysięcy zadowolonych klientów i rozpocznij swoją przygodę
+            ze zdrowymi posiłkami już dziś
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/kreator">
@@ -310,5 +270,5 @@ export default function WhyUsPage() {
         </div>
       </section>
     </div>
-  )
+  );
 }

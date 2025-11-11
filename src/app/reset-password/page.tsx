@@ -1,85 +1,100 @@
-'use client'
+"use client";
 
-import { useState, useEffect, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff, Lock } from "lucide-react"
-import Link from "next/link"
-import Logo from '@/components/Logo'
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { createClient } from "@supabase/supabase-js";
+import {
+  AlertCircle,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabase =
+  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 function ResetPasswordContent() {
-  const router = useRouter()
+  const router = useRouter();
 
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
-  const [tokenValid, setTokenValid] = useState(false)
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [tokenValid, setTokenValid] = useState(false);
 
   // Detect Supabase recovery link in hash
   useEffect(() => {
-    const hash = window.location.hash
-    if (hash.includes('type=recovery')) {
-      setTokenValid(true)
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery")) {
+      setTokenValid(true);
     } else {
-      setError('Nieprawidłowy lub wygasły link resetujący hasło.')
+      setError("Nieprawidłowy lub wygasły link resetujący hasło.");
     }
-  }, [])
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
+    e.preventDefault();
+    setError("");
 
     if (!tokenValid) {
-      setError('Brak ważnego tokenu resetowania hasła.')
-      return
+      setError("Brak ważnego tokenu resetowania hasła.");
+      return;
     }
 
     if (!password || !confirmPassword) {
-      setError('Wszystkie pola są wymagane.')
-      return
+      setError("Wszystkie pola są wymagane.");
+      return;
     }
 
     if (password.length < 6) {
-      setError('Hasło musi mieć co najmniej 6 znaków.')
-      return
+      setError("Hasło musi mieć co najmniej 6 znaków.");
+      return;
     }
 
     if (password !== confirmPassword) {
-      setError('Hasła nie są identyczne.')
-      return
+      setError("Hasła nie są identyczne.");
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password })
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
+      });
 
       if (updateError) {
-        console.error('Error updating password:', updateError)
-        setError('Nie udało się zmienić hasła: ' + updateError.message)
+        console.error("Error updating password:", updateError);
+        setError(`Nie udało się zmienić hasła: ${updateError.message}`);
       } else {
-        setSuccess(true)
-        setTimeout(() => router.push('/login?reset=success'), 2000)
+        setSuccess(true);
+        setTimeout(() => router.push("/login?reset=success"), 2000);
       }
     } catch (err) {
-      console.error('Reset password error:', err)
-      setError('Wystąpił nieoczekiwany błąd. Spróbuj ponownie.')
+      console.error("Reset password error:", err);
+      setError("Wystąpił nieoczekiwany błąd. Spróbuj ponownie.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   // ✅ SUCCESS VIEW
   if (success) {
@@ -102,32 +117,17 @@ function ResetPasswordContent() {
               Możesz teraz zalogować się używając nowego hasła.
             </p>
             <Link href="/login">
-              <Button className="smakowalo-green">
-                Przejdź do logowania
-              </Button>
+              <Button className="smakowalo-green">Przejdź do logowania</Button>
             </Link>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   // ✅ MAIN FORM
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/">
-                <Logo width={120} height={32} />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <div className="flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
@@ -166,7 +166,7 @@ function ResetPasswordContent() {
                   <div className="relative">
                     <Input
                       id="password"
-                      type={showPassword ? 'text' : 'password'}
+                      type={showPassword ? "text" : "password"}
                       placeholder="Minimum 6 znaków"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -194,7 +194,7 @@ function ResetPasswordContent() {
                   <Label htmlFor="confirmPassword">Potwierdź nowe hasło</Label>
                   <Input
                     id="confirmPassword"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     placeholder="Powtórz nowe hasło"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -224,8 +224,11 @@ function ResetPasswordContent() {
 
               <div className="mt-6 text-center text-sm">
                 <p className="text-gray-600">
-                  Pamiętasz hasło?{' '}
-                  <Link href="/login" className="text-[var(--smakowalo-green-primary)] hover:underline font-medium">
+                  Pamiętasz hasło?{" "}
+                  <Link
+                    href="/login"
+                    className="text-[var(--smakowalo-green-primary)] hover:underline font-medium"
+                  >
                     Zaloguj się
                   </Link>
                 </p>
@@ -235,7 +238,7 @@ function ResetPasswordContent() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default function ResetPasswordPage() {
@@ -243,5 +246,5 @@ export default function ResetPasswordPage() {
     <Suspense fallback={<div>Loading...</div>}>
       <ResetPasswordContent />
     </Suspense>
-  )
+  );
 }

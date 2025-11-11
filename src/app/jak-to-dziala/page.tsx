@@ -1,104 +1,46 @@
-'use client'
+"use client";
 
-import Image from 'next/image'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
 import {
+  Apple,
+  Calendar,
+  Check,
   ChefHat,
   Clock,
+  Gift,
   Heart,
-  Truck,
-  Check,
+  Leaf,
+  Phone,
+  Search,
+  Settings,
   ShoppingBag,
   Star,
+  Truck,
   Utensils,
-  Leaf,
-  Apple,
-  Search,
-  Calendar,
-  Settings,
-  Phone,
-  Gift,
-  ShoppingCart
-} from "lucide-react"
-import { motion } from 'framer-motion'
-import Logo from '@/components/Logo'
-import { useCart } from '@/contexts/CartContext'
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
-}
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
+};
 
 const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.2
-    }
-  }
-}
+      staggerChildren: 0.2,
+    },
+  },
+};
 
 export default function HowItWorksPage() {
-  const { totalItems } = useCart()
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/">
-                <Logo width={120} height={32} />
-              </Link>
-            </div>
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                <Link href="/menu" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Menu
-                </Link>
-                <Link href="/dlaczego-my" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Dlaczego my
-                </Link>
-                <Link href="/jak-to-dziala" className="text-[var(--smakowalo-green-primary)] hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium border-b-2 border-[var(--smakowalo-green-primary)]">
-                  Jak to działa
-                </Link>
-                <Link href="/faq" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  FAQ
-                </Link>
-                <Link href="/dostawa" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Dostawa
-                </Link>
-                <Link href="/kreator" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Kreator
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/login">
-                <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-primary)] hover:text-white">
-                  Zaloguj
-                </Button>
-              </Link>
-              <Link href="/cart">
-                <Button className="smakowalo-green relative">
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  Koszyk
-                  {totalItems > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {totalItems}
-                    </span>
-                  )}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Section */}
       <section className="relative pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -112,7 +54,8 @@ export default function HowItWorksPage() {
               Jak to działa?
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Smakowało to prosta droga do przygotowania pysznych i zdrowych posiłków w Twoim domu
+              Smakowało to prosta droga do przygotowania pysznych i zdrowych
+              posiłków w Twoim domu
             </p>
           </motion.div>
 
@@ -137,7 +80,7 @@ export default function HowItWorksPage() {
                 <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                 <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                 <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                <span className="font-medium text-gray-700 ml-1"></span>
+                <span className="font-medium text-gray-700 ml-1" />
               </div>
             </div>
           </motion.div>
@@ -158,7 +101,8 @@ export default function HowItWorksPage() {
               Trzy proste kroki
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Nasz proces jest prosty, szybki i dopasowany do Twojego stylu życia
+              Nasz proces jest prosty, szybki i dopasowany do Twojego stylu
+              życia
             </p>
           </motion.div>
 
@@ -185,7 +129,9 @@ export default function HowItWorksPage() {
                       className="opacity-90 hover:scale-105 transition-transform duration-500 object-cover 2xl:m-[0px] 2xl:p-[0px]"
                     />
                     <div className="absolute top-4 right-4 bg-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg">
-                      <span className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">1</span>
+                      <span className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
+                        1
+                      </span>
                     </div>
                   </div>
 
@@ -199,7 +145,8 @@ export default function HowItWorksPage() {
                     </h3>
 
                     <p className="text-gray-600 mb-4">
-                      Wybieraj spośród różnorodnych przepisów, dopasowanych do Twoich preferencji żywieniowych i celów dietetycznych.
+                      Wybieraj spośród różnorodnych przepisów, dopasowanych do
+                      Twoich preferencji żywieniowych i celów dietetycznych.
                     </p>
 
                     <ul className="space-y-2">
@@ -207,19 +154,26 @@ export default function HowItWorksPage() {
                         <div className="rounded-full bg-green-100 p-1 mr-2 mt-0.5">
                           <Check className="w-3 h-3 text-green-600" />
                         </div>
-                        <span className="text-sm">Personalizowane diety - wegańskie, wegetariańskie, keto i inne</span>
+                        <span className="text-sm">
+                          Personalizowane diety - wegańskie, wegetariańskie,
+                          keto i inne
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <div className="rounded-full bg-green-100 p-1 mr-2 mt-0.5">
                           <Check className="w-3 h-3 text-green-600" />
                         </div>
-                        <span className="text-sm">Różnorodne przepisy odświeżane co tydzień</span>
+                        <span className="text-sm">
+                          Różnorodne przepisy odświeżane co tydzień
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <div className="rounded-full bg-green-100 p-1 mr-2 mt-0.5">
                           <Check className="w-3 h-3 text-green-600" />
                         </div>
-                        <span className="text-sm">Pełna informacja o wartościach odżywczych</span>
+                        <span className="text-sm">
+                          Pełna informacja o wartościach odżywczych
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -244,7 +198,9 @@ export default function HowItWorksPage() {
                       className="object-cover opacity-90 hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-4 right-4 bg-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg">
-                      <span className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">2</span>
+                      <span className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
+                        2
+                      </span>
                     </div>
                   </div>
 
@@ -258,7 +214,8 @@ export default function HowItWorksPage() {
                     </h3>
 
                     <p className="text-gray-600 mb-4">
-                      Świeże składniki w dokładnie odmierzonych ilościach trafiają prosto pod Twoje drzwi w wybranym terminie.
+                      Świeże składniki w dokładnie odmierzonych ilościach
+                      trafiają prosto pod Twoje drzwi w wybranym terminie.
                     </p>
 
                     <ul className="space-y-2">
@@ -266,19 +223,25 @@ export default function HowItWorksPage() {
                         <div className="rounded-full bg-green-100 p-1 mr-2 mt-0.5">
                           <Check className="w-3 h-3 text-green-600" />
                         </div>
-                        <span className="text-sm">Ekologiczne opakowania zachowujące świeżość</span>
+                        <span className="text-sm">
+                          Ekologiczne opakowania zachowujące świeżość
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <div className="rounded-full bg-green-100 p-1 mr-2 mt-0.5">
                           <Check className="w-3 h-3 text-green-600" />
                         </div>
-                        <span className="text-sm">Składniki najwyższej jakości od lokalnych dostawców</span>
+                        <span className="text-sm">
+                          Składniki najwyższej jakości od lokalnych dostawców
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <div className="rounded-full bg-green-100 p-1 mr-2 mt-0.5">
                           <Check className="w-3 h-3 text-green-600" />
                         </div>
-                        <span className="text-sm">Elastyczne terminy dostaw dopasowane do Ciebie</span>
+                        <span className="text-sm">
+                          Elastyczne terminy dostaw dopasowane do Ciebie
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -303,7 +266,9 @@ export default function HowItWorksPage() {
                       className="opacity-90 hover:scale-105 transition-transform duration-500 object-cover 2xl:my-[0px] 2xl:px-[0px]"
                     />
                     <div className="absolute top-4 right-4 bg-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg">
-                      <span className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">3</span>
+                      <span className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
+                        3
+                      </span>
                     </div>
                   </div>
 
@@ -317,7 +282,8 @@ export default function HowItWorksPage() {
                     </h3>
 
                     <p className="text-gray-600 mb-4">
-                      Przygotuj pyszne posiłki z pomocą naszych przejrzystych i łatwych instrukcji krok po kroku.
+                      Przygotuj pyszne posiłki z pomocą naszych przejrzystych i
+                      łatwych instrukcji krok po kroku.
                     </p>
 
                     <ul className="space-y-2">
@@ -325,19 +291,25 @@ export default function HowItWorksPage() {
                         <div className="rounded-full bg-green-100 p-1 mr-2 mt-0.5">
                           <Check className="w-3 h-3 text-green-600" />
                         </div>
-                        <span className="text-sm">Instrukcje krok po kroku ze zdjęciami</span>
+                        <span className="text-sm">
+                          Instrukcje krok po kroku ze zdjęciami
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <div className="rounded-full bg-green-100 p-1 mr-2 mt-0.5">
                           <Check className="w-3 h-3 text-green-600" />
                         </div>
-                        <span className="text-sm">Większość dań gotowych w mniej niż 30 minut</span>
+                        <span className="text-sm">
+                          Większość dań gotowych w mniej niż 30 minut
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <div className="rounded-full bg-green-100 p-1 mr-2 mt-0.5">
                           <Check className="w-3 h-3 text-green-600" />
                         </div>
-                        <span className="text-sm">Przepisy dostosowane do każdego poziomu umiejętności</span>
+                        <span className="text-sm">
+                          Przepisy dostosowane do każdego poziomu umiejętności
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -381,7 +353,11 @@ export default function HowItWorksPage() {
             viewport={{ once: true }}
           >
             {/* Benefit 1 */}
-            <motion.div variants={fadeIn} whileHover={{ y: -10 }} transition={{ duration: 0.3 }}>
+            <motion.div
+              variants={fadeIn}
+              whileHover={{ y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
               <Card className="border-none shadow-xl h-full bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
                 <CardContent className="p-8">
                   <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -391,14 +367,19 @@ export default function HowItWorksPage() {
                     Oszczędność czasu
                   </h3>
                   <p className="text-gray-600 text-center">
-                    Nie tracisz czasu na planowanie posiłków, kompletowanie listy zakupów i chodzenie po sklepach.
+                    Nie tracisz czasu na planowanie posiłków, kompletowanie
+                    listy zakupów i chodzenie po sklepach.
                   </p>
                 </CardContent>
               </Card>
             </motion.div>
 
             {/* Benefit 2 */}
-            <motion.div variants={fadeIn} whileHover={{ y: -10 }} transition={{ duration: 0.3 }}>
+            <motion.div
+              variants={fadeIn}
+              whileHover={{ y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
               <Card className="border-none shadow-xl h-full bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
                 <CardContent className="p-8">
                   <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -408,14 +389,19 @@ export default function HowItWorksPage() {
                     Redukcja stresu
                   </h3>
                   <p className="text-gray-600 text-center">
-                    Dostarczamy wszystko, czego potrzebujesz, prosto pod Twoje drzwi w dogodnym dla Ciebie terminie.
+                    Dostarczamy wszystko, czego potrzebujesz, prosto pod Twoje
+                    drzwi w dogodnym dla Ciebie terminie.
                   </p>
                 </CardContent>
               </Card>
             </motion.div>
 
             {/* Benefit 3 */}
-            <motion.div variants={fadeIn} whileHover={{ y: -10 }} transition={{ duration: 0.3 }}>
+            <motion.div
+              variants={fadeIn}
+              whileHover={{ y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
               <Card className="border-none shadow-xl h-full bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
                 <CardContent className="p-8">
                   <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -425,14 +411,19 @@ export default function HowItWorksPage() {
                     Kontrola nad dietą
                   </h3>
                   <p className="text-gray-600 text-center">
-                    Znasz dokładną zawartość składników odżywczych w każdym posiłku, co pomaga w utrzymaniu zdrowej diety.
+                    Znasz dokładną zawartość składników odżywczych w każdym
+                    posiłku, co pomaga w utrzymaniu zdrowej diety.
                   </p>
                 </CardContent>
               </Card>
             </motion.div>
 
             {/* Benefit 4 */}
-            <motion.div variants={fadeIn} whileHover={{ y: -10 }} transition={{ duration: 0.3 }}>
+            <motion.div
+              variants={fadeIn}
+              whileHover={{ y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
               <Card className="border-none shadow-xl h-full bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
                 <CardContent className="p-8">
                   <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -442,7 +433,8 @@ export default function HowItWorksPage() {
                     Ekologia
                   </h3>
                   <p className="text-gray-600 text-center">
-                    Zmniejszasz marnowanie żywności dzięki dokładnie odmierzonym porcjom, a nasze opakowania są przyjazne dla środowiska.
+                    Zmniejszasz marnowanie żywności dzięki dokładnie odmierzonym
+                    porcjom, a nasze opakowania są przyjazne dla środowiska.
                   </p>
                 </CardContent>
               </Card>
@@ -477,7 +469,10 @@ export default function HowItWorksPage() {
             viewport={{ once: true }}
           >
             {/* Testimonial 1 */}
-            <motion.div variants={fadeIn} className="bg-white rounded-xl shadow-xl p-8 relative">
+            <motion.div
+              variants={fadeIn}
+              className="bg-white rounded-xl shadow-xl p-8 relative"
+            >
               <div className="flex items-center mb-6">
                 <Image
                   src="https://ugc.same-assets.com/USM3DfZqKhrPCRMcPRkwYOK1sipZ-FEu.jpeg"
@@ -487,7 +482,9 @@ export default function HowItWorksPage() {
                   className="border-4 border-[var(--smakowalo-green-light)] object-cover rounded-[9786px]"
                 />
                 <div className="ml-4">
-                  <h4 className="font-bold text-[var(--smakowalo-green-dark)]">Kasia z Warszawy</h4>
+                  <h4 className="font-bold text-[var(--smakowalo-green-dark)]">
+                    Kasia z Warszawy
+                  </h4>
                   <div className="flex">
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
@@ -498,14 +495,24 @@ export default function HowItWorksPage() {
                 </div>
               </div>
               <p className="text-gray-600 italic">
-                "Smakowało to najlepsze co mogło mnie spotkać! Jako zapracowana mama dwójki dzieci nie miałam czasu na planowanie zdrowych posiłków. Teraz wszystko przychodzi pod drzwi, a ja mogę gotować z dziećmi pyszne i zdrowe dania."
+                "Smakowało to najlepsze co mogło mnie spotkać! Jako zapracowana
+                mama dwójki dzieci nie miałam czasu na planowanie zdrowych
+                posiłków. Teraz wszystko przychodzi pod drzwi, a ja mogę gotować
+                z dziećmi pyszne i zdrowe dania."
               </p>
-              <div className="absolute -top-3 -left-3 text-4xl text-[var(--smakowalo-green-primary)]">"</div>
-              <div className="absolute -bottom-3 -right-3 text-4xl text-[var(--smakowalo-green-primary)]">"</div>
+              <div className="absolute -top-3 -left-3 text-4xl text-[var(--smakowalo-green-primary)]">
+                "
+              </div>
+              <div className="absolute -bottom-3 -right-3 text-4xl text-[var(--smakowalo-green-primary)]">
+                "
+              </div>
             </motion.div>
 
             {/* Testimonial 2 */}
-            <motion.div variants={fadeIn} className="bg-white rounded-xl shadow-xl p-8 relative">
+            <motion.div
+              variants={fadeIn}
+              className="bg-white rounded-xl shadow-xl p-8 relative"
+            >
               <div className="flex items-center mb-6">
                 <Image
                   src="https://ext.same-assets.com/817389662/testimonial-2.jpg"
@@ -515,7 +522,9 @@ export default function HowItWorksPage() {
                   className="rounded-full border-4 border-[var(--smakowalo-green-light)]"
                 />
                 <div className="ml-4">
-                  <h4 className="font-bold text-[var(--smakowalo-green-dark)]">Tomek z Krakowa</h4>
+                  <h4 className="font-bold text-[var(--smakowalo-green-dark)]">
+                    Tomek z Krakowa
+                  </h4>
                   <div className="flex">
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
@@ -526,14 +535,24 @@ export default function HowItWorksPage() {
                 </div>
               </div>
               <p className="text-gray-600 italic">
-                "Jako osoba na diecie keto, zawsze miałem problem ze znalezieniem odpowiednich składników i przepisów. Dzięki Smakowało moja dieta stała się prosta i smaczna. Polecam każdemu kto dba o zdrowie!"
+                "Jako osoba na diecie keto, zawsze miałem problem ze
+                znalezieniem odpowiednich składników i przepisów. Dzięki
+                Smakowało moja dieta stała się prosta i smaczna. Polecam każdemu
+                kto dba o zdrowie!"
               </p>
-              <div className="absolute -top-3 -left-3 text-4xl text-[var(--smakowalo-green-primary)]">"</div>
-              <div className="absolute -bottom-3 -right-3 text-4xl text-[var(--smakowalo-green-primary)]">"</div>
+              <div className="absolute -top-3 -left-3 text-4xl text-[var(--smakowalo-green-primary)]">
+                "
+              </div>
+              <div className="absolute -bottom-3 -right-3 text-4xl text-[var(--smakowalo-green-primary)]">
+                "
+              </div>
             </motion.div>
 
             {/* Testimonial 3 */}
-            <motion.div variants={fadeIn} className="bg-white rounded-xl shadow-xl p-8 relative">
+            <motion.div
+              variants={fadeIn}
+              className="bg-white rounded-xl shadow-xl p-8 relative"
+            >
               <div className="flex items-center mb-6">
                 <Image
                   src="https://ext.same-assets.com/817389662/testimonial-3.jpg"
@@ -543,7 +562,9 @@ export default function HowItWorksPage() {
                   className="rounded-full border-4 border-[var(--smakowalo-green-light)]"
                 />
                 <div className="ml-4">
-                  <h4 className="font-bold text-[var(--smakowalo-green-dark)]">Ania z Wrocławia</h4>
+                  <h4 className="font-bold text-[var(--smakowalo-green-dark)]">
+                    Ania z Wrocławia
+                  </h4>
                   <div className="flex">
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
@@ -554,10 +575,16 @@ export default function HowItWorksPage() {
                 </div>
               </div>
               <p className="text-gray-600 italic">
-                "Jestem weganką i zawsze marzyłam o większej różnorodności dań. Smakowało spełniło to marzenie! Każdy tydzień przynosi nowe, kreatywne przepisy, a jakość składników jest zawsze najwyższa."
+                "Jestem weganką i zawsze marzyłam o większej różnorodności dań.
+                Smakowało spełniło to marzenie! Każdy tydzień przynosi nowe,
+                kreatywne przepisy, a jakość składników jest zawsze najwyższa."
               </p>
-              <div className="absolute -top-3 -left-3 text-4xl text-[var(--smakowalo-green-primary)]">"</div>
-              <div className="absolute -bottom-3 -right-3 text-4xl text-[var(--smakowalo-green-primary)]">"</div>
+              <div className="absolute -top-3 -left-3 text-4xl text-[var(--smakowalo-green-primary)]">
+                "
+              </div>
+              <div className="absolute -bottom-3 -right-3 text-4xl text-[var(--smakowalo-green-primary)]">
+                "
+              </div>
             </motion.div>
           </motion.div>
         </div>
@@ -589,38 +616,56 @@ export default function HowItWorksPage() {
             viewport={{ once: true }}
           >
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              <motion.div variants={fadeIn} className="border-b border-gray-100">
+              <motion.div
+                variants={fadeIn}
+                className="border-b border-gray-100"
+              >
                 <div className="p-6">
                   <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-3 flex items-center">
                     <Truck className="w-5 h-5 mr-2 text-[var(--smakowalo-green-primary)]" />
                     Jak działają dostawy?
                   </h3>
                   <p className="text-gray-600">
-                    Dostawy realizowane są w wybranym przez Ciebie dniu tygodnia, w godzinach 8:00-22:00. Składniki dostarczane są w specjalnych opakowaniach termicznych, które zapewniają świeżość nawet przez kilka godzin po dostawie.
+                    Dostawy realizowane są w wybranym przez Ciebie dniu
+                    tygodnia, w godzinach 8:00-22:00. Składniki dostarczane są w
+                    specjalnych opakowaniach termicznych, które zapewniają
+                    świeżość nawet przez kilka godzin po dostawie.
                   </p>
                 </div>
               </motion.div>
 
-              <motion.div variants={fadeIn} className="border-b border-gray-100">
+              <motion.div
+                variants={fadeIn}
+                className="border-b border-gray-100"
+              >
                 <div className="p-6">
                   <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-3 flex items-center">
                     <Calendar className="w-5 h-5 mr-2 text-[var(--smakowalo-green-primary)]" />
                     Czy mogę pominąć tydzień dostawy?
                   </h3>
                   <p className="text-gray-600">
-                    Tak, możesz wstrzymać dostawę na dowolny tydzień, korzystając z panelu użytkownika na naszej stronie lub w aplikacji. Wystarczy to zrobić do środy poprzedzającej tydzień dostawy.
+                    Tak, możesz wstrzymać dostawę na dowolny tydzień,
+                    korzystając z panelu użytkownika na naszej stronie lub w
+                    aplikacji. Wystarczy to zrobić do środy poprzedzającej
+                    tydzień dostawy.
                   </p>
                 </div>
               </motion.div>
 
-              <motion.div variants={fadeIn} className="border-b border-gray-100">
+              <motion.div
+                variants={fadeIn}
+                className="border-b border-gray-100"
+              >
                 <div className="p-6">
                   <h3 className="text-xl font-bold text-[var(--smakowalo-green-dark)] mb-3 flex items-center">
                     <Settings className="w-5 h-5 mr-2 text-[var(--smakowalo-green-primary)]" />
                     Czy mogę zmienić wybrane przepisy?
                   </h3>
                   <p className="text-gray-600">
-                    Oczywiście! Możesz zmieniać wybrane przepisy do środy poprzedzającej tydzień dostawy. Po tym terminie Twój wybór zostanie zablokowany, abyśmy mogli przygotować Twoje zamówienie.
+                    Oczywiście! Możesz zmieniać wybrane przepisy do środy
+                    poprzedzającej tydzień dostawy. Po tym terminie Twój wybór
+                    zostanie zablokowany, abyśmy mogli przygotować Twoje
+                    zamówienie.
                   </p>
                 </div>
               </motion.div>
@@ -632,7 +677,9 @@ export default function HowItWorksPage() {
                     Jak mogę anulować subskrypcję?
                   </h3>
                   <p className="text-gray-600">
-                    Subskrypcję możesz anulować w dowolnym momencie w swoim profilu na naszej stronie. Nie ma żadnych ukrytych opłat ani minimalnego okresu trwania subskrypcji.
+                    Subskrypcję możesz anulować w dowolnym momencie w swoim
+                    profilu na naszej stronie. Nie ma żadnych ukrytych opłat ani
+                    minimalnego okresu trwania subskrypcji.
                   </p>
                 </div>
               </motion.div>
@@ -656,7 +703,8 @@ export default function HowItWorksPage() {
                 Gotowy na kulinarne przygody?
               </h2>
               <p className="text-lg text-white/90 mb-8">
-                Dołącz do tysięcy zadowolonych klientów i zacznij swoją przygodę ze zdrowymi posiłkami. Pierwszy box z 25% zniżką!
+                Dołącz do tysięcy zadowolonych klientów i zacznij swoją przygodę
+                ze zdrowymi posiłkami. Pierwszy box z 25% zniżką!
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link href="/kreator">
@@ -695,7 +743,9 @@ export default function HowItWorksPage() {
               />
               <div className="absolute -bottom-5 -right-5 bg-white p-4 rounded-xl shadow-lg transform rotate-3">
                 <div className="flex items-center">
-                  <div className="font-bold text-[var(--smakowalo-green-primary)] text-3xl mr-2">25%</div>
+                  <div className="font-bold text-[var(--smakowalo-green-primary)] text-3xl mr-2">
+                    25%
+                  </div>
                   <div className="text-gray-700">
                     <div className="font-semibold">RABATU</div>
                     <div className="text-xs">na pierwszy box</div>
@@ -707,5 +757,5 @@ export default function HowItWorksPage() {
         </div>
       </section>
     </div>
-  )
+  );
 }

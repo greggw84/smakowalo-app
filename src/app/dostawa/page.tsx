@@ -1,48 +1,56 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MapPin, Clock, Package, Recycle, Truck, Shield, CreditCard, HelpCircle, Calculator, ShoppingCart } from "lucide-react"
-import Link from "next/link"
-import Logo from "@/components/Logo"
-import { useState } from "react"
-import { useCart } from "@/contexts/CartContext"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Calculator,
+  Clock,
+  CreditCard,
+  HelpCircle,
+  MapPin,
+  Package,
+  Recycle,
+  Shield,
+  Truck,
+} from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 
 const deliveryAreas = [
   { city: "Warszawa", zone: "A", price: 9.99, coordinates: [52.2297, 21.0122] },
-  { city: "Kraków", zone: "A", price: 9.99, coordinates: [50.0647, 19.9450] },
-  { city: "Gdańsk", zone: "B", price: 12.99, coordinates: [54.3520, 18.6466] },
+  { city: "Kraków", zone: "A", price: 9.99, coordinates: [50.0647, 19.945] },
+  { city: "Gdańsk", zone: "B", price: 12.99, coordinates: [54.352, 18.6466] },
   { city: "Wrocław", zone: "A", price: 9.99, coordinates: [51.1079, 17.0385] },
   { city: "Poznań", zone: "A", price: 9.99, coordinates: [52.4064, 16.9252] },
-  { city: "Łódź", zone: "B", price: 12.99, coordinates: [51.7592, 19.4560] },
+  { city: "Łódź", zone: "B", price: 12.99, coordinates: [51.7592, 19.456] },
   { city: "Katowice", zone: "A", price: 9.99, coordinates: [50.2649, 19.0238] },
-  { city: "Lublin", zone: "C", price: 15.99, coordinates: [51.2465, 22.5684] }
-]
+  { city: "Lublin", zone: "C", price: 15.99, coordinates: [51.2465, 22.5684] },
+];
 
 function DeliveryCostCalculator() {
-  const [selectedCity, setSelectedCity] = useState("")
-  const [orderValue, setOrderValue] = useState("")
-  const [isSubscription, setIsSubscription] = useState(false)
-  const [deliveryCost, setDeliveryCost] = useState<number | null>(null)
+  const [selectedCity, setSelectedCity] = useState("");
+  const [orderValue, setOrderValue] = useState("");
+  const [isSubscription, setIsSubscription] = useState(false);
+  const [deliveryCost, setDeliveryCost] = useState<number | null>(null);
 
   const calculateCost = () => {
-    const city = deliveryAreas.find(area => area.city === selectedCity)
-    if (!city || !orderValue) return
+    const city = deliveryAreas.find((area) => area.city === selectedCity);
+    if (!city || !orderValue) return;
 
-    const value = Number.parseFloat(orderValue)
-    let cost = city.price
+    const value = Number.parseFloat(orderValue);
+    let cost = city.price;
 
     // Darmowa dostawa od 150 zł
     if (value >= 150) {
-      cost = 0
+      cost = 0;
     }
     // Zniżka dla subskrypcji
     else if (isSubscription) {
-      cost = 4.99
+      cost = 4.99;
     }
 
-    setDeliveryCost(cost)
-  }
+    setDeliveryCost(cost);
+  };
 
   return (
     <Card className="border-2 hover:border-[var(--smakowalo-brown)] transition-colors">
@@ -65,7 +73,7 @@ function DeliveryCostCalculator() {
             onChange={(e) => setSelectedCity(e.target.value)}
           >
             <option value="">Wybierz miasto</option>
-            {deliveryAreas.map(area => (
+            {deliveryAreas.map((area) => (
               <option key={area.city} value={area.city}>
                 {area.city} (Strefa {area.zone})
               </option>
@@ -110,22 +118,24 @@ function DeliveryCostCalculator() {
         {deliveryCost !== null && (
           <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
             <h4 className="font-bold text-[var(--smakowalo-green-dark)] mb-2">
-              Koszt dostawy: {deliveryCost === 0 ? "DARMOWA!" : `${deliveryCost} zł`}
+              Koszt dostawy:{" "}
+              {deliveryCost === 0 ? "DARMOWA!" : `${deliveryCost} zł`}
             </h4>
             {deliveryCost === 0 && (
               <p className="text-sm text-green-600">
-                🎉 Gratulacje! Twoje zamówienie kwalifikuje się do darmowej dostawy!
+                🎉 Gratulacje! Twoje zamówienie kwalifikuje się do darmowej
+                dostawy!
               </p>
             )}
           </div>
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function InteractiveMap() {
-  const [selectedCity, setSelectedCity] = useState<string | null>(null)
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
 
   return (
     <Card className="border-2 hover:border-[var(--smakowalo-brown)] transition-colors">
@@ -145,14 +155,19 @@ function InteractiveMap() {
               <button
                 key={area.city}
                 className={`absolute w-3 h-3 rounded-full transition-all duration-300 hover:scale-150 ${
-                  area.zone === 'A' ? 'bg-green-500' :
-                  area.zone === 'B' ? 'bg-yellow-500' : 'bg-red-500'
-                } ${selectedCity === area.city ? 'scale-150 ring-2 ring-white' : ''}`}
+                  area.zone === "A"
+                    ? "bg-green-500"
+                    : area.zone === "B"
+                      ? "bg-yellow-500"
+                      : "bg-red-500"
+                } ${selectedCity === area.city ? "scale-150 ring-2 ring-white" : ""}`}
                 style={{
                   left: `${(area.coordinates[1] - 14) * 12}%`,
-                  top: `${(55 - area.coordinates[0]) * 8}%`
+                  top: `${(55 - area.coordinates[0]) * 8}%`,
                 }}
-                onClick={() => setSelectedCity(selectedCity === area.city ? null : area.city)}
+                onClick={() =>
+                  setSelectedCity(selectedCity === area.city ? null : area.city)
+                }
                 title={`${area.city} - Strefa ${area.zone} - ${area.price} zł`}
               />
             ))}
@@ -161,14 +176,18 @@ function InteractiveMap() {
           {selectedCity && (
             <div className="absolute bottom-4 left-4 bg-white p-3 rounded-lg shadow-lg max-w-xs">
               {(() => {
-                const city = deliveryAreas.find(a => a.city === selectedCity)
+                const city = deliveryAreas.find((a) => a.city === selectedCity);
                 return city ? (
                   <div>
-                    <h4 className="font-bold text-[var(--smakowalo-green-dark)]">{city.city}</h4>
+                    <h4 className="font-bold text-[var(--smakowalo-green-dark)]">
+                      {city.city}
+                    </h4>
                     <p className="text-sm text-gray-600">Strefa {city.zone}</p>
-                    <p className="text-sm font-medium">Koszt dostawy: {city.price} zł</p>
+                    <p className="text-sm font-medium">
+                      Koszt dostawy: {city.price} zł
+                    </p>
                   </div>
-                ) : null
+                ) : null;
               })()}
             </div>
           )}
@@ -190,67 +209,12 @@ function InteractiveMap() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export default function DostavaPage() {
-  const { totalItems } = useCart()
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link href="/">
-                <Logo width={120} height={32} />
-              </Link>
-            </div>
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                <Link href="/menu" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Menu
-                </Link>
-                <Link href="/dlaczego-my" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Dlaczego my
-                </Link>
-                <Link href="/jak-to-dziala" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Jak to działa
-                </Link>
-                <Link href="/faq" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  FAQ
-                </Link>
-                <Link href="/dostawa" className="text-[var(--smakowalo-green-primary)] hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium border-b-2 border-[var(--smakowalo-green-primary)]">
-                  Dostawa
-                </Link>
-                <Link href="/kreator" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Kreator
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/login">
-                <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-primary)] hover:text-white">
-                  Zaloguj
-                </Button>
-              </Link>
-              <Link href="/cart">
-                <Button className="smakowalo-green relative">
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  Koszyk
-                  {totalItems > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {totalItems}
-                    </span>
-                  )}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Section */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -258,8 +222,8 @@ export default function DostavaPage() {
             Dostawa
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-            Dostarczamy świeże składniki bezpośrednio pod Twoje drzwi w całej Polsce.
-            Sprawdź, gdzie dowozimy i jak działają nasze dostawy.
+            Dostarczamy świeże składniki bezpośrednio pod Twoje drzwi w całej
+            Polsce. Sprawdź, gdzie dowozimy i jak działają nasze dostawy.
           </p>
         </div>
       </section>
@@ -287,7 +251,8 @@ export default function DostavaPage() {
             Gotowy na pierwszą dostawę?
           </h2>
           <p className="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
-            Sprawdź obszar dostawy i zacznij swoją przygodę ze zdrowymi posiłkami!
+            Sprawdź obszar dostawy i zacznij swoją przygodę ze zdrowymi
+            posiłkami!
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/kreator">
@@ -311,5 +276,5 @@ export default function DostavaPage() {
         </div>
       </section>
     </div>
-  )
+  );
 }

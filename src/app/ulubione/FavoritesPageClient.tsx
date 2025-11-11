@@ -1,88 +1,51 @@
-'use client'
+"use client";
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Heart, Trash2, ShoppingCart, Clock, Users } from 'lucide-react'
-import Link from 'next/link'
-import Image from 'next/image'
-import Logo from '@/components/Logo'
-import { useFavorites } from '@/contexts/FavoritesContext'
-import { useCart } from '@/contexts/CartContext'
-import FavoriteButton from '@/components/FavoriteButton'
-import { trackEvent } from '@/components/Analytics'
+import { trackEvent } from "@/components/Analytics";
+import FavoriteButton from "@/components/FavoriteButton";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useCart } from "@/contexts/CartContext";
+import { useFavorites } from "@/contexts/FavoritesContext";
+import { Clock, Heart, ShoppingCart, Trash2, Users } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function FavoritesPageClient() {
-  const { favorites, clearFavorites, favoritesCount } = useFavorites()
-  const { addItem } = useCart()
+  const { favorites, clearFavorites, favoritesCount } = useFavorites();
+  const { addItem } = useCart();
 
   const handleAddToCart = (favorite: any) => {
     addItem({
       id: favorite.id,
       name: favorite.name,
       image: favorite.image,
-      price: favorite.price
-    })
+      price: favorite.price,
+    });
 
     trackEvent.addToCart(
       favorite.id.toString(),
       favorite.name,
       favorite.price,
-      1
-    )
-  }
+      1,
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[var(--smakowalo-cream)]">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/">
-              <Logo width={120} height={32} />
-            </Link>
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                <Link href="/menu" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Menu
-                </Link>
-                <Link href="/dlaczego-my" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Dlaczego my
-                </Link>
-                <Link href="/jak-to-dziala" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Jak to działa
-                </Link>
-                <Link href="/faq" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  FAQ
-                </Link>
-                <Link href="/dostawa" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Dostawa
-                </Link>
-                <Link href="/kreator" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
-                  Kreator
-                </Link>
-                <Link href="/ulubione" className="text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium border-b-2 border-[var(--smakowalo-green-primary)]">
-                  Ulubione
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/login">
-                <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
-                  Zaloguj
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       {/* Breadcrumb */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Link href="/" className="hover:text-[var(--smakowalo-green-primary)]">Strona główna</Link>
+            <Link
+              href="/"
+              className="hover:text-[var(--smakowalo-green-primary)]"
+            >
+              Strona główna
+            </Link>
             <span>/</span>
-            <span className="text-[var(--smakowalo-green-dark)] font-medium">Ulubione dania</span>
+            <span className="text-[var(--smakowalo-green-dark)] font-medium">
+              Ulubione dania
+            </span>
           </div>
         </div>
       </div>
@@ -97,9 +60,8 @@ export default function FavoritesPageClient() {
             </h1>
             <p className="text-gray-600">
               {favoritesCount === 0
-                ? 'Nie masz jeszcze żadnych ulubionych dań'
-                : `Masz ${favoritesCount} ${favoritesCount === 1 ? 'ulubione danie' : favoritesCount < 5 ? 'ulubione dania' : 'ulubionych dań'}`
-              }
+                ? "Nie masz jeszcze żadnych ulubionych dań"
+                : `Masz ${favoritesCount} ${favoritesCount === 1 ? "ulubione danie" : favoritesCount < 5 ? "ulubione dania" : "ulubionych dań"}`}
             </p>
           </div>
 
@@ -133,7 +95,10 @@ export default function FavoritesPageClient() {
                   </Button>
                 </Link>
                 <Link href="/kreator">
-                  <Button variant="outline" className="w-full border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
+                  <Button
+                    variant="outline"
+                    className="w-full border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]"
+                  >
                     Użyj kreatora
                   </Button>
                 </Link>
@@ -144,7 +109,10 @@ export default function FavoritesPageClient() {
           /* Favorites Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {favorites.map((favorite) => (
-              <Card key={favorite.id} className="overflow-hidden hover:shadow-xl transition-shadow duration-300">
+              <Card
+                key={favorite.id}
+                className="overflow-hidden hover:shadow-xl transition-shadow duration-300"
+              >
                 <div className="relative h-48">
                   <Image
                     src={favorite.image}
@@ -179,7 +147,8 @@ export default function FavoritesPageClient() {
                   </div>
 
                   <div className="text-xs text-gray-500 mb-4">
-                    Dodano: {new Date(favorite.addedAt).toLocaleDateString('pl-PL')}
+                    Dodano:{" "}
+                    {new Date(favorite.addedAt).toLocaleDateString("pl-PL")}
                   </div>
 
                   <div className="flex gap-2">
@@ -236,5 +205,5 @@ export default function FavoritesPageClient() {
         )}
       </div>
     </div>
-  )
+  );
 }
