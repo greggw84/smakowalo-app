@@ -514,6 +514,11 @@ function KreatorPageComponent() {
   };
 
   const handleAddToCart = async () => {
+    // Wait for session loading to complete
+    if (status === "loading") {
+      return;
+    }
+
     // Check if user is authenticated
     if (!session) {
       saveDraft();
@@ -553,6 +558,11 @@ function KreatorPageComponent() {
   };
 
   const handleSubscriptionPayment = async () => {
+    // Wait for session loading to complete
+    if (status === "loading") {
+      return;
+    }
+
     // Ensure user is authenticated
     if (!session) {
       saveDraft();
@@ -966,7 +976,17 @@ function KreatorPageComponent() {
               Krok 4: Zaloguj się i opłać subskrypcję
             </h2>
 
-            {!session ? (
+            {status === "loading" ? (
+              <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+                <div className="text-center">
+                  <Loader className="w-16 h-16 text-[var(--smakowalo-green-primary)] mx-auto mb-4 animate-spin" />
+                  <h3 className="text-xl font-semibold mb-2">Sprawdzanie sesji...</h3>
+                  <p className="text-gray-600">
+                    Proszę czekać, weryfikujemy Twój status logowania
+                  </p>
+                </div>
+              </div>
+            ) : !session ? (
               <div className="bg-white rounded-lg shadow-md p-8 mb-8">
                 <div className="text-center mb-6">
                   <User className="w-16 h-16 text-[var(--smakowalo-green-primary)] mx-auto mb-4" />
@@ -1378,7 +1398,16 @@ function KreatorPageComponent() {
               </div>
             </div>
 
-            {!session && (
+            {status === "loading" ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <Loader className="w-5 h-5 text-blue-600 mr-2 animate-spin" />
+                  <p className="text-blue-800">
+                    Sprawdzanie sesji...
+                  </p>
+                </div>
+              </div>
+            ) : !session && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                 <div className="flex items-center">
                   <AlertCircle className="w-5 h-5 text-amber-600 mr-2" />
@@ -1400,10 +1429,15 @@ function KreatorPageComponent() {
               <Button
                 size="lg"
                 className="smakowalo-green"
-                disabled={selectedDishes.length < numberOfDays || isAddingToCart}
+                disabled={selectedDishes.length < numberOfDays || isAddingToCart || status === "loading"}
                 onClick={handleAddToCart}
               >
-                {isAddingToCart ? (
+                {status === "loading" ? (
+                  <>
+                    <Loader className="mr-2 h-5 w-5 animate-spin" />
+                    Sprawdzanie sesji...
+                  </>
+                ) : isAddingToCart ? (
                   <>
                     <Loader className="mr-2 h-5 w-5 animate-spin" />
                     Dodawanie...
