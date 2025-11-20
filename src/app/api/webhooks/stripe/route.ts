@@ -1,3 +1,8 @@
+/**
+ * Stripe Webhook Handler
+ * Processes Stripe events and syncs with Supabase
+ * UPDATED: 2025-11-20 21:40 - Force redeploy to fix webhook redirect issue
+ */
 import { type NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
