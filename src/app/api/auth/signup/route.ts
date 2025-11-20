@@ -68,66 +68,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // AUTO-CONFIRM IN DEV, REQUIRE VERIFICATION IN PROD
-    const isDevelopment = process.env.NODE_ENV === 'development'
-
-    console.log('📝 Creating user:', email, 'isDev:', isDevelopment)
+    // AUTO-CONFIRM FOR ALL USERS (no email verification required)
+    // We'll send a welcome email instead
+    console.log('📝 Creating user:', email)
 
     let authData: any;
     let authError: any;
 
-    if (isDevelopment) {
-      // Development: Use admin API to auto-confirm
-      const result = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true, // Auto-confirm in development
-        user_metadata: {
-          first_name: firstName,
-          last_name: lastName,
-          phone: phone
-        }
-      })
-      authData = result.data
-      authError = result.error
-    } else {
-      // Production: Use regular signup which triggers Supabase verification emails
-      const result = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            phone: phone
-          },
-          emailRedirectTo: `${siteUrl}/login?verified=true`
-        }
-      })
-      authData = result.data
-      authError = result.error
-
-      // Send our custom verification email as well (backup)
-      if (result.data.user && !result.data.user.email_confirmed_at) {
-        const verificationEmail = emailTemplates.emailVerification(
-          firstName || 'Użytkowniku',
-          `${siteUrl}/login?email=${encodeURIComponent(email)}`
-        )
-
-        sendEmail({
-          to: email,
-          ...verificationEmail
-        }).then(success => {
-          if (success) {
-            console.log('✅ Verification email sent to:', email)
-          } else {
-            console.warn('⚠️ Failed to send backup verification email to:', email)
-          }
-        }).catch(err => {
-          console.error('❌ Error sending backup verification email:', err)
-        })
+    // Use admin API to auto-confirm (no email verification needed)
+    const result = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true, // Auto-confirm immediately
+      user_metadata: {
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone
       }
-    }
+    })
+    authData = result.data
+    authError = result.error
 
     if (authError || !authData.user) {
       console.error('❌ Error creating user:', authError)
@@ -161,26 +121,27 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ User registered successfully:', email)
 
-    // Different response based on environment
-    if (isDevelopment) {
-      console.log('✅ Auto-confirmed in development mode')
-      return NextResponse.json(
-        {
-          data: {
-            user: {
-              id: authData.user.id,
-              email: email
-            },
-            requiresEmailVerification: false,
-            message: 'Konto utworzone i automatycznie potwierdzone (tryb deweloperski)'
-          },
-          error: null
-        },
-        { status: 201 }
-      )
-    }
+    // Send welcome email through our SMTP
+    const welcomeEmail = emailTemplates.welcome(
+      firstName || 'Użytkowniku',
+      `${siteUrl}/panel`
+    )
 
-    console.log('📧 Email verification required - verification email sent to:', email)
+    sendEmail({
+      to: email,
+      ...welcomeEmail
+    }).then(success => {
+      if (success) {
+        console.log('✅ Welcome email sent to:', email)
+      } else {
+        console.warn('⚠️ Failed to send welcome email to:', email)
+      }
+    }).catch(err => {
+      console.error('❌ Error sending welcome email:', err)
+    })
+
+    // Return success - user can login immediately
+    console.log('✅ User auto-confirmed - can login immediately')
     return NextResponse.json(
       {
         data: {
@@ -188,8 +149,8 @@ export async function POST(request: NextRequest) {
             id: authData.user.id,
             email: email
           },
-          requiresEmailVerification: true,
-          message: 'Konto utworzone! Sprawdź swoją skrzynkę email i kliknij link weryfikacyjny, aby dokończyć rejestrację.'
+          requiresEmailVerification: false,
+          message: 'Konto utworzone pomyślnie! Możesz się teraz zalogować.'
         },
         error: null
       },
