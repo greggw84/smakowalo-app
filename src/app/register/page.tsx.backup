@@ -1,0 +1,182 @@
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Facebook, Mail } from "lucide-react"
+import Link from "next/link"
+
+export default function RegisterPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <div className="text-center mb-4">
+            <h1 className="text-3xl font-bold text-[var(--smakowalo-green-primary)]">
+              Smakowało
+            </h1>
+          </div>
+          <CardTitle className="text-2xl text-center text-[var(--smakowalo-green-dark)]">
+            Utwórz konto
+          </CardTitle>
+          <CardDescription className="text-center">
+            Dołącz do tysięcy zadowolonych klientów
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Social Login Buttons */}
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full border-blue-600 text-blue-600 hover:bg-blue-50"
+              type="button"
+            >
+              <Facebook className="mr-2 h-4 w-4" />
+              Zarejestruj się przez Facebook
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full border-red-600 text-red-600 hover:bg-red-50"
+              type="button"
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              Zarejestruj się przez Google
+            </Button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <Separator className="w-full" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Lub zarejestruj się emailem
+              </span>
+            </div>
+          </div>
+
+          {/* Registration Form */}
+          <form className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">Imię</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  placeholder="Jan"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Nazwisko</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Kowalski"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="twoj@email.com"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefon</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+48 123 456 789"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Hasło</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Minimum 8 znaków"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Potwierdź hasło</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Powtórz hasło"
+                required
+              />
+            </div>
+
+            <div className="flex items-start space-x-2">
+              <input
+                type="checkbox"
+                id="terms"
+                className="rounded border-gray-300 mt-1"
+                required
+              />
+              <Label htmlFor="terms" className="text-sm">
+                Akceptuję{" "}
+                <Link href="/terms" className="text-[var(--smakowalo-green-primary)] hover:underline">
+                  Regulamin
+                </Link>{" "}
+                i{" "}
+                <Link href="/privacy" className="text-[var(--smakowalo-green-primary)] hover:underline">
+                  Politykę Prywatności
+                </Link>
+              </Label>
+            </div>
+
+            <div className="flex items-start space-x-2">
+              <input
+                type="checkbox"
+                id="newsletter"
+                className="rounded border-gray-300 mt-1"
+              />
+              <Label htmlFor="newsletter" className="text-sm">
+                Chcę otrzymywać newsletter z nowościami i ofertami specjalnymi
+              </Label>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full smakowalo-green"
+            >
+              Utwórz konto
+            </Button>
+          </form>
+
+          <div className="text-center text-sm">
+            <span className="text-gray-600">Masz już konto? </span>
+            <Link
+              href="/login"
+              className="text-[var(--smakowalo-green-primary)] hover:underline font-medium"
+            >
+              Zaloguj się
+            </Link>
+          </div>
+
+          <div className="text-center">
+            <Link
+              href="/"
+              className="text-sm text-gray-600 hover:text-[var(--smakowalo-green-primary)]"
+            >
+              ← Powrót do strony głównej
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

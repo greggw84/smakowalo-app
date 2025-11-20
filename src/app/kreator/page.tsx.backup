@@ -1,0 +1,286 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { useState } from "react"
+import Link from "next/link"
+import Image from "next/image"
+
+const diets = [
+  { code: "keto", name: "Keto", description: "Wysoki tłuszcz, niskie węglowodany" },
+  { code: "vegetarian", name: "Wegetariańska", description: "Bez mięsa" },
+  { code: "vegan", name: "Wegańska", description: "Bez produktów zwierzęcych" },
+  { code: "low-carb", name: "Niskowęglowodanowa", description: "Ograniczone węglowodany" },
+  { code: "high-protein", name: "Wysokobiałkowa", description: "Zwiększona zawartość białka" },
+  { code: "flexitarian", name: "Flexitarian", description: "Elastyczna dieta roślinno-mięsna" },
+  { code: "pescatarian", name: "Pescetariańska", description: "Z rybami i owocami morza" },
+  { code: "calorie-conscious", name: "Niskokloryczna", description: "Kontrolowane kalorie" }
+]
+
+const meals = [
+  "Kurczak w sosie curry",
+  "Makaron z pesto i świeżą bazylią",
+  "Zupa dyniowa z imbirem",
+  "Sałatka grecka z fetą",
+  "Tacos z wołowiną i guacamole",
+  "Ryż smażony z warzywami",
+  "Pierogi ruskie z cebulką",
+  "Łosoś pieczony z ziołami",
+  "Kotlety warzywne z quinoa",
+  "Gulasz wołowy z kluskami",
+  "Pizza margherita na cienkim spodzie",
+  "Makaron carbonara",
+  "Zupa ramen z jajkiem",
+  "Wrap z kurczakiem i warzywami"
+]
+
+export default function KreatorPage() {
+  const [selectedDiet, setSelectedDiet] = useState<string>("")
+  const [people, setPeople] = useState<number>(2)
+  const [days, setDays] = useState<number>(3)
+  const [selectedMeals, setSelectedMeals] = useState<string[]>([])
+
+  const basePrice = 15.99
+  const totalPrice = people * days * basePrice
+
+  const handleMealToggle = (meal: string) => {
+    if (selectedMeals.includes(meal)) {
+      setSelectedMeals(selectedMeals.filter(m => m !== meal))
+    } else {
+      if (selectedMeals.length < days) {
+        setSelectedMeals([...selectedMeals, meal])
+      }
+    }
+  }
+
+  const canProceed = selectedDiet && selectedMeals.length === days
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/" className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
+              Smakowało
+            </Link>
+            <div className="flex items-center space-x-4">
+              <Link href="/login">
+                <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
+                  Zaloguj
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
+            Stwórz swój pierwszy box
+          </h1>
+          <p className="text-lg text-gray-600">
+            Wybierz preferencje dietetyczne i skomponuj idealny zestaw posiłków
+          </p>
+        </div>
+
+        {/* Krok 1: Wybór diety */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-2xl text-[var(--smakowalo-green-dark)]">
+              1. Wybierz preferencje dietetyczne
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {diets.map((diet) => (
+                <button
+                  key={diet.code}
+                  onClick={() => setSelectedDiet(diet.code)}
+                  className={`p-4 border-2 rounded-lg text-left transition-all ${
+                    selectedDiet === diet.code
+                      ? "border-[var(--smakowalo-green-primary)] bg-[var(--smakowalo-green-primary)]/10"
+                      : "border-gray-200 hover:border-[var(--smakowalo-green-primary)]/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-[var(--smakowalo-green-dark)]">
+                      {diet.name}
+                    </h3>
+                    {selectedDiet === diet.code && (
+                      <Badge className="smakowalo-green">✓</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600">{diet.description}</p>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Krok 2: Rozmiar pudełka */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-2xl text-[var(--smakowalo-green-dark)]">
+              2. Wybierz ilość dni i osób
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-3">Liczba osób:</label>
+              <div className="flex gap-4">
+                {[2, 4].map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setPeople(num)}
+                    className={`px-6 py-3 rounded-lg border-2 transition-all ${
+                      people === num
+                        ? "border-[var(--smakowalo-green-primary)] bg-[var(--smakowalo-green-primary)] text-white"
+                        : "border-gray-200 hover:border-[var(--smakowalo-green-primary)]"
+                    }`}
+                  >
+                    {num} {num === 2 ? "osoby" : "osoby"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-3">Dni w tygodniu:</label>
+              <div className="flex gap-4">
+                {[3, 4, 5].map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => {
+                      setDays(num)
+                      // Reset meal selection if changing days
+                      if (selectedMeals.length > num) {
+                        setSelectedMeals(selectedMeals.slice(0, num))
+                      }
+                    }}
+                    className={`px-6 py-3 rounded-lg border-2 transition-all ${
+                      days === num
+                        ? "border-[var(--smakowalo-green-primary)] bg-[var(--smakowalo-green-primary)] text-white"
+                        : "border-gray-200 hover:border-[var(--smakowalo-green-primary)]"
+                    }`}
+                  >
+                    {num} {num === 3 || num === 4 ? "dni" : "dni"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-[var(--smakowalo-light-beige)] p-4 rounded-lg">
+              <p className="text-lg font-semibold text-[var(--smakowalo-green-dark)]">
+                Cena tygodniowa: <span className="text-2xl">{totalPrice.toFixed(2)} zł</span>
+              </p>
+              <p className="text-sm text-gray-600">
+                {people} {people === 2 ? "osoby" : "osoby"} × {days} dni × {basePrice} zł za danie
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Krok 3: Wybór dań */}
+        {selectedDiet && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-2xl text-[var(--smakowalo-green-dark)]">
+                3. Wybierz {days} {days === 3 || days === 4 ? "dania" : "dań"}
+              </CardTitle>
+              <p className="text-gray-600">
+                Wybrano: {selectedMeals.length} z {days}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {meals.map((meal) => {
+                  const isSelected = selectedMeals.includes(meal)
+                  const canSelect = selectedMeals.length < days || isSelected
+
+                  return (
+                    <button
+                      key={meal}
+                      onClick={() => handleMealToggle(meal)}
+                      disabled={!canSelect}
+                      className={`p-4 border-2 rounded-lg text-left transition-all ${
+                        isSelected
+                          ? "border-[var(--smakowalo-green-primary)] bg-[var(--smakowalo-green-primary)]/10"
+                          : canSelect
+                            ? "border-gray-200 hover:border-[var(--smakowalo-green-primary)]/50"
+                            : "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium text-[var(--smakowalo-green-dark)]">
+                          {meal}
+                        </h3>
+                        {isSelected && (
+                          <Badge className="smakowalo-green">✓</Badge>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Podsumowanie i przycisk */}
+        <div className="text-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
+            <h3 className="text-xl font-semibold text-[var(--smakowalo-green-dark)] mb-4">
+              Podsumowanie zamówienia
+            </h3>
+            <div className="space-y-2 text-left max-w-md mx-auto">
+              <div className="flex justify-between">
+                <span>Dieta:</span>
+                <span className="font-medium">
+                  {selectedDiet ? diets.find(d => d.code === selectedDiet)?.name : "Nie wybrano"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Liczba osób:</span>
+                <span className="font-medium">{people}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Liczba dni:</span>
+                <span className="font-medium">{days}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Wybrane dania:</span>
+                <span className="font-medium">{selectedMeals.length}/{days}</span>
+              </div>
+              <div className="border-t pt-2 flex justify-between text-lg font-bold">
+                <span>Łączna cena:</span>
+                <span className="text-[var(--smakowalo-green-primary)]">{totalPrice.toFixed(2)} zł</span>
+              </div>
+            </div>
+          </div>
+
+          {canProceed ? (
+            <Link href="/checkout">
+              <Button
+                size="lg"
+                className="smakowalo-green text-lg px-12 py-3"
+              >
+                Wybierz ten plan
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              size="lg"
+              disabled
+              className="text-lg px-12 py-3"
+            >
+              {!selectedDiet ? "Wybierz dietę" : `Wybierz ${days - selectedMeals.length} więcej dań`}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

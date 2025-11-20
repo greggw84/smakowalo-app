@@ -1,0 +1,8 @@
+{
+  "name": "Smakowało",
+  "dev": {
+    "command": "bun run dev",
+    "port": 3000,
+    "url": "http://0.0.0.0:3000"
+  }
+}

@@ -1,0 +1,276 @@
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Clock, Users, ChefHat } from "lucide-react"
+import Link from "next/link"
+import Image from "next/image"
+
+const recipes = [
+  {
+    id: 1,
+    name: "Kurczak Tikka Masala",
+    description: "Aromatyczny kurczak w kremowym sosie pomidorowo-przyprawowym",
+    image: "https://ext.same-assets.com/817389662/206723592.jpeg",
+    cookTime: "30 min",
+    difficulty: "Łatwy",
+    diet: ["high-protein", "calorie-conscious"],
+    calories: 520,
+    protein: "35g",
+    ingredients: ["kurczak", "jogurt", "pomidory", "przyprawy indyjskie"]
+  },
+  {
+    id: 2,
+    name: "Teriyaki Portobello Stir-Fry",
+    description: "Wegańskie danie z grzybami portobello w sosie teriyaki",
+    image: "https://ext.same-assets.com/817389662/2623479817.jpeg",
+    cookTime: "25 min",
+    difficulty: "Łatwy",
+    diet: ["vegan", "vegetarian"],
+    calories: 380,
+    protein: "12g",
+    ingredients: ["grzyby portobello", "warzywa", "sos teriyaki", "ryż"]
+  },
+  {
+    id: 3,
+    name: "Łosoś w sosie maślano-ziołowym",
+    description: "Świeży łosoś z aromatycznym sosem z masła i ziół",
+    image: "https://ext.same-assets.com/817389662/4139241279.jpeg",
+    cookTime: "20 min",
+    difficulty: "Średni",
+    diet: ["pescatarian", "keto"],
+    calories: 450,
+    protein: "38g",
+    ingredients: ["łosoś", "masło", "zioła", "cytryna"]
+  },
+  {
+    id: 4,
+    name: "Kotlety warzywne z quinoa",
+    description: "Sytne kotlety roślinne z quinoa i warzywami sezonowymi",
+    image: "https://ext.same-assets.com/817389662/437793625.jpeg",
+    cookTime: "35 min",
+    difficulty: "Średni",
+    diet: ["vegetarian", "high-protein"],
+    calories: 420,
+    protein: "18g",
+    ingredients: ["quinoa", "buraki", "marchew", "jajka"]
+  },
+  {
+    id: 5,
+    name: "Gulasz wołowy z kluskami",
+    description: "Tradycyjny polski gulasz z miękką wołowiną",
+    image: "https://ext.same-assets.com/817389662/1402524834.jpeg",
+    cookTime: "90 min",
+    difficulty: "Trudny",
+    diet: ["high-protein"],
+    calories: 580,
+    protein: "42g",
+    ingredients: ["wołowina", "cebula", "papryka", "kluski"]
+  },
+  {
+    id: 6,
+    name: "Makaron carbonara",
+    description: "Klasyczne włoskie danie z jajkami i parmezanem",
+    image: "https://ext.same-assets.com/817389662/3408768362.jpeg",
+    cookTime: "15 min",
+    difficulty: "Łatwy",
+    diet: ["calorie-conscious"],
+    calories: 520,
+    protein: "22g",
+    ingredients: ["makaron", "jajka", "parmezan", "boczek"]
+  }
+]
+
+const dietTypes = [
+  { code: "all", name: "Wszystkie", color: "bg-gray-500" },
+  { code: "keto", name: "Keto", color: "bg-purple-500" },
+  { code: "vegetarian", name: "Wegetariańska", color: "bg-green-500" },
+  { code: "vegan", name: "Wegańska", color: "bg-emerald-500" },
+  { code: "high-protein", name: "Wysokobiałkowa", color: "bg-red-500" },
+  { code: "pescatarian", name: "Pescetariańska", color: "bg-blue-500" },
+  { code: "calorie-conscious", name: "Niskokaloryczna", color: "bg-orange-500" }
+]
+
+export default function MenuPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/" className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
+              Smakowało
+            </Link>
+            <div className="hidden md:block">
+              <div className="ml-10 flex items-baseline space-x-4">
+                <Link href="/menu" className="text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
+                  Aktualne Menu
+                </Link>
+                <Link href="/kreator" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
+                  Kreator
+                </Link>
+                <Link href="/about" className="text-gray-700 hover:text-[var(--smakowalo-green-primary)] px-3 py-2 rounded-md text-sm font-medium">
+                  O nas
+                </Link>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/login">
+                <Button variant="outline" className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]">
+                  Zaloguj
+                </Button>
+              </Link>
+              <Link href="/cart">
+                <Button className="smakowalo-green">
+                  Koszyk
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
+            Menu tego tygodnia
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Wybierz spośród różnorodnych, zdrowych przepisów zaprojektowanych przez naszych dietetyków.
+            Nowe menu każdego tygodnia!
+          </p>
+        </div>
+
+        {/* Diet Filters */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-[var(--smakowalo-green-dark)] mb-4">
+            Filtruj według preferencji dietetycznych:
+          </h3>
+          <div className="flex flex-wrap gap-3">
+            {dietTypes.map((diet) => (
+              <Button
+                key={diet.code}
+                variant="outline"
+                className="border-gray-300 hover:border-[var(--smakowalo-green-primary)]"
+              >
+                <div className={`w-3 h-3 rounded-full ${diet.color} mr-2`}></div>
+                {diet.name}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* CTA Section */}
+        <div className="bg-gradient-to-r from-[var(--smakowalo-green-primary)] to-[var(--smakowalo-green-dark)] rounded-lg p-8 mb-12">
+          <div className="text-center text-white">
+            <h2 className="text-3xl font-bold mb-4">
+              Gotowy na rozpoczęcie?
+            </h2>
+            <p className="text-lg mb-6 opacity-90">
+              Skorzystaj z kreatora, aby stworzyć idealny zestaw posiłków dla siebie
+            </p>
+            <Link href="/kreator">
+              <Button
+                size="lg"
+                className="bg-white text-[var(--smakowalo-green-primary)] hover:bg-gray-100 text-lg px-8 py-3"
+              >
+                Stwórz swój box
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Recipes Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {recipes.map((recipe) => (
+            <Card key={recipe.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="relative h-48">
+                <Image
+                  src={recipe.image}
+                  alt={recipe.name}
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute top-4 left-4">
+                  <Badge className={`${dietTypes.find(d => recipe.diet.includes(d.code))?.color || 'bg-gray-500'} text-white`}>
+                    {dietTypes.find(d => recipe.diet.includes(d.code))?.name || 'Standard'}
+                  </Badge>
+                </div>
+              </div>
+
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
+                  {recipe.name}
+                </CardTitle>
+                <p className="text-gray-600 text-sm">
+                  {recipe.description}
+                </p>
+              </CardHeader>
+
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                  <div className="flex items-center">
+                    <Clock className="w-4 h-4 mr-1" />
+                    {recipe.cookTime}
+                  </div>
+                  <div className="flex items-center">
+                    <ChefHat className="w-4 h-4 mr-1" />
+                    {recipe.difficulty}
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center text-sm mb-4">
+                  <span className="font-medium">Kalorie: {recipe.calories}</span>
+                  <span className="font-medium">Białko: {recipe.protein}</span>
+                </div>
+
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-[var(--smakowalo-green-dark)] mb-2">
+                    Główne składniki:
+                  </h4>
+                  <div className="flex flex-wrap gap-1">
+                    {recipe.ingredients.slice(0, 3).map((ingredient) => (
+                      <Badge key={ingredient} variant="secondary" className="text-xs">
+                        {ingredient}
+                      </Badge>
+                    ))}
+                    {recipe.ingredients.length > 3 && (
+                      <Badge variant="secondary" className="text-xs">
+                        +{recipe.ingredients.length - 3} więcej
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full smakowalo-green"
+                  size="sm"
+                >
+                  Zobacz przepis
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Additional CTA */}
+        <div className="text-center mt-16">
+          <h3 className="text-2xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
+            Nie możesz się zdecydować?
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Pozwól naszemu kreatorowi pomóc Ci wybrać idealne dania dla Twoich preferencji
+          </p>
+          <Link href="/kreator">
+            <Button
+              size="lg"
+              className="smakowalo-green text-lg px-8 py-3"
+            >
+              Użyj kreatora zamówień
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}

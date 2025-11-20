@@ -1,0 +1,488 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
+import { CreditCard, Truck, MapPin, Calendar, Clock } from "lucide-react"
+import { useState } from "react"
+import Link from "next/link"
+import Image from "next/image"
+
+type OrderItem = {
+  id: number
+  name: string
+  description: string
+  price: number
+  quantity: number
+  diet: string
+  people: number
+  days: number
+  selectedMeals: string[]
+}
+
+const orderItems: OrderItem[] = [
+  {
+    id: 1,
+    name: "Plan Keto - 2 osoby, 3 dni",
+    description: "Wysokotłuszczowa dieta ketogeniczna",
+    price: 95.94,
+    quantity: 1,
+    diet: "Keto",
+    people: 2,
+    days: 3,
+    selectedMeals: ["Pizza margherita na cienkim spodzie", "Zupa ramen z jajkiem", "Wrap z kurczakiem i warzywami"]
+  }
+]
+
+export default function CheckoutPage() {
+  const [step, setStep] = useState(1)
+  const [formData, setFormData] = useState({
+    // Personal data
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+
+    // Delivery address
+    street: "",
+    houseNumber: "",
+    apartmentNumber: "",
+    city: "",
+    postalCode: "",
+
+    // Delivery options
+    deliveryDate: "",
+    deliveryTime: "09:00-12:00",
+
+    // Payment
+    paymentMethod: "payu",
+
+    // Additional
+    notes: ""
+  })
+
+  const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+  const deliveryFee = subtotal > 150 ? 0 : 15.99
+  const total = subtotal + deliveryFee
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleSubmit = () => {
+    // Here will be PayU integration
+    console.log("Submitting order:", formData)
+    alert("Przekierowanie do PayU...")
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-smakowalo-cream to-white">
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/" className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
+              Smakowało
+            </Link>
+            <div className="text-sm text-gray-600">
+              Bezpieczne płatności
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center space-x-8">
+            {[
+              { num: 1, title: "Dane osobowe", icon: MapPin },
+              { num: 2, title: "Dostawa", icon: Truck },
+              { num: 3, title: "Płatność", icon: CreditCard }
+            ].map((stepItem) => (
+              <div key={stepItem.num} className="flex items-center">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                  step >= stepItem.num
+                    ? "bg-[var(--smakowalo-green-primary)] border-[var(--smakowalo-green-primary)] text-white"
+                    : "border-gray-300 text-gray-400"
+                }`}>
+                  {step > stepItem.num ? "✓" : stepItem.num}
+                </div>
+                <span className={`ml-2 text-sm ${step >= stepItem.num ? "text-[var(--smakowalo-green-primary)]" : "text-gray-400"}`}>
+                  {stepItem.title}
+                </span>
+                {stepItem.num < 3 && (
+                  <div className={`w-16 h-0.5 ml-4 ${step > stepItem.num ? "bg-[var(--smakowalo-green-primary)]" : "bg-gray-300"}`} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Form */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* Step 1: Personal Data */}
+            {step === 1 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl text-[var(--smakowalo-green-dark)] flex items-center">
+                    <MapPin className="w-6 h-6 mr-2" />
+                    Dane osobowe i adres dostawy
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName">Imię *</Label>
+                      <Input
+                        id="firstName"
+                        value={formData.firstName}
+                        onChange={(e) => handleInputChange("firstName", e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Nazwisko *</Label>
+                      <Input
+                        id="lastName"
+                        value={formData.lastName}
+                        onChange={(e) => handleInputChange("lastName", e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="email">Email *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange("email", e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone">Telefon *</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange("phone", e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <h3 className="text-lg font-semibold text-[var(--smakowalo-green-dark)]">
+                    Adres dostawy
+                  </h3>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="col-span-2">
+                      <Label htmlFor="street">Ulica *</Label>
+                      <Input
+                        id="street"
+                        value={formData.street}
+                        onChange={(e) => handleInputChange("street", e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="houseNumber">Nr domu *</Label>
+                      <Input
+                        id="houseNumber"
+                        value={formData.houseNumber}
+                        onChange={(e) => handleInputChange("houseNumber", e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="apartmentNumber">Nr mieszkania</Label>
+                      <Input
+                        id="apartmentNumber"
+                        value={formData.apartmentNumber}
+                        onChange={(e) => handleInputChange("apartmentNumber", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="postalCode">Kod pocztowy *</Label>
+                      <Input
+                        id="postalCode"
+                        value={formData.postalCode}
+                        onChange={(e) => handleInputChange("postalCode", e.target.value)}
+                        placeholder="00-000"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="city">Miasto *</Label>
+                      <Input
+                        id="city"
+                        value={formData.city}
+                        onChange={(e) => handleInputChange("city", e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => setStep(2)}
+                    className="w-full smakowalo-green mt-6"
+                    disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.street || !formData.houseNumber || !formData.postalCode || !formData.city}
+                  >
+                    Dalej - Opcje dostawy
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step 2: Delivery */}
+            {step === 2 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl text-[var(--smakowalo-green-dark)] flex items-center">
+                    <Truck className="w-6 h-6 mr-2" />
+                    Opcje dostawy
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-[var(--smakowalo-green-dark)] mb-2">
+                      📦 Dostawa kurierem DPD Food
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      Dostarczamy świeże składniki w specjalnych opakowaniach termoizolacyjnych
+                    </p>
+                    <p className="text-sm font-medium mt-2">
+                      Koszt: {deliveryFee === 0 ? "GRATIS" : `${deliveryFee.toFixed(2)} zł`}
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="deliveryDate">Preferowana data dostawy *</Label>
+                    <Input
+                      id="deliveryDate"
+                      type="date"
+                      value={formData.deliveryDate}
+                      onChange={(e) => handleInputChange("deliveryDate", e.target.value)}
+                      min={new Date(Date.now() + 86400000).toISOString().split('T')[0]} // Tomorrow
+                      required
+                    />
+                    <p className="text-sm text-gray-600 mt-1">
+                      Dostawa możliwa od następnego dnia roboczego
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="deliveryTime">Preferowany przedział czasowy *</Label>
+                    <select
+                      id="deliveryTime"
+                      value={formData.deliveryTime}
+                      onChange={(e) => handleInputChange("deliveryTime", e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="09:00-12:00">9:00 - 12:00</option>
+                      <option value="12:00-15:00">12:00 - 15:00</option>
+                      <option value="15:00-18:00">15:00 - 18:00</option>
+                      <option value="18:00-21:00">18:00 - 21:00</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="notes">Uwagi do dostawy (opcjonalne)</Label>
+                    <textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => handleInputChange("notes", e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      rows={3}
+                      placeholder="np. kod do bramy, informacje dla kuriera..."
+                    />
+                  </div>
+
+                  <div className="flex gap-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setStep(1)}
+                      className="flex-1"
+                    >
+                      Wstecz
+                    </Button>
+                    <Button
+                      onClick={() => setStep(3)}
+                      className="flex-1 smakowalo-green"
+                      disabled={!formData.deliveryDate}
+                    >
+                      Dalej - Płatność
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step 3: Payment */}
+            {step === 3 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl text-[var(--smakowalo-green-dark)] flex items-center">
+                    <CreditCard className="w-6 h-6 mr-2" />
+                    Metoda płatności
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="border-2 border-[var(--smakowalo-green-primary)] rounded-lg p-4 bg-[var(--smakowalo-green-primary)]/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <input
+                            type="radio"
+                            id="payu"
+                            name="payment"
+                            value="payu"
+                            checked={formData.paymentMethod === "payu"}
+                            onChange={(e) => handleInputChange("paymentMethod", e.target.value)}
+                            className="mr-3"
+                          />
+                          <Label htmlFor="payu" className="font-semibold">
+                            PayU - Płatność online
+                          </Label>
+                        </div>
+                        <Badge className="smakowalo-green">Rekomendowane</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2 ml-6">
+                        Bezpieczne płatności kartą, BLIK, przelewem
+                      </p>
+                    </div>
+
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          id="transfer"
+                          name="payment"
+                          value="transfer"
+                          checked={formData.paymentMethod === "transfer"}
+                          onChange={(e) => handleInputChange("paymentMethod", e.target.value)}
+                          className="mr-3"
+                        />
+                        <Label htmlFor="transfer" className="font-semibold">
+                          Przelew tradycyjny
+                        </Label>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2 ml-6">
+                        Realizacja zamówienia po otrzymaniu płatności
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-green-800 mb-2">
+                      🔒 Bezpieczeństwo płatności
+                    </h4>
+                    <p className="text-sm text-green-700">
+                      Wszystkie transakcje są szyfrowane i zabezpieczone certyfikatem SSL.
+                      Nie przechowujemy danych karty płatniczej.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setStep(2)}
+                      className="flex-1"
+                    >
+                      Wstecz
+                    </Button>
+                    <Button
+                      onClick={handleSubmit}
+                      className="flex-1 smakowalo-green text-lg py-3"
+                    >
+                      Złóż zamówienie - {total.toFixed(2)} zł
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Order Summary Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-4">
+              <CardHeader>
+                <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
+                  Twoje zamówienie
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {orderItems.map((item) => (
+                  <div key={item.id} className="border-b pb-4">
+                    <h4 className="font-semibold text-[var(--smakowalo-green-dark)]">
+                      {item.name}
+                    </h4>
+                    <div className="text-sm text-gray-600 mt-1">
+                      <Badge variant="secondary" className="mr-2">{item.diet}</Badge>
+                      {item.people} {item.people === 2 ? "osoby" : "osób"} × {item.days} dni
+                    </div>
+                    <div className="text-sm text-gray-600 mt-2">
+                      <strong>Wybrane dania:</strong>
+                      <ul className="list-disc list-inside mt-1">
+                        {item.selectedMeals.map((meal, index) => (
+                          <li key={index} className="text-xs">{meal}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="text-right font-semibold text-[var(--smakowalo-green-primary)] mt-2">
+                      {item.price.toFixed(2)} zł
+                    </div>
+                  </div>
+                ))}
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Wartość produktów:</span>
+                    <span>{subtotal.toFixed(2)} zł</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Dostawa:</span>
+                    <span>{deliveryFee === 0 ? "Gratis!" : `${deliveryFee.toFixed(2)} zł`}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>Łącznie:</span>
+                    <span className="text-[var(--smakowalo-green-primary)]">
+                      {total.toFixed(2)} zł
+                    </span>
+                  </div>
+                </div>
+
+                {formData.deliveryDate && (
+                  <div className="bg-[var(--smakowalo-light-beige)] p-3 rounded-lg mt-4">
+                    <h4 className="font-semibold text-[var(--smakowalo-green-dark)] mb-2">
+                      📅 Dostawa
+                    </h4>
+                    <p className="text-sm">
+                      <strong>Data:</strong> {formData.deliveryDate}<br/>
+                      <strong>Godzina:</strong> {formData.deliveryTime}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
