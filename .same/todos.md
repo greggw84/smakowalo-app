@@ -136,6 +136,12 @@
 
 ---
 
+## ✅ Fixed Recently
+
+- [x] **Email verification nie działa** - FIXED! Auto-confirm users, welcome email przez SMTP
+
+---
+
 ## 🐛 Known Issues (Do Naprawy W Przyszłości)
 
 ### Low Priority
@@ -190,9 +196,10 @@
 
 ## 🎯 Status Projektu
 
-**Wersja:** 205
+**Wersja:** 206
 **Data:** November 20, 2025
 **Status:** 🟢 **PRODUCTION READY**
+**Latest Fix:** Email verification disabled - users auto-confirmed
 
 **System:**
 - ✅ Płatności: Stripe LIVE MODE
