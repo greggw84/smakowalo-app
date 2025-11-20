@@ -1,11 +1,27 @@
 # 📋 Smakowało - Todos
 
-**Last Updated:** November 20, 2025
-**Status:** 🟢 **SYSTEM READY FOR PRODUCTION!**
+**Last Updated:** November 20, 2025 - 22:00
+**Status:** 🟡 **WEBHOOK FIX REQUIRED!**
 
 ---
 
-## 🎉 WSZYSTKO GOTOWE!
+## 🚨 PILNE: Webhook Redirect Issue
+
+**Problem:** Stripe webhook URL uses `smakowalo.pl` but domain redirects to `www.smakowalo.pl` (307)
+**Impact:** Webhooks fail, no data synced, no emails sent
+**Solution:** Update Stripe webhook URL to use `www.smakowalo.pl`
+
+**Action Required:**
+- [ ] **Update Stripe webhook URL** to: `https://www.smakowalo.pl/api/webhooks/stripe`
+- [ ] Test with Stripe "Send test webhook"
+- [ ] Verify webhook logs show 200 OK (not 307)
+- [ ] Manually sync existing user's subscription (if needed)
+
+**Documentation:** `.same/WEBHOOK_REDIRECT_FIX.md`
+
+---
+
+## 🎉 System Configuration Complete
 
 ### ✅ Konfiguracja Zakończona Pomyślnie!
 
@@ -232,6 +248,38 @@
 
 ---
 
-**🎉 GRATULACJE! System jest w pełni funkcjonalny i gotowy do produkcji!** 🚀
+## 🔧 Immediate Next Steps
+
+### 1. Fix Stripe Webhook URL (5 minutes) - CRITICAL!
+
+**Do this NOW:**
+1. Open: https://dashboard.stripe.com
+2. Go to: Developers → Webhooks
+3. Click on webhook endpoint
+4. Edit URL to: `https://www.smakowalo.pl/api/webhooks/stripe`
+5. Save
+6. Send test webhook
+7. Verify: 200 OK in logs
+
+### 2. Fix Existing User Subscription (if user waiting)
+
+If a user already paid but has no data:
+1. Get Stripe subscription ID from Stripe Dashboard
+2. Get user ID from Supabase profiles table
+3. Manually INSERT into subscriptions table
+4. Send welcome email manually
+
+**See:** `.same/WEBHOOK_REDIRECT_FIX.md` for SQL commands
+
+### 3. Verify Fix Works
+
+- [ ] Test payment with small amount
+- [ ] Check Supabase → Data appears
+- [ ] Check email → Arrives
+- [ ] Check panel → Subscription visible
+
+---
+
+**🎯 After fixing webhook URL, system will be fully automatic!** 🚀
 
 Powered by [Same.new](https://same.new)

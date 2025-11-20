@@ -51,13 +51,13 @@ STRIPE_SECRET_KEY=sk_test_TWOJ_PRAWDZIWY_SECRET_KEY_TUTAJ
 ### B) Wprowadź Endpoint URL
 
 ```
-https://smakowalo.pl/api/webhooks/stripe
+https://www.smakowalo.pl/api/webhooks/stripe
 ```
 
 **WAŻNE:**
-- ✅ `smakowalo.pl/api/webhooks/stripe` (poprawne)
-- ❌ `www.smakowalo.pl/api/webhooks/stripe` (złe - bez www!)
-- ❌ `smakowalo.pl/api/webhook/stripe` (złe - webhook bez "s")
+- ✅ `www.smakowalo.pl/api/webhooks/stripe` (poprawne - Z www!)
+- ❌ `smakowalo.pl/api/webhooks/stripe` (złe - przekierowanie 307!)
+- ❌ `www.smakowalo.pl/api/webhook/stripe` (złe - webhook bez "s")
 
 ### C) Wybierz Eventi (Events to Listen)
 

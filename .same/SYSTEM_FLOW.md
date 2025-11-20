@@ -143,7 +143,7 @@
 ---
 
 ### Krok 4b: Stripe Wysyła Webhooks
-**Endpoint:** `https://smakowalo.pl/api/webhooks/stripe`
+**Endpoint:** `https://www.smakowalo.pl/api/webhooks/stripe`
 
 **Eventy (w kolejności):**
 1. `checkout.session.completed` (po opłaceniu checkout)

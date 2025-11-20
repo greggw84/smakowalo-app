@@ -30,9 +30,9 @@
 2. **Kliknij:** "+ Add endpoint"
 3. **Endpoint URL:**
    ```
-   https://smakowalo.pl/api/webhooks/stripe
+   https://www.smakowalo.pl/api/webhooks/stripe
    ```
-   ⚠️ **BEZ** www! ⚠️
+   ⚠️ **Z** www! ⚠️ (bez www będzie przekierowanie 307!)
 
 4. **Events:** Zaznacz te 7:
    - ✅ `checkout.session.completed`

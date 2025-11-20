@@ -18,9 +18,10 @@
 
 **Root Cause:**
 - 🚨 **WEBHOOKS NIE DZIAŁAJĄ!**
-- Vercel deployment FAILED (user widział email: "Failed production deployment")
-- Nowy kod webhook NIE jest wdrożony na produkcji
-- Stripe wysyła webhook ale endpoint zwraca błąd
+- **ROZWIĄZANIE:** Domain redirect! smakowalo.pl → www.smakowalo.pl (307)
+- Stripe webhook URL musi być: `https://www.smakowalo.pl/api/webhooks/stripe`
+- Stripe NIE podąża za 307 redirects
+- Zobacz: `.same/WEBHOOK_REDIRECT_FIX.md` dla pełnego rozwiązania
 
 ---
 
