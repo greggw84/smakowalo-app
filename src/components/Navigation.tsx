@@ -3,18 +3,12 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
+import { useSession, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { ShoppingCart, User, Heart, LogOut } from 'lucide-react'
 import Logo from './Logo'
 import { useCart } from '@/contexts/CartContext'
 import { useFavorites } from '@/contexts/FavoritesContext'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: true, storageKey: 'smakowalo_auth' },
-}) : null
 
 interface NavigationProps {
   currentPage?: string
@@ -24,42 +18,20 @@ export default function Navigation({ currentPage }: NavigationProps) {
   const router = useRouter()
   const { totalItems } = useCart()
   const { favoritesCount } = useFavorites()
-  const [session, setSession] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (!supabase) {
-      setLoading(false)
-      return
-    }
-
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setLoading(false)
-    })
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+  // Use NextAuth session (works with Google OAuth)
+  const { data: session, status } = useSession()
+  const loading = status === 'loading'
 
   const isActive = (path: string) => currentPage === path
 
   const handleLogout = async () => {
-    if (!supabase) return
-
     try {
-      await supabase.auth.signOut()
-      router.push('/')
-      // Force a page refresh to clear all state
-      window.location.href = '/'
+      // Sign out from NextAuth
+      await signOut({
+        callbackUrl: '/',
+        redirect: true
+      })
     } catch (error) {
       console.error('Logout error:', error)
       // Fallback: force redirect to home

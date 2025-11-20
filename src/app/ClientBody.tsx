@@ -16,13 +16,19 @@ export default function ClientBody({
   useEffect(() => {
     // This runs only on the client after hydration
     document.body.className = "antialiased";
+
+    // Fix Google Auth redirect - remove hash and refresh page
+    if (window.location.hash === '#') {
+      window.history.replaceState(null, '', window.location.pathname);
+      // Force session refetch after Google Auth
+      window.dispatchEvent(new Event('focus'));
+    }
   }, []);
 
   return (
     <SessionProvider
-      refetchInterval={0}
-      refetchOnWindowFocus={false}
-      refetchWhenOffline={false}
+      refetchInterval={5 * 60} // Refetch session every 5 minutes
+      refetchOnWindowFocus={true} // Refetch when window gets focus (IMPORTANT for Google Auth redirect!)
     >
       <AuthProvider>
         <CartProvider>
