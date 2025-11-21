@@ -77,16 +77,19 @@ STRIPE_BASIC_PRICE_ID=price_...    # <-- Wklej Price ID dla Basic
 STRIPE_PREMIUM_PRICE_ID=price_...  # <-- Wklej Price ID dla Premium
 ```
 
-#### C) Skonfiguruj webhook Stripe (opcjonalnie):
+#### C) Skonfiguruj webhook Stripe (WYMAGANE):
 
 1. W Stripe Dashboard: **Developers → Webhooks → Add endpoint**
-2. URL: `https://twoja-domena.pl/api/stripe/webhook`
+2. URL: `https://twoja-domena.pl/api/webhooks/stripe`
 3. Events to listen:
    - `checkout.session.completed`
    - `customer.subscription.created`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
-4. Skopiuj **Webhook Secret** do `.env.local`
+   - `invoice.payment_succeeded`
+   - `invoice.payment_failed`
+   - `customer.subscription.trial_will_end`
+4. Skopiuj **Webhook Secret** do `.env.local` jako `STRIPE_WEBHOOK_SECRET`
 
 ---
 
