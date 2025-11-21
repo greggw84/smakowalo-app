@@ -251,6 +251,26 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
 }
 
 /**
+ * Helper: Calculate next delivery date based on delivery day preference
+ */
+function calculateDeliveryDate(deliveryDay: string): Date {
+  const today = new Date();
+  // Tuesday = 2, Thursday = 4
+  const targetDay = deliveryDay.toLowerCase() === 'tuesday' ? 2 : 4;
+  const currentDay = today.getDay();
+  
+  // Calculate days until next delivery day
+  let daysUntil = targetDay - currentDay;
+  if (daysUntil <= 0) {
+    daysUntil += 7; // Move to next week if day has passed
+  }
+  
+  const deliveryDate = new Date(today);
+  deliveryDate.setDate(today.getDate() + daysUntil);
+  return deliveryDate;
+}
+
+/**
  * Helper: Create order from checkout session
  */
 async function createOrderFromCheckout(
@@ -265,13 +285,10 @@ async function createOrderFromCheckout(
     const totalAmount = session.amount_total ? session.amount_total / 100 : 0;
     const people = Number.parseInt(session.metadata?.number_of_people || '2');
     const days = Number.parseInt(session.metadata?.number_of_days || '3');
-
-    // Calculate delivery date (next Tuesday or Thursday based on preference)
     const deliveryDay = session.metadata?.delivery_day || 'tuesday';
-    const today = new Date();
-    const daysUntilDelivery = deliveryDay === 'tuesday' ? (9 - today.getDay()) % 7 : (11 - today.getDay()) % 7;
-    const deliveryDate = new Date(today);
-    deliveryDate.setDate(today.getDate() + (daysUntilDelivery === 0 ? 7 : daysUntilDelivery));
+
+    // Calculate delivery date using helper function
+    const deliveryDate = calculateDeliveryDate(deliveryDay);
 
     // Create order
     const { error: orderError, data: orderData } = await supabase
@@ -332,14 +349,9 @@ async function sendSubscriptionWelcomeEmail(
 
     const name = user.user_metadata?.full_name || email.split('@')[0];
 
-    // Calculate first delivery date
-    const today = new Date();
-    const deliveryDay = details.deliveryDay.toLowerCase();
-    const daysUntilDelivery = deliveryDay === 'wtorek' || deliveryDay === 'tuesday' 
-      ? (9 - today.getDay()) % 7 
-      : (11 - today.getDay()) % 7;
-    const firstDeliveryDate = new Date(today);
-    firstDeliveryDate.setDate(today.getDate() + (daysUntilDelivery === 0 ? 7 : daysUntilDelivery));
+    // Calculate first delivery date using helper function
+    const deliveryDayEn = details.deliveryDay.toLowerCase() === 'wtorek' ? 'tuesday' : 'thursday';
+    const firstDeliveryDate = calculateDeliveryDate(deliveryDayEn);
 
     const emailSent = await sendEmail({
       to: email,
@@ -494,8 +506,10 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supa
 
 /**
  * Handle customer.subscription.deleted event
+ * Marks subscription as canceled when it's completely deleted from Stripe
  */
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription, supabase: any) {
+  logWebhook('info', 'Processing customer.subscription.deleted', { subscriptionId: subscription.id });
 
   // Update subscription status to 'canceled'
   const { error } = await supabase
