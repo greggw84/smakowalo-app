@@ -88,31 +88,67 @@ Copy the Price IDs to `.env.local`
 
 Create a webhook endpoint in Stripe Dashboard:
 - URL: `https://your-domain.com/api/webhooks/stripe`
-- Events: `customer.subscription.*`, `invoice.*`
+- Events: Select these specific events:
+  - `checkout.session.completed`
+  - `customer.subscription.created`
+  - `customer.subscription.updated`
+  - `customer.subscription.deleted`
+  - `invoice.payment_succeeded`
+  - `invoice.payment_failed`
+  - `customer.subscription.trial_will_end`
 - Copy webhook secret to `STRIPE_WEBHOOK_SECRET`
 
 ## 🚀 Development
 
 ```bash
-bun run dev
-# or
 npm run dev
+# or
+bun run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
 
 ## 🧪 Testing
 
-Run automated tests:
+### Check Environment Variables
+```bash
+./check-env.sh
+```
+
+### Test Webhooks Locally
+
+1. **Forward Stripe webhooks to local server**:
+```bash
+./test-webhook.sh
+# Select option 1 to start forwarding
+```
+
+2. **Trigger individual webhook events**:
+```bash
+./test-webhook.sh
+# Select options 2-8 for specific events
+# Select option 9 to test all events in sequence
+```
+
+3. **Manual testing with Stripe CLI**:
+```bash
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+# In another terminal:
+stripe trigger checkout.session.completed
+```
+
+### Test Subscription Flow
 ```bash
 chmod +x test-subscription-flow.sh
 ./test-subscription-flow.sh
 ```
 
-Test subscription creation:
+### End-to-End Tests
 ```bash
-./test-final-verification.sh
+npm run test:e2e
 ```
+
+For detailed webhook troubleshooting, see [WEBHOOK_TROUBLESHOOTING.md](./WEBHOOK_TROUBLESHOOTING.md)
 
 ## 📦 Deployment
 
