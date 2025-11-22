@@ -339,20 +339,57 @@ export default function PanelPage() {
         setProfile(prev => ({ ...prev, ...profileData }))
       }
 
-      // Load orders (implement your API)
-      // const { data: ordersData } = await supabase.from('orders').select('*').eq('user_id', currentUser.id)
-      // setOrders(ordersData || [])
+      // Load orders
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+      
+      if (ordersError) {
+        console.error('Error loading orders:', ordersError)
+      } else if (ordersData) {
+        setOrders(ordersData)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📦 Loaded orders:', ordersData.length)
+        }
+      }
 
-      // Load subscriptions (implement your API)
-      // const { data: subsData } = await supabase.from('subscriptions').select('*').eq('user_id', currentUser.id)
-      // setSubscriptions(subsData || [])
+      // Load subscriptions
+      const { data: subsData, error: subsError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+      
+      if (subsError) {
+        console.error('Error loading subscriptions:', subsError)
+      } else if (subsData) {
+        setSubscriptions(subsData)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Loaded subscriptions:', subsData.length)
+        }
+      }
 
-      // Mock stats for now
+      // Calculate stats
+      const activeSubsCount = subsData?.filter(s => ['active', 'trialing', 'past_due'].includes(s.status)).length || 0
+      const totalSpent = ordersData?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0
+      const totalSaved = ordersData?.reduce((sum, order) => sum + (order.discount_amount || 0), 0) || 0
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 Panel stats:', {
+          totalOrders: ordersData?.length || 0,
+          activeSubscriptions: activeSubsCount,
+          totalSpent,
+          totalSaved
+        })
+      }
+      
       setStats({
-        totalOrders: 0,
-        totalSpent: 0,
-        totalSaved: 0,
-        activeSubscriptions: 0
+        totalOrders: ordersData?.length || 0,
+        totalSpent,
+        totalSaved,
+        activeSubscriptions: activeSubsCount
       })
 
     } catch (error) {

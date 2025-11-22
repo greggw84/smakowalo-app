@@ -31,7 +31,7 @@ export default function SubscriptionTab() {
         setSession(session)
 
         // Get subscription (active, trialing, or past_due)
-        const { data: subs } = await supabase
+        const { data: subs, error: subsError } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', session.user.id)
@@ -40,7 +40,24 @@ export default function SubscriptionTab() {
           .limit(1)
           .single()
 
+        if (subsError) {
+          console.error('Error fetching subscription:', subsError)
+          if (subsError.code !== 'PGRST116') { // Not "no rows returned" error
+            console.error('Database error:', subsError.message)
+          }
+        }
+
         setSubscription(subs)
+
+        // Debug: Log what we found (dev only)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📊 Subscription loaded:', {
+            hasUserId: !!session.user.id,
+            found: !!subs,
+            subscription_id: subs?.id,
+            status: subs?.status
+          })
+        }
 
         // Get current weekly order
         if (subs) {

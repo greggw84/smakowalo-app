@@ -4,7 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-11-20.acacia',
+  apiVersion: '2024-12-18.acacia',
 })
 
 const STRIPE_PRICE_IDS = {
@@ -19,6 +19,24 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get Supabase user ID
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    let userId: string | null = null
+
+    if (supabaseUrl && supabaseServiceKey) {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(supabaseUrl, supabaseServiceKey)
+      
+      // Look up user by email
+      const { data: users } = await supabase.auth.admin.listUsers()
+      const user = users?.users?.find((u: any) => u.email === session.user.email)
+      
+      if (user) {
+        userId = user.id
+      }
     }
 
     const body = await request.json()
@@ -39,6 +57,18 @@ export async function POST(request: NextRequest) {
     // Get Stripe price ID for the plan
     const priceId = STRIPE_PRICE_IDS[plan as 'basic' | 'premium']
 
+    // Prepare metadata
+    const metadata = {
+      plan,
+      meals_per_week: meals_per_week.toString(),
+      numberOfPeople: numberOfPeople.toString(),
+      selectedMeals: JSON.stringify(selectedMeals),
+      dietPreferences: JSON.stringify(dietPreferences),
+      allergyPreferences: JSON.stringify(allergyPreferences),
+      user_email: session.user.email,
+      ...(userId && { user_id: userId }), // Include user_id if found
+    }
+
     // Create Stripe Checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
       customer_email: session.user.email,
@@ -50,28 +80,17 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      metadata: {
-        plan,
-        meals_per_week: meals_per_week.toString(),
-        numberOfPeople: numberOfPeople.toString(),
-        selectedMeals: JSON.stringify(selectedMeals),
-        dietPreferences: JSON.stringify(dietPreferences),
-        allergyPreferences: JSON.stringify(allergyPreferences),
-        user_email: session.user.email
-      },
+      metadata,
       subscription_data: {
-        metadata: {
-          plan,
-          meals_per_week: meals_per_week.toString(),
-          numberOfPeople: numberOfPeople.toString(),
-          user_email: session.user.email
-        }
+        metadata,
       },
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/panel?subscription=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/kreator?subscription=cancelled`,
     })
 
-    console.log('✅ Stripe Checkout session created:', checkoutSession.id)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Stripe Checkout session created:', checkoutSession.id, { hasUserId: !!userId })
+    }
 
     return NextResponse.json({
       success: true,

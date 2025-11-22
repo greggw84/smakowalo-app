@@ -29,6 +29,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 // Webhook secret from Stripe Dashboard
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
+// Helper: UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Logging helper
 function logWebhook(level: 'info' | 'success' | 'error' | 'warn', message: string, data?: any) {
   const emoji = {
@@ -149,11 +152,32 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
 
   const customerId = session.customer as string;
   const subscriptionId = session.subscription as string;
-  const userId = session.metadata?.user_id;
+  
+  // Try to get user_id from multiple sources
+  let userId = session.metadata?.user_id;
+  
+  // Fallback to client_reference_id only if it looks like a UUID
+  if (!userId && session.client_reference_id) {
+    // Validate that client_reference_id looks like a UUID
+    if (UUID_REGEX.test(session.client_reference_id)) {
+      userId = session.client_reference_id;
+      logWebhook('info', 'Using client_reference_id as user_id', { hasUserId: true });
+    } else {
+      logWebhook('warn', 'client_reference_id is not a valid UUID', { 
+        format: 'invalid'
+      });
+    }
+  }
+  
   const customerEmail = session.customer_details?.email || session.customer_email;
 
   if (!subscriptionId) {
     logWebhook('error', 'No subscription ID in checkout session');
+    return;
+  }
+
+  if (!subscriptionId.startsWith('sub_')) {
+    logWebhook('error', 'Invalid Stripe subscription ID format', { subscriptionId });
     return;
   }
 
@@ -201,25 +225,45 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   // If we have user_id, use it; otherwise try to find user by email
   if (userId) {
     subscriptionData.user_id = userId;
+    logWebhook('success', 'Using user_id from metadata', { hasUserId: true });
   } else if (customerEmail) {
-    // Try to find user by email
-    const { data: users } = await supabase.auth.admin.listUsers();
-    const user = users?.users?.find((u: any) => u.email === customerEmail);
+    // Try to find user by email - check both auth and profiles
+    const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
     
-    if (user) {
-      subscriptionData.user_id = user.id;
-      logWebhook('success', 'Found user by email', { email: customerEmail, userId: user.id });
+    if (usersError) {
+      logWebhook('error', 'Failed to list users', { error: usersError.message });
     } else {
-      logWebhook('warn', 'No user found for email, storing with customer_id only', { email: customerEmail });
-      // Store without user_id - can be linked later when user signs up
+      const user = users?.users?.find((u: any) => u.email === customerEmail);
+      
+      if (user) {
+        subscriptionData.user_id = user.id;
+        logWebhook('success', 'Found user by email in auth', { email: customerEmail, hasUserId: true });
+      } else {
+        // Try finding in profiles table as fallback
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', customerEmail)
+          .single();
+        
+        if (profile) {
+          subscriptionData.user_id = profile.id;
+          logWebhook('success', 'Found user by email in profiles', { email: customerEmail, hasUserId: true });
+        } else {
+          logWebhook('warn', 'No user found for email, storing with customer_id only', { email: customerEmail });
+          // Store without user_id - can be linked later when user signs up
+        }
+      }
     }
+  } else {
+    logWebhook('warn', 'No user_id or email available for subscription', { customerId });
   }
 
   // Upsert subscription
   const { error: subError, data: subData } = await supabase
     .from('subscriptions')
     .upsert(subscriptionData, {
-      onConflict: subscriptionData.user_id ? 'user_id' : 'stripe_subscription_id',
+      onConflict: 'stripe_subscription_id',
       ignoreDuplicates: false,
     })
     .select()
@@ -230,7 +274,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     throw new Error(`Database error: ${subError.message}`);
   }
 
-  logWebhook('success', 'Subscription upserted to database', { id: subData.id });
+  logWebhook('success', 'Subscription upserted to database', { 
+    id: subData.id,
+    hasUserId: !!subData.user_id,
+    stripe_subscription_id: subData.stripe_subscription_id,
+    status: subData.status
+  });
 
   // Create initial order for this subscription
   if (subscriptionData.user_id) {
