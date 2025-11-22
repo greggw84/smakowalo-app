@@ -13,11 +13,36 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 export async function POST(req: NextRequest) {
   try {
-    // Simple auth check - you should add proper admin authentication
+    // Simple auth check with constant-time comparison
     const authHeader = req.headers.get('authorization')
     const adminKey = process.env.ADMIN_API_KEY
     
-    if (!authHeader || !adminKey || authHeader !== `Bearer ${adminKey}`) {
+    // Ensure both values exist and have same length before comparison
+    if (!authHeader || !adminKey) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const expectedAuth = `Bearer ${adminKey}`
+    
+    // Constant-time string comparison to prevent timing attacks
+    if (authHeader.length !== expectedAuth.length) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    let matches = true
+    for (let i = 0; i < authHeader.length; i++) {
+      if (authHeader[i] !== expectedAuth[i]) {
+        matches = false
+      }
+    }
+    
+    if (!matches) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

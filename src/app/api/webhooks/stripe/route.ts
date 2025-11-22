@@ -176,6 +176,11 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     return;
   }
 
+  if (!subscriptionId.startsWith('sub_')) {
+    logWebhook('error', 'Invalid Stripe subscription ID format', { subscriptionId });
+    return;
+  }
+
   // Get full subscription details from Stripe
   let subscription: Stripe.Subscription;
   try {
