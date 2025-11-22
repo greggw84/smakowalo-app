@@ -203,7 +203,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     subscriptionData.user_id = userId;
     logWebhook('success', 'Using user_id from metadata', { userId });
   } else if (customerEmail) {
-    // Try to find user by email
+    // Try to find user by email - check both auth and profiles
     const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
     
     if (usersError) {
@@ -213,10 +213,22 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       
       if (user) {
         subscriptionData.user_id = user.id;
-        logWebhook('success', 'Found user by email', { email: customerEmail, userId: user.id });
+        logWebhook('success', 'Found user by email in auth', { email: customerEmail, userId: user.id });
       } else {
-        logWebhook('warn', 'No user found for email, storing with customer_id only', { email: customerEmail });
-        // Store without user_id - can be linked later when user signs up
+        // Try finding in profiles table as fallback
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', customerEmail)
+          .single();
+        
+        if (profile) {
+          subscriptionData.user_id = profile.id;
+          logWebhook('success', 'Found user by email in profiles', { email: customerEmail, userId: profile.id });
+        } else {
+          logWebhook('warn', 'No user found for email, storing with customer_id only', { email: customerEmail });
+          // Store without user_id - can be linked later when user signs up
+        }
       }
     }
   } else {
