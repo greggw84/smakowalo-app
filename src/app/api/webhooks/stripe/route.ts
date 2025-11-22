@@ -201,18 +201,26 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   // If we have user_id, use it; otherwise try to find user by email
   if (userId) {
     subscriptionData.user_id = userId;
+    logWebhook('success', 'Using user_id from metadata', { userId });
   } else if (customerEmail) {
     // Try to find user by email
-    const { data: users } = await supabase.auth.admin.listUsers();
-    const user = users?.users?.find((u: any) => u.email === customerEmail);
+    const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
     
-    if (user) {
-      subscriptionData.user_id = user.id;
-      logWebhook('success', 'Found user by email', { email: customerEmail, userId: user.id });
+    if (usersError) {
+      logWebhook('error', 'Failed to list users', { error: usersError.message });
     } else {
-      logWebhook('warn', 'No user found for email, storing with customer_id only', { email: customerEmail });
-      // Store without user_id - can be linked later when user signs up
+      const user = users?.users?.find((u: any) => u.email === customerEmail);
+      
+      if (user) {
+        subscriptionData.user_id = user.id;
+        logWebhook('success', 'Found user by email', { email: customerEmail, userId: user.id });
+      } else {
+        logWebhook('warn', 'No user found for email, storing with customer_id only', { email: customerEmail });
+        // Store without user_id - can be linked later when user signs up
+      }
     }
+  } else {
+    logWebhook('warn', 'No user_id or email available for subscription', { customerId });
   }
 
   // Upsert subscription
@@ -230,7 +238,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     throw new Error(`Database error: ${subError.message}`);
   }
 
-  logWebhook('success', 'Subscription upserted to database', { id: subData.id });
+  logWebhook('success', 'Subscription upserted to database', { 
+    id: subData.id, 
+    user_id: subData.user_id,
+    stripe_subscription_id: subData.stripe_subscription_id,
+    status: subData.status
+  });
 
   // Create initial order for this subscription
   if (subscriptionData.user_id) {

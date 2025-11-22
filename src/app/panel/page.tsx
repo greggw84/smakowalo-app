@@ -340,31 +340,44 @@ export default function PanelPage() {
       }
 
       // Load orders
-      const { data: ordersData } = await supabase
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
         .eq('user_id', currentUser.id)
         .order('created_at', { ascending: false })
       
-      if (ordersData) {
+      if (ordersError) {
+        console.error('Error loading orders:', ordersError)
+      } else if (ordersData) {
         setOrders(ordersData)
+        console.log('📦 Loaded orders:', ordersData.length)
       }
 
       // Load subscriptions
-      const { data: subsData } = await supabase
+      const { data: subsData, error: subsError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', currentUser.id)
         .order('created_at', { ascending: false })
       
-      if (subsData) {
+      if (subsError) {
+        console.error('Error loading subscriptions:', subsError)
+      } else if (subsData) {
         setSubscriptions(subsData)
+        console.log('🔄 Loaded subscriptions:', subsData.length)
       }
 
       // Calculate stats
       const activeSubsCount = subsData?.filter(s => ['active', 'trialing', 'past_due'].includes(s.status)).length || 0
       const totalSpent = ordersData?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0
       const totalSaved = ordersData?.reduce((sum, order) => sum + (order.discount_amount || 0), 0) || 0
+      
+      console.log('📊 Panel stats:', {
+        totalOrders: ordersData?.length || 0,
+        activeSubscriptions: activeSubsCount,
+        totalSpent,
+        totalSaved
+      })
       
       setStats({
         totalOrders: ordersData?.length || 0,
