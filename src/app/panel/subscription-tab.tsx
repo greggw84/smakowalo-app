@@ -52,7 +52,7 @@ export default function SubscriptionTab() {
         // Debug: Log what we found (dev only)
         if (process.env.NODE_ENV === 'development') {
           console.log('📊 Subscription loaded:', {
-            user_id: session.user.id,
+            hasUserId: !!session.user.id,
             found: !!subs,
             subscription_id: subs?.id,
             status: subs?.status

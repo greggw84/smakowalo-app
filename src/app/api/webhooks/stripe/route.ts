@@ -29,6 +29,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 // Webhook secret from Stripe Dashboard
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
+// Helper: UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Logging helper
 function logWebhook(level: 'info' | 'success' | 'error' | 'warn', message: string, data?: any) {
   const emoji = {
@@ -155,14 +158,13 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   
   // Fallback to client_reference_id only if it looks like a UUID
   if (!userId && session.client_reference_id) {
-    // Validate that client_reference_id looks like a UUID (basic check)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (uuidRegex.test(session.client_reference_id)) {
+    // Validate that client_reference_id looks like a UUID
+    if (UUID_REGEX.test(session.client_reference_id)) {
       userId = session.client_reference_id;
-      logWebhook('info', 'Using client_reference_id as user_id', { userId });
+      logWebhook('info', 'Using client_reference_id as user_id', { hasUserId: true });
     } else {
       logWebhook('warn', 'client_reference_id is not a valid UUID', { 
-        client_reference_id: session.client_reference_id 
+        format: 'invalid'
       });
     }
   }
@@ -218,7 +220,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   // If we have user_id, use it; otherwise try to find user by email
   if (userId) {
     subscriptionData.user_id = userId;
-    logWebhook('success', 'Using user_id from metadata', { userId });
+    logWebhook('success', 'Using user_id from metadata', { hasUserId: true });
   } else if (customerEmail) {
     // Try to find user by email - check both auth and profiles
     const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
@@ -230,7 +232,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       
       if (user) {
         subscriptionData.user_id = user.id;
-        logWebhook('success', 'Found user by email in auth', { email: customerEmail, userId: user.id });
+        logWebhook('success', 'Found user by email in auth', { email: customerEmail, hasUserId: true });
       } else {
         // Try finding in profiles table as fallback
         const { data: profile } = await supabase
@@ -241,7 +243,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
         
         if (profile) {
           subscriptionData.user_id = profile.id;
-          logWebhook('success', 'Found user by email in profiles', { email: customerEmail, userId: profile.id });
+          logWebhook('success', 'Found user by email in profiles', { email: customerEmail, hasUserId: true });
         } else {
           logWebhook('warn', 'No user found for email, storing with customer_id only', { email: customerEmail });
           // Store without user_id - can be linked later when user signs up
@@ -268,8 +270,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   }
 
   logWebhook('success', 'Subscription upserted to database', { 
-    id: subData.id, 
-    user_id: subData.user_id,
+    id: subData.id,
+    hasUserId: !!subData.user_id,
     stripe_subscription_id: subData.stripe_subscription_id,
     status: subData.status
   });

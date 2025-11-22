@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('✅ Stripe Checkout session created:', checkoutSession.id, { userId })
+      console.log('✅ Stripe Checkout session created:', checkoutSession.id, { hasUserId: !!userId })
     }
 
     return NextResponse.json({
