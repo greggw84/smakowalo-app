@@ -149,7 +149,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
 
   const customerId = session.customer as string;
   const subscriptionId = session.subscription as string;
-  const userId = session.metadata?.user_id;
+  const userId = session.metadata?.user_id || session.client_reference_id;
   const customerEmail = session.customer_details?.email || session.customer_email;
 
   if (!subscriptionId) {
@@ -219,7 +219,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   const { error: subError, data: subData } = await supabase
     .from('subscriptions')
     .upsert(subscriptionData, {
-      onConflict: subscriptionData.user_id ? 'user_id' : 'stripe_subscription_id',
+      onConflict: 'stripe_subscription_id',
       ignoreDuplicates: false,
     })
     .select()

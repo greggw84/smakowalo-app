@@ -19,7 +19,7 @@ export const getServerStripe = () => {
   }
 
   return new Stripe(secretKey, {
-    apiVersion: '2025-06-30.basil',
+    apiVersion: '2024-12-18.acacia',
   })
 }
 
