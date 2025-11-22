@@ -18,10 +18,10 @@ const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supa
   auth: { persistSession: true, storageKey: 'smakowalo_auth' },
 }) : null
 
-// Pricing table for each combination (in PLN per week)
-// NOTE: Stripe Price IDs are stored server-side only (in API routes)
-// and not exposed to the client for security
-const PRICING: Record<string, number> = {
+// Default/fallback pricing table for each combination (in PLN per week)
+// These are fallback values in case Stripe prices fail to load
+// The actual prices will be fetched from Stripe API
+const DEFAULT_PRICING: Record<string, number> = {
   '2-2': 180,
   '2-3': 270,
   '2-4': 360,
@@ -34,11 +34,6 @@ const PRICING: Record<string, number> = {
   '4-3': 540,
   '4-4': 720,
   '4-5': 900,
-};
-
-const getPrice = (people: number, days: number): number => {
-  const key = `${people}-${days}`;
-  return PRICING[key] || 0;
 };
 
 // Updated diet types with icons/emojis
@@ -163,6 +158,10 @@ function KreatorPageComponent() {
   const [step, setStep] = useState(1);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  
+  // Stripe pricing state
+  const [stripePrices, setStripePrices] = useState<Record<string, number>>(DEFAULT_PRICING);
+  const [isLoadingPrices, setIsLoadingPrices] = useState(true);
 
   // Delivery day selection
   const [deliveryDay, setDeliveryDay] = useState<'tuesday' | 'thursday'>('tuesday');
@@ -233,6 +232,31 @@ function KreatorPageComponent() {
     loadDraft();
   }, []);
 
+  // Fetch Stripe prices
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        setIsLoadingPrices(true);
+        const response = await fetch('/api/stripe/prices');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.prices) {
+            console.log('✅ Loaded Stripe prices:', data.prices);
+            setStripePrices(data.prices);
+          }
+        } else {
+          console.warn('⚠️ Failed to fetch Stripe prices, using defaults');
+        }
+      } catch (error) {
+        console.error('❌ Error fetching Stripe prices:', error);
+        // Keep using default prices on error
+      } finally {
+        setIsLoadingPrices(false);
+      }
+    };
+    fetchPrices();
+  }, []);
+
   // Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
@@ -264,6 +288,12 @@ function KreatorPageComponent() {
     };
     fetchProducts();
   }, []);
+
+  // Get price from Stripe (with fallback to defaults)
+  const getPrice = (people: number, days: number): number => {
+    const key = `${people}-${days}`;
+    return stripePrices[key] || DEFAULT_PRICING[key] || 0;
+  };
 
   // Calculate price
   const currentPrice = getPrice(numberOfPeople, numberOfDays);
