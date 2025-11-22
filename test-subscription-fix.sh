@@ -101,25 +101,46 @@ echo "Sending test email to: $TEST_EMAIL"
 echo ""
 
 # Check if server is running
-if ! curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q "200\|301\|302"; then
-    echo "⚠️  Local server doesn't seem to be running at http://localhost:3000"
+echo "🌐 Checking if local server is running..."
+if ! SERVER_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>&1); then
+    echo "⚠️  Cannot connect to local server at http://localhost:3000"
     echo "Please start the server with: npm run dev"
     echo ""
     exit 1
 fi
 
-# Send test email (using GET with query param)
-EMAIL_RESPONSE=$(curl -s "http://localhost:3000/api/test-email?to=$TEST_EMAIL" \
-    || echo '{"error": "Request failed"}')
+if [[ ! "$SERVER_STATUS" =~ ^(200|301|302)$ ]]; then
+    echo "⚠️  Server returned status: $SERVER_STATUS"
+    echo "Server might not be ready yet. Please verify it's running."
+    echo ""
+    exit 1
+fi
 
-echo "Response: $EMAIL_RESPONSE"
+echo "✅ Server is running"
 echo ""
 
-if echo "$EMAIL_RESPONSE" | grep -q '"success":true'; then
+# Send test email (using GET with query param)
+# URL encode the email address
+ENCODED_EMAIL=$(printf %s "$TEST_EMAIL" | jq -sRr @uri 2>/dev/null || echo "$TEST_EMAIL")
+EMAIL_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "http://localhost:3000/api/test-email?to=$ENCODED_EMAIL" 2>&1 || echo '{"error": "Request failed"}
+HTTP_STATUS:000')
+
+# Extract HTTP status and response body
+HTTP_STATUS=$(echo "$EMAIL_RESPONSE" | grep "HTTP_STATUS:" | cut -d':' -f2)
+RESPONSE_BODY=$(echo "$EMAIL_RESPONSE" | grep -v "HTTP_STATUS:")
+
+echo "Response: $RESPONSE_BODY"
+echo "HTTP Status: $HTTP_STATUS"
+echo ""
+
+if [[ "$HTTP_STATUS" == "200" ]] && echo "$RESPONSE_BODY" | grep -q '"success":true'; then
     echo "✅ Test email sent successfully!"
     echo "   Check inbox for: $TEST_EMAIL"
+elif [[ "$HTTP_STATUS" == "000" ]]; then
+    echo "❌ Failed to connect to the server"
+    echo "   Make sure the server is running"
 else
-    echo "❌ Failed to send test email"
+    echo "❌ Failed to send test email (HTTP $HTTP_STATUS)"
     echo "   Check the SMTP configuration and server logs"
 fi
 

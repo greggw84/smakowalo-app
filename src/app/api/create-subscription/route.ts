@@ -124,6 +124,18 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString(),
     }
 
+    // Safely stringify meal plan config
+    let mealPlanConfigStr: string
+    try {
+      mealPlanConfigStr = JSON.stringify(mealPlanConfig)
+    } catch (err: any) {
+      console.error('❌ Error stringifying meal plan config:', err)
+      return NextResponse.json(
+        { error: 'Invalid meal plan configuration' },
+        { status: 400 }
+      )
+    }
+
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -142,7 +154,7 @@ export async function POST(req: NextRequest) {
         number_of_people: String(numberOfPeople),
         number_of_days: String(numberOfDays),
         delivery_day: deliveryDay,
-        meal_plan_config: JSON.stringify(mealPlanConfig),
+        meal_plan_config: mealPlanConfigStr,
       },
       subscription_data: {
         metadata: {
@@ -151,7 +163,7 @@ export async function POST(req: NextRequest) {
           number_of_people: String(numberOfPeople),
           number_of_days: String(numberOfDays),
           delivery_day: deliveryDay,
-          meal_plan_config: JSON.stringify(mealPlanConfig),
+          meal_plan_config: mealPlanConfigStr,
         },
         // No trial - charge immediately
       },

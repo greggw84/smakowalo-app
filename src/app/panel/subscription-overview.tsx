@@ -140,9 +140,9 @@ export default function SubscriptionOverview({
     <div className="space-y-6">
       {/* Incomplete Status Banner */}
       {isIncomplete && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4" role="alert" aria-live="polite">
           <div className="flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <h4 className="font-bold text-gray-900">Subskrypcja oczekuje na płatność</h4>
               <p className="text-sm text-gray-700 mt-1">
@@ -155,9 +155,9 @@ export default function SubscriptionOverview({
 
       {/* Past Due Status Banner */}
       {isPastDue && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4" role="alert" aria-live="polite">
           <div className="flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <h4 className="font-bold text-gray-900">Problem z płatnością</h4>
               <p className="text-sm text-gray-700 mt-1">
@@ -169,15 +169,16 @@ export default function SubscriptionOverview({
                 className="mt-2 border-red-600 text-red-600 hover:bg-red-50"
                 onClick={handleOpenCustomerPortal}
                 disabled={portalLoading}
+                aria-label="Zaktualizuj metodę płatności"
               >
                 {portalLoading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
                     Ładowanie...
                   </>
                 ) : (
                   <>
-                    <CreditCard className="w-4 h-4 mr-2" />
+                    <CreditCard className="w-4 h-4 mr-2" aria-hidden="true" />
                     Zaktualizuj płatność
                   </>
                 )}
@@ -189,9 +190,9 @@ export default function SubscriptionOverview({
 
       {/* Status Banner */}
       {isPaused && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4" role="alert" aria-live="polite">
           <div className="flex items-start space-x-3">
-            <Pause className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <Pause className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <h4 className="font-bold text-gray-900">Subskrypcja wstrzymana</h4>
               <p className="text-sm text-gray-700">
