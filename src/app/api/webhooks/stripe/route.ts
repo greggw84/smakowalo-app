@@ -260,6 +260,14 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   }
 
   // Upsert subscription
+  logWebhook('info', 'Attempting to upsert subscription', {
+    hasUserId: !!subscriptionData.user_id,
+    stripe_subscription_id: subscriptionData.stripe_subscription_id,
+    status: subscriptionData.status,
+    people: subscriptionData.people,
+    days: subscriptionData.days
+  });
+
   const { error: subError, data: subData } = await supabase
     .from('subscriptions')
     .upsert(subscriptionData, {
@@ -270,7 +278,18 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     .single();
 
   if (subError) {
-    logWebhook('error', 'Failed to upsert subscription', { error: subError });
+    logWebhook('error', 'Failed to upsert subscription', { 
+      error: subError,
+      errorMessage: subError.message,
+      errorCode: subError.code,
+      errorDetails: subError.details,
+      hint: subError.hint,
+      subscriptionData: {
+        user_id: subscriptionData.user_id,
+        stripe_subscription_id: subscriptionData.stripe_subscription_id,
+        status: subscriptionData.status
+      }
+    });
     throw new Error(`Database error: ${subError.message}`);
   }
 
@@ -389,6 +408,8 @@ async function sendSubscriptionWelcomeEmail(
   supabase: any
 ) {
   try {
+    logWebhook('info', 'Preparing to send welcome email', { email, userId });
+
     // Get user details
     const { data: user } = await supabase.auth.admin.getUserById(userId);
     if (!user) {
@@ -401,6 +422,13 @@ async function sendSubscriptionWelcomeEmail(
     // Calculate first delivery date using helper function
     const deliveryDayEn = details.deliveryDay.toLowerCase() === 'wtorek' ? 'tuesday' : 'thursday';
     const firstDeliveryDate = calculateDeliveryDate(deliveryDayEn);
+
+    logWebhook('info', 'Sending welcome email', { 
+      to: email, 
+      name,
+      deliveryDay: details.deliveryDay,
+      planDetails: details.planDetails
+    });
 
     const emailSent = await sendEmail({
       to: email,
@@ -421,12 +449,16 @@ async function sendSubscriptionWelcomeEmail(
     });
 
     if (emailSent) {
-      logWebhook('success', 'Welcome email sent', { email });
+      logWebhook('success', 'Welcome email sent successfully', { email });
     } else {
-      logWebhook('warn', 'Failed to send welcome email', { email });
+      logWebhook('warn', 'Failed to send welcome email - sendEmail returned false', { email });
     }
   } catch (err: any) {
-    logWebhook('error', 'Error sending welcome email', { error: err.message });
+    logWebhook('error', 'Error sending welcome email', { 
+      error: err.message,
+      stack: err.stack,
+      email
+    });
     // Don't throw - email failure shouldn't fail the webhook
   }
 }
