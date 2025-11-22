@@ -49,13 +49,15 @@ export default function SubscriptionTab() {
 
         setSubscription(subs)
 
-        // Debug: Log what we found
-        console.log('📊 Subscription loaded:', {
-          user_id: session.user.id,
-          found: !!subs,
-          subscription_id: subs?.id,
-          status: subs?.status
-        })
+        // Debug: Log what we found (dev only)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📊 Subscription loaded:', {
+            user_id: session.user.id,
+            found: !!subs,
+            subscription_id: subs?.id,
+            status: subs?.status
+          })
+        }
 
         // Get current weekly order
         if (subs) {

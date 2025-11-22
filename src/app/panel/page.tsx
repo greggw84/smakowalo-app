@@ -350,7 +350,9 @@ export default function PanelPage() {
         console.error('Error loading orders:', ordersError)
       } else if (ordersData) {
         setOrders(ordersData)
-        console.log('📦 Loaded orders:', ordersData.length)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📦 Loaded orders:', ordersData.length)
+        }
       }
 
       // Load subscriptions
@@ -364,7 +366,9 @@ export default function PanelPage() {
         console.error('Error loading subscriptions:', subsError)
       } else if (subsData) {
         setSubscriptions(subsData)
-        console.log('🔄 Loaded subscriptions:', subsData.length)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Loaded subscriptions:', subsData.length)
+        }
       }
 
       // Calculate stats
@@ -372,12 +376,14 @@ export default function PanelPage() {
       const totalSpent = ordersData?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0
       const totalSaved = ordersData?.reduce((sum, order) => sum + (order.discount_amount || 0), 0) || 0
       
-      console.log('📊 Panel stats:', {
-        totalOrders: ordersData?.length || 0,
-        activeSubscriptions: activeSubsCount,
-        totalSpent,
-        totalSaved
-      })
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 Panel stats:', {
+          totalOrders: ordersData?.length || 0,
+          activeSubscriptions: activeSubsCount,
+          totalSpent,
+          totalSaved
+        })
+      }
       
       setStats({
         totalOrders: ordersData?.length || 0,

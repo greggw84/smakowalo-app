@@ -88,7 +88,9 @@ export async function POST(request: NextRequest) {
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/kreator?subscription=cancelled`,
     })
 
-    console.log('✅ Stripe Checkout session created:', checkoutSession.id, { userId })
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Stripe Checkout session created:', checkoutSession.id, { userId })
+    }
 
     return NextResponse.json({
       success: true,

@@ -149,7 +149,24 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
 
   const customerId = session.customer as string;
   const subscriptionId = session.subscription as string;
-  const userId = session.metadata?.user_id || session.client_reference_id;
+  
+  // Try to get user_id from multiple sources
+  let userId = session.metadata?.user_id;
+  
+  // Fallback to client_reference_id only if it looks like a UUID
+  if (!userId && session.client_reference_id) {
+    // Validate that client_reference_id looks like a UUID (basic check)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(session.client_reference_id)) {
+      userId = session.client_reference_id;
+      logWebhook('info', 'Using client_reference_id as user_id', { userId });
+    } else {
+      logWebhook('warn', 'client_reference_id is not a valid UUID', { 
+        client_reference_id: session.client_reference_id 
+      });
+    }
+  }
+  
   const customerEmail = session.customer_details?.email || session.customer_email;
 
   if (!subscriptionId) {
