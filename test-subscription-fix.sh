@@ -12,7 +12,10 @@ echo ""
 # Load environment variables if .env.local exists
 if [ -f .env.local ]; then
     echo "📋 Loading environment from .env.local..."
-    export $(cat .env.local | grep -v '^#' | xargs)
+    # Safer way to load env vars
+    set -a
+    source .env.local
+    set +a
 else
     echo "⚠️  Warning: .env.local not found. Make sure environment variables are set."
 fi
@@ -41,7 +44,7 @@ for VAR in "${REQUIRED_VARS[@]}"; do
         echo "❌ Missing: $VAR"
         MISSING_VARS+=("$VAR")
     else
-        # Show first 20 chars for verification (but hide sensitive data)
+        # Show first 10 chars for verification (but hide sensitive data)
         if [[ "$VAR" == *"SECRET"* ]] || [[ "$VAR" == *"PASS"* ]] || [[ "$VAR" == *"KEY"* ]]; then
             echo "✅ Found: $VAR = ${!VAR:0:10}..."
         else
@@ -105,10 +108,8 @@ if ! curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q "200
     exit 1
 fi
 
-# Send test email
-EMAIL_RESPONSE=$(curl -s -X POST http://localhost:3000/api/test-email \
-    -H "Content-Type: application/json" \
-    -d "{\"to\": \"$TEST_EMAIL\"}" \
+# Send test email (using GET with query param)
+EMAIL_RESPONSE=$(curl -s "http://localhost:3000/api/test-email?to=$TEST_EMAIL" \
     || echo '{"error": "Request failed"}')
 
 echo "Response: $EMAIL_RESPONSE"
