@@ -25,7 +25,7 @@ const PRICE_IDS: Record<string, string> = {
  * Get Stripe prices for all subscription plans
  * GET /api/stripe/prices
  */
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const prices: Record<string, number> = {}
 

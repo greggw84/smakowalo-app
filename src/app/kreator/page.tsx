@@ -241,14 +241,10 @@ function KreatorPageComponent() {
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.prices) {
-            console.log('✅ Loaded Stripe prices:', data.prices);
             setStripePrices(data.prices);
           }
-        } else {
-          console.warn('⚠️ Failed to fetch Stripe prices, using defaults');
         }
       } catch (error) {
-        console.error('❌ Error fetching Stripe prices:', error);
         // Keep using default prices on error
       } finally {
         setIsLoadingPrices(false);
