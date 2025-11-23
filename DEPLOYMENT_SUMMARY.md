@@ -57,11 +57,16 @@ Three comprehensive guides created:
 1. Open Supabase Dashboard
 2. Go to: **SQL Editor**
 3. Click **New Query**
-4. Copy the **entire contents** of the file: `supabase/migrations/20251122000000_fix_subscription_rls_for_webhooks.sql`
-5. Paste into the SQL Editor
-6. Click **Run** (or press Ctrl/Cmd + Enter)
+4. Open the file: `supabase/migrations/20251122000000_fix_subscription_rls_for_webhooks.sql`
+5. **Copy ALL the SQL code** from line 30 onwards (after the comment block)
+6. Paste into the SQL Editor
+7. Click **Run** (or press Ctrl/Cmd + Enter)
 
-**Important**: Copy the SQL code from inside the file, NOT the file path itself!
+**Important Notes**:
+- Copy the SQL code from inside the file, NOT the file path itself!
+- This migration drops ALL existing RLS policies and recreates them
+- The new policies allow service role (webhooks) to bypass RLS
+- Regular users can still only access their own data
 
 Verify it worked:
 ```sql

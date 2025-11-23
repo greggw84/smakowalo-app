@@ -36,9 +36,12 @@ Po dokonaniu płatności za subskrypcję:
 
 **Plik**: `supabase/migrations/20251122000000_fix_subscription_rls_for_webhooks.sql`
 
-Nowa migracja dodaje:
-- Politykę RLS pozwalającą `service_role` na bypass
-- Uprawnienia dla `service_role` do zarządzania subskrypcjami i zamówieniami
+Nowa migracja:
+- Usuwa WSZYSTKIE istniejące polityki RLS na tabelach subscriptions i orders
+- Tworzy nowe, ujednolicone polityki które pozwalają:
+  - `service_role` (webhookom) zarządzać wszystkimi subskrypcjami
+  - Zwykłym użytkownikom zarządzać tylko własnymi danymi
+- Dodaje uprawnienia dla `service_role`
 
 **Jak zastosować**:
 ```bash
@@ -86,11 +89,15 @@ git push
 2. Przejdź do: **Database** → **SQL Editor**
 3. Kliknij **New Query** (Nowe zapytanie)
 4. Otwórz plik `supabase/migrations/20251122000000_fix_subscription_rls_for_webhooks.sql`
-5. Skopiuj **całą zawartość** pliku (cały kod SQL)
+5. **Skopiuj CAŁY kod SQL** zaczynając od linii 30 (po bloku komentarzy)
 6. Wklej do SQL Editor w Supabase
 7. Kliknij **Run** (lub naciśnij Ctrl/Cmd + Enter)
 
-**Ważne**: Kopiuj kod SQL z wnętrza pliku, NIE ścieżkę do pliku!
+**Ważne uwagi**:
+- Kopiuj kod SQL z wnętrza pliku, NIE ścieżkę do pliku!
+- Ta migracja usuwa WSZYSTKIE istniejące polityki RLS i tworzy nowe
+- Nowe polityki pozwalają webhookom (service_role) zarządzać wszystkimi subskrypcjami
+- Zwykli użytkownicy nadal mogą zarządzać tylko własnymi danymi
 
 **Weryfikacja**:
 ```sql
