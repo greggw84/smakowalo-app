@@ -118,7 +118,9 @@ export default function SubscriptionOverview({
   }
 
   const isPaused = subscription.status === 'paused' || subscription.pause_until
-  const isActive = subscription.status === 'active'
+  const isActive = subscription.status === 'active' || subscription.status === 'trialing'
+  const isIncomplete = subscription.status === 'incomplete' || subscription.status === 'incomplete_expired'
+  const isPastDue = subscription.status === 'past_due'
   const requiredMeals = (subscription.people || 2) * (subscription.days || 3)
   const hasSelectedMeals = weeklyOrder && weeklyOrder.items && weeklyOrder.items.length > 0
 
@@ -136,11 +138,61 @@ export default function SubscriptionOverview({
 
   return (
     <div className="space-y-6">
+      {/* Incomplete Status Banner */}
+      {isIncomplete && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4" role="alert" aria-live="polite">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <h4 className="font-bold text-gray-900">Subskrypcja oczekuje na płatność</h4>
+              <p className="text-sm text-gray-700 mt-1">
+                Twoja subskrypcja wymaga dokończenia płatności. Sprawdź swój email lub skontaktuj się z obsługą.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Past Due Status Banner */}
+      {isPastDue && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4" role="alert" aria-live="polite">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <h4 className="font-bold text-gray-900">Problem z płatnością</h4>
+              <p className="text-sm text-gray-700 mt-1">
+                Nie udało się pobrać płatności. Zaktualizuj metodę płatności, aby kontynuować subskrypcję.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 border-red-600 text-red-600 hover:bg-red-50"
+                onClick={handleOpenCustomerPortal}
+                disabled={portalLoading}
+                aria-label="Zaktualizuj metodę płatności"
+              >
+                {portalLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
+                    Ładowanie...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4 mr-2" aria-hidden="true" />
+                    Zaktualizuj płatność
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Status Banner */}
       {isPaused && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4" role="alert" aria-live="polite">
           <div className="flex items-start space-x-3">
-            <Pause className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <Pause className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <h4 className="font-bold text-gray-900">Subskrypcja wstrzymana</h4>
               <p className="text-sm text-gray-700">
@@ -176,10 +228,27 @@ export default function SubscriptionOverview({
             <Badge
               variant="secondary"
               className={`${
-                isActive ? 'bg-white text-green-600' : 'bg-yellow-100 text-yellow-800'
+                isActive 
+                  ? 'bg-white text-green-600' 
+                  : isPaused 
+                    ? 'bg-yellow-100 text-yellow-800' 
+                    : isIncomplete
+                      ? 'bg-orange-100 text-orange-800'
+                      : isPastDue
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-800'
               }`}
             >
-              {isActive ? 'Aktywna' : isPaused ? 'Wstrzymana' : subscription.status}
+              {isActive 
+                ? (subscription.status === 'trialing' ? 'Okres próbny' : 'Aktywna')
+                : isPaused 
+                  ? 'Wstrzymana' 
+                  : isIncomplete
+                    ? 'Oczekuje na płatność'
+                    : isPastDue
+                      ? 'Problem z płatnością'
+                      : subscription.status
+              }
             </Badge>
           </div>
         </div>

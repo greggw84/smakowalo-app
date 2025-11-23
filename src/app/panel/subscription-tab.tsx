@@ -30,12 +30,12 @@ export default function SubscriptionTab() {
 
         setSession(session)
 
-        // Get subscription (active, trialing, or past_due)
+        // Get subscription (active, trialing, past_due, or incomplete)
         const { data: subs, error: subsError } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', session.user.id)
-          .in('status', ['active', 'trialing', 'past_due'])
+          .in('status', ['active', 'trialing', 'past_due', 'incomplete', 'incomplete_expired'])
           .order('created_at', { ascending: false })
           .limit(1)
           .single()
