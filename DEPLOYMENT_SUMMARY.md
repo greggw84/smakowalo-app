@@ -55,8 +55,13 @@ Three comprehensive guides created:
 ### Step 1: Apply Database Migration (CRITICAL!)
 
 1. Open Supabase Dashboard
-2. Go to: SQL Editor
-3. Copy and run: `supabase/migrations/20251122000000_fix_subscription_rls_for_webhooks.sql`
+2. Go to: **SQL Editor**
+3. Click **New Query**
+4. Copy the **entire contents** of the file: `supabase/migrations/20251122000000_fix_subscription_rls_for_webhooks.sql`
+5. Paste into the SQL Editor
+6. Click **Run** (or press Ctrl/Cmd + Enter)
+
+**Important**: Copy the SQL code from inside the file, NOT the file path itself!
 
 Verify it worked:
 ```sql

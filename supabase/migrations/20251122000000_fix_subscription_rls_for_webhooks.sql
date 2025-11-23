@@ -3,6 +3,17 @@
 -- Created: 2025-11-22
 -- Purpose: Allow service role to bypass RLS for webhook operations
 -- =====================================================
+--
+-- HOW TO RUN THIS MIGRATION:
+-- 1. Open Supabase Dashboard
+-- 2. Go to: SQL Editor → New Query
+-- 3. Copy EVERYTHING from this file (all lines below)
+-- 4. Paste into the SQL Editor
+-- 5. Click "Run" button (or press Ctrl/Cmd + Enter)
+--
+-- DO NOT type the file path in SQL Editor!
+-- You must copy and paste the SQL code itself.
+-- =====================================================
 
 -- Drop existing policies that might interfere
 DROP POLICY IF EXISTS "Service role can manage subscriptions" ON subscriptions;

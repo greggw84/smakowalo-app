@@ -23,13 +23,18 @@ This migration:
 **How to apply**:
 
 ```bash
-# Option 1: Using Supabase CLI
+# Option 1: Using Supabase CLI (recommended if available)
 supabase migration up
 
-# Option 2: In Supabase Dashboard
+# Option 2: In Supabase Dashboard (manual method)
 # 1. Go to SQL Editor
-# 2. Copy contents of the migration file
-# 3. Execute the SQL
+# 2. Click "New Query"
+# 3. Open the file: supabase/migrations/20251122000000_fix_subscription_rls_for_webhooks.sql
+# 4. Copy ALL the SQL code from inside the file
+# 5. Paste into the SQL Editor
+# 6. Click "Run" or press Ctrl/Cmd + Enter
+#
+# IMPORTANT: Copy the SQL code, NOT the file path!
 ```
 
 **Verification**:

@@ -84,9 +84,13 @@ git push
 
 1. Otwórz Supabase Dashboard
 2. Przejdź do: **Database** → **SQL Editor**
-3. Utwórz nowy query
-4. Skopiuj zawartość: `supabase/migrations/20251122000000_fix_subscription_rls_for_webhooks.sql`
-5. Kliknij **Run**
+3. Kliknij **New Query** (Nowe zapytanie)
+4. Otwórz plik `supabase/migrations/20251122000000_fix_subscription_rls_for_webhooks.sql`
+5. Skopiuj **całą zawartość** pliku (cały kod SQL)
+6. Wklej do SQL Editor w Supabase
+7. Kliknij **Run** (lub naciśnij Ctrl/Cmd + Enter)
+
+**Ważne**: Kopiuj kod SQL z wnętrza pliku, NIE ścieżkę do pliku!
 
 **Weryfikacja**:
 ```sql
