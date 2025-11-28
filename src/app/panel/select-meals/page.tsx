@@ -114,7 +114,7 @@ export default function SelectMealsPage() {
     return () => authSubscription.unsubscribe()
   }, [router])
 
-  // Fetch subscription and weekly menu
+   // Fetch subscription and weekly menu
   useEffect(() => {
     if (!session?.user) return
 
@@ -136,8 +136,10 @@ export default function SelectMealsPage() {
         }
 
         setSubscription(subs)
-        const meals = (subs.people || 2) * (subs.days || 3)
-        setRequiredMeals(meals)
+        // Business rule: User selects Y unique meals (days), each meal is for X people
+        // So requiredMeals = days (number of unique meal selections)
+        const uniqueMealsToSelect = subs.days || 3
+        setRequiredMeals(uniqueMealsToSelect)
 
         // Get current weekly menu
         const menuResponse = await fetch('/api/menu/weekly/current')
@@ -430,7 +432,10 @@ export default function SelectMealsPage() {
                 <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-gray-700">
                   <p className="font-semibold mb-1">Twój plan:</p>
-                  <p>{subscription?.people} osób × {subscription?.days} dni = {requiredMeals} dań</p>
+                  <p>{subscription?.people} osób × {subscription?.days} dni</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Wybierz {requiredMeals} różnych dań (każde dla {subscription?.people} osób)
+                  </p>
                   <p className="text-xs text-gray-500 mt-1">
                     Dostawa: {subscription?.delivery_day === 'tuesday' ? 'Wtorek' : 'Czwartek'}
                   </p>

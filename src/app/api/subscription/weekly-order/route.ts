@@ -158,11 +158,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate number of meals
-    const requiredMeals = subscription.people * subscription.days
+    // Business rule: User selects Y unique meals (days), each meal is for X people
+    // So requiredMeals = days (number of unique meal selections)
+    const requiredMeals = subscription.days || 3
+    const peopleCount = subscription.people || 2
+    
     if (selected_product_ids.length !== requiredMeals) {
       return NextResponse.json(
         {
-          error: `You must select exactly ${requiredMeals} meals (${subscription.people} people × ${subscription.days} days)`,
+          error: `Musisz wybrać dokładnie ${requiredMeals} dań (${requiredMeals} dni × ${peopleCount} osób = ${requiredMeals} różnych dań)`,
           required: requiredMeals,
           provided: selected_product_ids.length
         },
@@ -205,6 +209,9 @@ export async function POST(req: NextRequest) {
       .eq('weekly_menu_id', weekly_menu_id)
       .single()
 
+    // Calculate total meals for delivery (unique meals × people = actual meal count)
+    const totalMealsDelivered = requiredMeals * peopleCount
+
     if (existingOrder) {
       // Update existing order
 
@@ -220,7 +227,7 @@ export async function POST(req: NextRequest) {
         .update({
           delivery_date: finalDeliveryDate,
           delivery_day: finalDeliveryDay,
-          total_meals: requiredMeals,
+          total_meals: totalMealsDelivered,
           is_auto_generated: false,
           updated_at: new Date().toISOString()
         })
@@ -231,16 +238,16 @@ export async function POST(req: NextRequest) {
       if (updateError) {
         console.error('Error updating order:', updateError)
         return NextResponse.json(
-          { error: 'Error updating order' },
+          { error: 'Error updating order', details: updateError.message },
           { status: 500 }
         )
       }
 
-      // Insert new items
+      // Insert new items with quantity = peopleCount (each meal is for X people)
       const itemsToInsert = selected_product_ids.map(productId => ({
         weekly_order_id: existingOrder.id,
         product_id: productId,
-        quantity: 1
+        quantity: peopleCount
       }))
 
       const { error: itemsError } = await supabase
@@ -250,7 +257,7 @@ export async function POST(req: NextRequest) {
       if (itemsError) {
         console.error('Error inserting items:', itemsError)
         return NextResponse.json(
-          { error: 'Error saving meal selections' },
+          { error: 'Error saving meal selections', details: itemsError.message },
           { status: 500 }
         )
       }
@@ -273,7 +280,7 @@ export async function POST(req: NextRequest) {
           delivery_day: finalDeliveryDay,
           status: 'pending',
           is_auto_generated: false,
-          total_meals: requiredMeals
+          total_meals: totalMealsDelivered
         })
         .select()
         .single()
@@ -281,16 +288,16 @@ export async function POST(req: NextRequest) {
       if (orderError) {
         console.error('Error creating order:', orderError)
         return NextResponse.json(
-          { error: 'Error creating order' },
+          { error: 'Error creating order', details: orderError.message },
           { status: 500 }
         )
       }
 
-      // Insert items
+      // Insert items with quantity = peopleCount (each meal is for X people)
       const itemsToInsert = selected_product_ids.map(productId => ({
         weekly_order_id: newOrder.id,
         product_id: productId,
-        quantity: 1
+        quantity: peopleCount
       }))
 
       const { error: itemsError } = await supabase
@@ -300,7 +307,7 @@ export async function POST(req: NextRequest) {
       if (itemsError) {
         console.error('Error inserting items:', itemsError)
         return NextResponse.json(
-          { error: 'Error saving meal selections' },
+          { error: 'Error saving meal selections', details: itemsError.message },
           { status: 500 }
         )
       }

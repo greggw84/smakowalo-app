@@ -107,14 +107,18 @@ export async function POST(req: NextRequest) {
         // TODO: Implement filtering based on product diets/allergens
         const availableProducts = menuItems.map(item => item.product_id)
 
-        // Random selection
-        const requiredMeals = subscription.people * subscription.days
+        // Business rule: User selects Y unique meals (days), each meal is for X people
+        // So requiredMeals = days (number of unique meal selections)
+        const uniqueMealsToSelect = subscription.days || 3
+        const peopleCount = subscription.people || 2
+        const totalMealsDelivered = uniqueMealsToSelect * peopleCount
+        
         const selectedProductIds = selectRandomMeals(
           availableProducts,
-          requiredMeals
+          uniqueMealsToSelect
         )
 
-        if (selectedProductIds.length < requiredMeals) {
+        if (selectedProductIds.length < uniqueMealsToSelect) {
           console.log(`⚠️  Not enough products for user ${subscription.user_id}`)
           results.push({
             user_id: subscription.user_id,
@@ -144,7 +148,7 @@ export async function POST(req: NextRequest) {
             delivery_day: subscription.delivery_day || 'tuesday',
             status: 'pending',
             is_auto_generated: true,
-            total_meals: requiredMeals
+            total_meals: totalMealsDelivered
           })
           .select()
           .single()
@@ -159,11 +163,11 @@ export async function POST(req: NextRequest) {
           continue
         }
 
-        // Insert items
+        // Insert items with quantity = peopleCount (each meal is for X people)
         const itemsToInsert = selectedProductIds.map(productId => ({
           weekly_order_id: newOrder.id,
           product_id: productId,
-          quantity: 1
+          quantity: peopleCount
         }))
 
         const { error: itemsInsertError } = await supabase
