@@ -94,16 +94,18 @@ export default function AdminMenuPage() {
           .eq("id", session.user.id)
           .single();
 
-        // TODO: If no role column exists, you can comment out this check
-        // and allow all authenticated users for now
+        // TODO: IMPORTANT - Enable admin role enforcement in production!
+        // Currently, the UI allows access but API routes enforce admin role.
+        // To enforce admin role on UI as well, uncomment the block below.
+        // The profiles table must have a 'role' column with value 'admin' for admin users.
         if (profile?.role !== "admin") {
-          // For now, we'll show an error but not redirect
-          // This allows testing without admin role
           console.warn("User is not admin, access may be limited");
-          // Uncomment below to enforce admin role:
-          // setError('Brak uprawnień administratora');
-          // router.push('/panel');
-          // return;
+          // TODO: Uncomment below to enforce admin role on UI:
+          /*
+          setError('Brak uprawnień administratora');
+          router.push('/panel');
+          return;
+          */
         }
 
         setIsAdmin(profile?.role === "admin");

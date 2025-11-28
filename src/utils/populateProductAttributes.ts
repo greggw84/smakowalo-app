@@ -89,6 +89,8 @@ export async function populateMissingProductData(
     // Process each product
     for (const product of productsToUpdate) {
       try {
+        let productUpdated = false;
+
         // Get name attribute if product name is missing
         if (!product.name || product.name.trim() === "") {
           const { data: nameAttr } = await supabase
@@ -110,7 +112,7 @@ export async function populateMissingProductData(
                 `Error updating name for product ${product.id}: ${updateError.message}`
               );
             } else {
-              result.updated++;
+              productUpdated = true;
             }
           }
         }
@@ -136,9 +138,13 @@ export async function populateMissingProductData(
                 `Error updating description for product ${product.id}: ${updateError.message}`
               );
             } else {
-              result.updated++;
+              productUpdated = true;
             }
           }
+        }
+
+        if (productUpdated) {
+          result.updated++;
         }
       } catch (productError) {
         result.errors.push(

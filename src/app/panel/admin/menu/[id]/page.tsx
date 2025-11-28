@@ -153,8 +153,16 @@ export default function AdminMenuDetailPage() {
           .eq("id", session.user.id)
           .single();
 
+        // TODO: IMPORTANT - Enable admin role enforcement in production!
+        // Currently, the UI allows access but API routes enforce admin role.
+        // To enforce admin role on UI as well, add redirect logic here.
         if (profile?.role !== "admin") {
           console.warn("User is not admin, access may be limited");
+          // TODO: Uncomment below to enforce admin role on UI:
+          /*
+          router.push('/panel');
+          return;
+          */
         }
 
         setSession(session);
