@@ -202,9 +202,11 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   const planType = session.metadata?.plan_type || 'weekly';
 
   // Upsert subscription to database (userId or customerId)
+  // Note: customer_email is stored for fallback user lookup and display purposes
   const subscriptionData: any = {
     stripe_customer_id: customerId,
     stripe_subscription_id: subscriptionId,
+    customer_email: customerEmail || null, // Store email for fallback lookup
     status: subscription.status,
     plan_type: planType,
     people,
@@ -250,8 +252,13 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
           subscriptionData.user_id = profile.id;
           logWebhook('success', 'Found user by email in profiles', { email: customerEmail, hasUserId: true });
         } else {
-          logWebhook('warn', 'No user found for email, storing with customer_id only', { email: customerEmail });
-          // Store without user_id - can be linked later when user signs up
+          // Store subscription without user_id but WITH customer_email
+          // This allows the subscription to be linked later when user signs up
+          // or queried by email as fallback
+          logWebhook('warn', 'No user found for email, storing subscription with customer_email only', { 
+            email: customerEmail,
+            stripe_subscription_id: subscriptionId 
+          });
         }
       }
     }
@@ -262,6 +269,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   // Upsert subscription
   logWebhook('info', 'Attempting to upsert subscription', {
     hasUserId: !!subscriptionData.user_id,
+    customer_email: subscriptionData.customer_email,
     stripe_subscription_id: subscriptionData.stripe_subscription_id,
     status: subscriptionData.status,
     people: subscriptionData.people,
@@ -286,6 +294,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       hint: subError.hint,
       subscriptionData: {
         user_id: subscriptionData.user_id,
+        customer_email: subscriptionData.customer_email,
         stripe_subscription_id: subscriptionData.stripe_subscription_id,
         status: subscriptionData.status
       }
@@ -296,6 +305,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   logWebhook('success', 'Subscription upserted to database', { 
     id: subData.id,
     hasUserId: !!subData.user_id,
+    customer_email: subData.customer_email,
     stripe_subscription_id: subData.stripe_subscription_id,
     status: subData.status
   });

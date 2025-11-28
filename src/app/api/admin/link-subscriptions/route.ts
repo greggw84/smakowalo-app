@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     // Find subscriptions without user_id
     const { data: orphanedSubs, error: findError } = await supabase
       .from('subscriptions')
-      .select('id, stripe_customer_id, stripe_subscription_id')
+      .select('id, stripe_customer_id, stripe_subscription_id, customer_email')
       .is('user_id', null)
 
     if (findError) {
@@ -75,35 +75,49 @@ export async function POST(req: NextRequest) {
 
     console.log(`Found ${orphanedSubs.length} orphaned subscriptions`)
 
-    // Initialize Stripe
-    const Stripe = (await import('stripe')).default
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2024-12-18.acacia',
-    })
+    // Initialize Stripe (only if needed)
+    let stripe: any = null
+    const getStripe = async () => {
+      if (!stripe) {
+        const Stripe = (await import('stripe')).default
+        stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+          apiVersion: '2024-12-18.acacia' as any,
+        })
+      }
+      return stripe
+    }
 
     let linkedCount = 0
-    const errors: any[] = []
+    const errors: { subscription_id: number; error: string }[] = []
 
     // Process each orphaned subscription
     for (const sub of orphanedSubs) {
       try {
-        // Get customer from Stripe to find email
-        if (!sub.stripe_customer_id) {
-          console.log(`Subscription ${sub.id} has no stripe_customer_id`)
-          continue
+        let customerEmail = sub.customer_email
+
+        // If no customer_email in DB, try to get from Stripe
+        if (!customerEmail && sub.stripe_customer_id) {
+          const stripeClient = await getStripe()
+          const customer = await stripeClient.customers.retrieve(sub.stripe_customer_id)
+          customerEmail = (customer as { email?: string }).email
+          
+          // Update the subscription with the customer_email for future use
+          if (customerEmail) {
+            await supabase
+              .from('subscriptions')
+              .update({ customer_email: customerEmail })
+              .eq('id', sub.id)
+          }
         }
 
-        const customer = await stripe.customers.retrieve(sub.stripe_customer_id)
-        const customerEmail = (customer as any).email
-
         if (!customerEmail) {
-          console.log(`Customer ${sub.stripe_customer_id} has no email`)
+          console.log(`Subscription ${sub.id} has no customer email`)
           continue
         }
 
         // Find user by email
         const { data: users } = await supabase.auth.admin.listUsers()
-        const user = users?.users?.find((u: any) => u.email === customerEmail)
+        const user = users?.users?.find((u: { email?: string }) => u.email === customerEmail)
 
         if (user) {
           // Link subscription to user
@@ -124,10 +138,11 @@ export async function POST(req: NextRequest) {
         } else {
           console.log(`No user found for email: ${customerEmail}`)
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error'
         errors.push({
           subscription_id: sub.id,
-          error: err.message
+          error: errorMessage
         })
       }
     }
@@ -140,10 +155,11 @@ export async function POST(req: NextRequest) {
       errors: errors.length > 0 ? errors : undefined
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     console.error('Error in link-subscriptions:', error)
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: errorMessage },
       { status: 500 }
     )
   }

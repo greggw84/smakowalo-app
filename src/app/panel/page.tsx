@@ -355,12 +355,41 @@ export default function PanelPage() {
         }
       }
 
-      // Load subscriptions
-      const { data: subsData, error: subsError } = await supabase
+      // Load subscriptions - first by user_id
+      let { data: subsData, error: subsError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', currentUser.id)
         .order('created_at', { ascending: false })
+      
+      // If no subscriptions found by user_id and we have email, also check by customer_email
+      const userEmail = currentUser.email
+      if ((!subsData || subsData.length === 0) && userEmail) {
+        const { data: subsByEmail } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('customer_email', userEmail)
+          .order('created_at', { ascending: false })
+        
+        if (subsByEmail && subsByEmail.length > 0) {
+          subsData = subsByEmail
+          subsError = null
+          
+          // Automatically link these subscriptions to the user
+          for (const sub of subsByEmail) {
+            if (!sub.user_id) {
+              await supabase
+                .from('subscriptions')
+                .update({ user_id: currentUser.id })
+                .eq('id', sub.id)
+            }
+          }
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📧 Found subscriptions by email and linked to user:', subsByEmail.length)
+          }
+        }
+      }
       
       if (subsError) {
         console.error('Error loading subscriptions:', subsError)

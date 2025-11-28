@@ -30,8 +30,10 @@ export default function SubscriptionTab() {
 
         setSession(session)
 
-        // Get subscription (active, trialing, past_due, or incomplete)
-        const { data: subs, error: subsError } = await supabase
+        const userEmail = session.user.email
+
+        // First try to get subscription by user_id
+        let { data: subs, error: subsError } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('user_id', session.user.id)
@@ -40,11 +42,44 @@ export default function SubscriptionTab() {
           .limit(1)
           .single()
 
-        if (subsError) {
-          console.error('Error fetching subscription:', subsError)
-          if (subsError.code !== 'PGRST116') { // Not "no rows returned" error
-            console.error('Database error:', subsError.message)
+        // If no subscription found by user_id and we have email, try by customer_email
+        // This handles the case where webhook created subscription before user was linked
+        if (!subs && userEmail && subsError?.code === 'PGRST116') {
+          const { data: subsByEmail, error: emailError } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('customer_email', userEmail)
+            .in('status', ['active', 'trialing', 'past_due', 'incomplete', 'incomplete_expired'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+          if (subsByEmail) {
+            subs = subsByEmail
+            subsError = null
+            
+            // Automatically link this subscription to the user for future queries
+            const { error: updateError } = await supabase
+              .from('subscriptions')
+              .update({ user_id: session.user.id })
+              .eq('id', subsByEmail.id)
+            
+            if (updateError) {
+              console.error('Failed to link subscription to user:', updateError)
+            } else {
+              console.log('✅ Subscription linked to user account:', {
+                subscription_id: subsByEmail.id,
+                user_id: session.user.id
+              })
+            }
+          } else if (emailError && emailError.code !== 'PGRST116') {
+            console.error('Error fetching subscription by email:', emailError)
           }
+        }
+
+        if (subsError && subsError.code !== 'PGRST116') {
+          console.error('Error fetching subscription:', subsError)
+          console.error('Database error:', subsError.message)
         }
 
         setSubscription(subs)
@@ -53,9 +88,11 @@ export default function SubscriptionTab() {
         if (process.env.NODE_ENV === 'development') {
           console.log('📊 Subscription loaded:', {
             hasUserId: !!session.user.id,
+            userEmail,
             found: !!subs,
             subscription_id: subs?.id,
-            status: subs?.status
+            status: subs?.status,
+            linkedByEmail: subs && !subs.user_id
           })
         }
 
