@@ -105,13 +105,15 @@ interface Subscription {
   price_per_delivery: number
   next_delivery_date?: string
   current_period_end?: string
-  meal_plan_config?: any
+  meal_plan_config?: unknown
   diets?: string[]
   allergies?: string[]
   selected_meals?: string[]
   cancel_at_period_end?: boolean
   created_at: string
   pause_until?: string
+  delivery_day?: string
+  delivery_frequency?: number | string // Can be number (7) or string ('weekly')
 }
 
 interface Profile {

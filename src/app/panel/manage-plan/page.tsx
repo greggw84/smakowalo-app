@@ -61,6 +61,8 @@ const allergyOptions = [
   { id: 'sezam', name: 'Sezam' },
 ]
 
+// Local subscription interface with only the fields needed for this page
+// Using a local interface keeps this page independent and reduces coupling
 interface SubscriptionData {
   id: number
   stripe_subscription_id?: string
@@ -367,7 +369,7 @@ export default function ManagePlanPage() {
                       }`}
                       onClick={() => setNumberOfPeople(num)}
                     >
-                      {num} {num === 1 ? 'osoba' : num < 5 ? 'osoby' : 'osób'}
+                      {num} {num === 1 ? 'osoba' : num <= 4 ? 'osoby' : 'osób'}
                     </button>
                   ))}
                 </div>

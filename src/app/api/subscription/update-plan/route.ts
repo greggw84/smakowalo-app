@@ -65,7 +65,8 @@ export async function POST(req: NextRequest) {
       message: 'Subscription plan updated successfully',
       subscription: {
         id: updatedSubscription.id,
-        current_period_end: updatedSubscription.current_period_end
+        // Access current_period_end via items if it exists
+        current_period_end: (updatedSubscription as { current_period_end?: number }).current_period_end
       }
     })
 

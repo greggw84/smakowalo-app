@@ -167,8 +167,14 @@ export default function SubscriptionOverview({
   )
 
   // Calculate subsequent delivery date (for weekly subscription: +7 days)
-  // delivery_frequency defaults to 7 days for weekly subscriptions
-  const deliveryFrequencyDays = subscription.delivery_frequency || 7
+  // delivery_frequency can be number (7) or string ('weekly'), handle both
+  const getDeliveryFrequencyDays = (freq: number | string | undefined): number => {
+    if (typeof freq === 'number') return freq
+    if (freq === 'weekly') return 7
+    if (freq === 'bi-weekly') return 14
+    return 7 // default to weekly
+  }
+  const deliveryFrequencyDays = getDeliveryFrequencyDays(subscription.delivery_frequency)
   const computedSubsequentDeliveryDate = computedNextDeliveryDate
     ? calculateSubsequentDeliveryDate(computedNextDeliveryDate, deliveryFrequencyDays)
     : null
