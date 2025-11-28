@@ -339,11 +339,11 @@ export default function PanelPage() {
         setProfile(prev => ({ ...prev, ...profileData }))
       }
 
-      // Load orders
+      // Load orders - query by user_id OR customer_email to handle legacy orders
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
-        .eq('user_id', currentUser.id)
+        .or(`user_id.eq.${currentUser.id},customer_email.eq.${currentUser.email}`)
         .order('created_at', { ascending: false })
       
       if (ordersError) {
@@ -355,11 +355,11 @@ export default function PanelPage() {
         }
       }
 
-      // Load subscriptions
+      // Load subscriptions - query by user_id OR customer_email
       const { data: subsData, error: subsError } = await supabase
         .from('subscriptions')
         .select('*')
-        .eq('user_id', currentUser.id)
+        .or(`user_id.eq.${currentUser.id},customer_email.eq.${currentUser.email}`)
         .order('created_at', { ascending: false })
       
       if (subsError) {
@@ -371,8 +371,8 @@ export default function PanelPage() {
         }
       }
 
-      // Calculate stats
-      const activeSubsCount = subsData?.filter(s => ['active', 'trialing', 'past_due'].includes(s.status)).length || 0
+      // Calculate stats - include paused subscriptions in count
+      const activeSubsCount = subsData?.filter(s => ['active', 'trialing', 'past_due', 'paused'].includes(s.status)).length || 0
       const totalSpent = ordersData?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0
       const totalSaved = ordersData?.reduce((sum, order) => sum + (order.discount_amount || 0), 0) || 0
       
