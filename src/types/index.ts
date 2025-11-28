@@ -135,14 +135,37 @@ export interface Order {
   order_items?: unknown[];
 }
 
+/**
+ * Subscription status type - matches values from subscription-utils.ts
+ */
+export type SubscriptionStatusType = 
+  | 'active'
+  | 'paused'
+  | 'trialing'
+  | 'incomplete'
+  | 'incomplete_expired'
+  | 'past_due'
+  | 'canceled';
+
+/**
+ * Delivery day type - the days when deliveries can be scheduled
+ */
+export type DeliveryDayType = 'tuesday' | 'thursday';
+
 export interface Subscription {
   id: number;
-  status: string;
+  status: SubscriptionStatusType | string;
   plan_type: string;
   price_per_delivery: number;
   next_delivery_date?: string;
   meal_plan_config?: Record<string, unknown>;
   stripe_subscription_id?: string;
   created_at: string;
-  pause_until?: string;
+  pause_until?: string | null;
+  delivery_day?: DeliveryDayType | string;
+  people?: number;
+  days?: number;
+  diets?: string[];
+  allergies?: string[];
+  dietary_preferences?: string[];
 }

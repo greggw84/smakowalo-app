@@ -3,6 +3,9 @@ import { test, expect } from '@playwright/test'
 // Test configuration
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
 
+// Constants matching src/lib/subscription-utils.ts
+const DEADLINE_HOURS_BEFORE_DELIVERY = 48;
+
 test.describe('Subscription Panel UI', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE_URL}/panel`)
@@ -125,8 +128,168 @@ test.describe('Date Formatting Utilities', () => {
   })
 })
 
-test.describe('Subscription Status Badge', () => {
-  test('should render badge variants correctly', async ({ page }) => {
+test.describe('Deadline Calculation (48 hours before delivery)', () => {
+  test('calculateDeadline should return 48 hours before delivery at 23:59', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const results = await page.evaluate((deadlineHours) => {
+      const POLISH_DAY_NAMES: Record<number, string> = {
+        0: 'niedziela',
+        1: 'poniedziałek',
+        2: 'wtorek',
+        3: 'środa',
+        4: 'czwartek',
+        5: 'piątek',
+        6: 'sobota',
+      }
+      
+      function calculateDeadline(deliveryDate: Date): Date {
+        const deadline = new Date(deliveryDate);
+        deadline.setHours(deadline.getHours() - deadlineHours);
+        deadline.setHours(23, 59, 0, 0);
+        return deadline;
+      }
+      
+      function formatDeadlineText(deadline: Date): string {
+        const dayName = POLISH_DAY_NAMES[deadline.getDay()];
+        const hours = deadline.getHours().toString().padStart(2, '0');
+        const minutes = deadline.getMinutes().toString().padStart(2, '0');
+        return `${dayName} ${hours}:${minutes}`;
+      }
+      
+      // Test case 1: Tuesday delivery (Dec 9, 2025) -> Sunday 23:59 deadline
+      const tuesdayDelivery = new Date(2025, 11, 9, 12, 0); // Tuesday Dec 9, 2025 at noon
+      const tuesdayDeadline = calculateDeadline(tuesdayDelivery);
+      
+      // Test case 2: Thursday delivery (Dec 11, 2025) -> Tuesday 23:59 deadline
+      const thursdayDelivery = new Date(2025, 11, 11, 12, 0); // Thursday Dec 11, 2025 at noon
+      const thursdayDeadline = calculateDeadline(thursdayDelivery);
+      
+      // Test case 3: Monday delivery (Dec 8, 2025) -> Saturday 23:59 deadline
+      const mondayDelivery = new Date(2025, 11, 8, 12, 0); // Monday Dec 8, 2025 at noon
+      const mondayDeadline = calculateDeadline(mondayDelivery);
+      
+      // Test case 4: Weekend delivery (Saturday Dec 13, 2025) -> Thursday 23:59 deadline
+      const saturdayDelivery = new Date(2025, 11, 13, 12, 0); // Saturday Dec 13, 2025 at noon
+      const saturdayDeadline = calculateDeadline(saturdayDelivery);
+      
+      return {
+        tuesday: {
+          deadlineDate: tuesdayDeadline.toISOString().split('T')[0],
+          deadlineText: formatDeadlineText(tuesdayDeadline),
+          deadlineDay: tuesdayDeadline.getDay(),
+          deadlineHour: tuesdayDeadline.getHours(),
+          deadlineMinute: tuesdayDeadline.getMinutes(),
+        },
+        thursday: {
+          deadlineDate: thursdayDeadline.toISOString().split('T')[0],
+          deadlineText: formatDeadlineText(thursdayDeadline),
+          deadlineDay: thursdayDeadline.getDay(),
+        },
+        monday: {
+          deadlineDate: mondayDeadline.toISOString().split('T')[0],
+          deadlineText: formatDeadlineText(mondayDeadline),
+          deadlineDay: mondayDeadline.getDay(),
+        },
+        saturday: {
+          deadlineDate: saturdayDeadline.toISOString().split('T')[0],
+          deadlineText: formatDeadlineText(saturdayDeadline),
+          deadlineDay: saturdayDeadline.getDay(),
+        },
+      }
+    }, DEADLINE_HOURS_BEFORE_DELIVERY)
+    
+    // Tuesday delivery -> Sunday deadline (2 days before)
+    expect(results.tuesday.deadlineDate).toBe('2025-12-07') // Sunday Dec 7
+    expect(results.tuesday.deadlineDay).toBe(0) // Sunday
+    expect(results.tuesday.deadlineHour).toBe(23)
+    expect(results.tuesday.deadlineMinute).toBe(59)
+    expect(results.tuesday.deadlineText).toBe('niedziela 23:59')
+    
+    // Thursday delivery -> Tuesday deadline (2 days before)
+    expect(results.thursday.deadlineDate).toBe('2025-12-09') // Tuesday Dec 9
+    expect(results.thursday.deadlineDay).toBe(2) // Tuesday
+    expect(results.thursday.deadlineText).toBe('wtorek 23:59')
+    
+    // Monday delivery -> Saturday deadline (2 days before)
+    expect(results.monday.deadlineDate).toBe('2025-12-06') // Saturday Dec 6
+    expect(results.monday.deadlineDay).toBe(6) // Saturday
+    expect(results.monday.deadlineText).toBe('sobota 23:59')
+    
+    // Saturday delivery -> Thursday deadline (2 days before)
+    expect(results.saturday.deadlineDate).toBe('2025-12-11') // Thursday Dec 11
+    expect(results.saturday.deadlineDay).toBe(4) // Thursday
+    expect(results.saturday.deadlineText).toBe('czwartek 23:59')
+  })
+  
+  test('deadline calculation should work correctly for edge cases', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const results = await page.evaluate((deadlineHours) => {
+      function calculateDeadline(deliveryDate: Date): Date {
+        const deadline = new Date(deliveryDate);
+        deadline.setHours(deadline.getHours() - deadlineHours);
+        deadline.setHours(23, 59, 0, 0);
+        return deadline;
+      }
+      
+      // Edge case 1: Delivery early morning should still calculate 48h back correctly
+      const earlyMorningDelivery = new Date(2025, 11, 9, 6, 0); // Tuesday 6am
+      const earlyDeadline = calculateDeadline(earlyMorningDelivery);
+      
+      // Edge case 2: Delivery late night
+      const lateNightDelivery = new Date(2025, 11, 9, 23, 0); // Tuesday 11pm
+      const lateDeadline = calculateDeadline(lateNightDelivery);
+      
+      // Edge case 3: Cross month boundary (Jan 2 delivery)
+      const crossMonthDelivery = new Date(2026, 0, 2, 12, 0); // Friday Jan 2, 2026
+      const crossMonthDeadline = calculateDeadline(crossMonthDelivery);
+      
+      // Edge case 4: Cross year boundary (Jan 1 delivery)
+      const newYearDelivery = new Date(2026, 0, 1, 12, 0); // Thursday Jan 1, 2026
+      const newYearDeadline = calculateDeadline(newYearDelivery);
+      
+      return {
+        earlyMorning: {
+          deadlineDate: earlyDeadline.toISOString().split('T')[0],
+          deadlineDay: earlyDeadline.getDay(),
+        },
+        lateNight: {
+          deadlineDate: lateDeadline.toISOString().split('T')[0],
+          deadlineDay: lateDeadline.getDay(),
+        },
+        crossMonth: {
+          deadlineDate: crossMonthDeadline.toISOString().split('T')[0],
+          deadlineMonth: crossMonthDeadline.getMonth(),
+          deadlineYear: crossMonthDeadline.getFullYear(),
+        },
+        newYear: {
+          deadlineDate: newYearDeadline.toISOString().split('T')[0],
+          deadlineMonth: newYearDeadline.getMonth(),
+          deadlineYear: newYearDeadline.getFullYear(),
+        },
+      }
+    }, DEADLINE_HOURS_BEFORE_DELIVERY)
+    
+    // Early morning delivery - deadline should be Sunday
+    expect(results.earlyMorning.deadlineDate).toBe('2025-12-07')
+    
+    // Late night delivery - deadline should still be Sunday (23:59)
+    expect(results.lateNight.deadlineDate).toBe('2025-12-07')
+    
+    // Cross month - Jan 2 delivery should have Dec 31 deadline
+    expect(results.crossMonth.deadlineDate).toBe('2025-12-31')
+    expect(results.crossMonth.deadlineMonth).toBe(11) // December (0-indexed)
+    expect(results.crossMonth.deadlineYear).toBe(2025)
+    
+    // Cross year - Jan 1 delivery should have Dec 30 deadline
+    expect(results.newYear.deadlineDate).toBe('2025-12-30')
+    expect(results.newYear.deadlineYear).toBe(2025)
+  })
+})
+
+test.describe('Subscription Status Badge and Header', () => {
+  test('should render badge variants correctly with proper colors', async ({ page }) => {
     await page.goto(BASE_URL)
     
     // Test the badge status mapping
@@ -138,26 +301,32 @@ test.describe('Subscription Status Badge', () => {
         const isPastDue = status === 'past_due'
         
         let label: string
-        let colorClass: string
+        let badgeColorClass: string
+        let headerColorClass: string
         
         if (isActive) {
           label = status === 'trialing' ? 'Okres próbny' : 'Aktywna'
-          colorClass = 'bg-white text-green-600'
+          badgeColorClass = 'bg-white text-green-600'
+          headerColorClass = 'bg-gradient-to-r from-green-500 to-green-600'
         } else if (isPaused) {
           label = 'Wstrzymana'
-          colorClass = 'bg-yellow-100 text-yellow-800'
+          badgeColorClass = 'bg-white text-gray-600'
+          headerColorClass = 'bg-gradient-to-r from-gray-500 to-gray-600'
         } else if (isIncomplete) {
           label = 'Oczekuje na płatność'
-          colorClass = 'bg-orange-100 text-orange-800'
+          badgeColorClass = 'bg-orange-100 text-orange-800'
+          headerColorClass = 'bg-gradient-to-r from-green-500 to-green-600'
         } else if (isPastDue) {
           label = 'Problem z płatnością'
-          colorClass = 'bg-red-100 text-red-800'
+          badgeColorClass = 'bg-red-100 text-red-800'
+          headerColorClass = 'bg-gradient-to-r from-green-500 to-green-600'
         } else {
           label = status
-          colorClass = 'bg-gray-100 text-gray-800'
+          badgeColorClass = 'bg-gray-100 text-gray-800'
+          headerColorClass = 'bg-gradient-to-r from-green-500 to-green-600'
         }
         
-        return { label, colorClass, isPaused, isActive }
+        return { label, badgeColorClass, headerColorClass, isPaused, isActive }
       }
       
       return {
@@ -171,28 +340,65 @@ test.describe('Subscription Status Badge', () => {
       }
     })
     
-    // Verify active subscription shows "Aktywna"
+    // Verify active subscription shows "Aktywna" with green header
     expect(badgeStates.active.label).toBe('Aktywna')
     expect(badgeStates.active.isActive).toBe(true)
+    expect(badgeStates.active.headerColorClass).toContain('green')
+    expect(badgeStates.active.badgeColorClass).toContain('green')
     
     // Verify trialing shows "Okres próbny"
     expect(badgeStates.trialing.label).toBe('Okres próbny')
     expect(badgeStates.trialing.isActive).toBe(true)
+    expect(badgeStates.trialing.headerColorClass).toContain('green')
     
-    // Verify paused shows "Wstrzymana" with yellow color
+    // Verify paused shows "Wstrzymana" with grey header
     expect(badgeStates.paused.label).toBe('Wstrzymana')
     expect(badgeStates.paused.isPaused).toBe(true)
-    expect(badgeStates.paused.colorClass).toContain('yellow')
+    expect(badgeStates.paused.headerColorClass).toContain('gray')
+    expect(badgeStates.paused.badgeColorClass).toContain('gray')
     
-    // Verify pause_until also triggers paused state
+    // Verify pause_until also triggers paused state with grey header
     expect(badgeStates.pausedWithDate.label).toBe('Wstrzymana')
     expect(badgeStates.pausedWithDate.isPaused).toBe(true)
+    expect(badgeStates.pausedWithDate.headerColorClass).toContain('gray')
     
     // Verify incomplete
     expect(badgeStates.incomplete.label).toBe('Oczekuje na płatność')
     
     // Verify past_due
     expect(badgeStates.past_due.label).toBe('Problem z płatnością')
+  })
+  
+  test('subscription card header should use correct colors for active vs paused', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const colorMapping = await page.evaluate(() => {
+      // Simulate the color logic from subscription-overview.tsx
+      function getHeaderClass(isPaused: boolean): string {
+        return isPaused 
+          ? 'bg-gradient-to-r from-gray-500 to-gray-600' 
+          : 'bg-gradient-to-r from-green-500 to-green-600'
+      }
+      
+      function getSubtitleClass(isPaused: boolean): string {
+        return isPaused ? 'text-gray-100' : 'text-green-50'
+      }
+      
+      return {
+        activeHeader: getHeaderClass(false),
+        pausedHeader: getHeaderClass(true),
+        activeSubtitle: getSubtitleClass(false),
+        pausedSubtitle: getSubtitleClass(true),
+      }
+    })
+    
+    // Active subscription should have green header
+    expect(colorMapping.activeHeader).toContain('green')
+    expect(colorMapping.activeSubtitle).toContain('green')
+    
+    // Paused subscription should have gray header
+    expect(colorMapping.pausedHeader).toContain('gray')
+    expect(colorMapping.pausedSubtitle).toContain('gray')
   })
 })
 

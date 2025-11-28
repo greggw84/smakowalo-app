@@ -21,6 +21,10 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import {
+  calculateNextDeliveryDate,
+  getDeadlineTextForDelivery,
+} from "@/lib/subscription-utils"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -321,12 +325,24 @@ export default function SelectMealsPage() {
             </div>
           </div>
 
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-sm text-gray-700">
-              <strong>Ważne:</strong> Możesz zmienić wybór do niedzieli 23:59.
-              Jeśli nic nie wybierzesz, system automatycznie dobierze dania według Twoich preferencji.
-            </p>
-          </div>
+          {(() => {
+            const nextDeliveryDate = calculateNextDeliveryDate(
+              subscription?.delivery_day,
+              subscription?.pause_until,
+              subscription?.next_delivery_date
+            );
+            const deadlineText = nextDeliveryDate 
+              ? getDeadlineTextForDelivery(nextDeliveryDate)
+              : 'niedziela 23:59';
+            return (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-gray-700">
+                  <strong>Ważne:</strong> Możesz zmienić wybór do {deadlineText}.
+                  Jeśli nic nie wybierzesz, system automatycznie dobierze dania według Twoich preferencji.
+                </p>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Meals grid */}
