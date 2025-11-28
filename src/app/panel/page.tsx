@@ -74,8 +74,22 @@ interface Order {
   status: string
   created_at: string
   delivery_date?: string
-  discount_details?: any[]
-  order_items?: any[]
+  discount_details?: unknown[]
+  order_items?: unknown[]
+}
+
+// Subscription weekly order interface for displaying in orders tab
+interface SubscriptionWeeklyOrder {
+  id: number
+  subscription_id: number
+  weekly_menu_id?: number
+  delivery_date?: string
+  delivery_day?: string
+  status: string
+  is_auto_generated?: boolean
+  total_meals?: number
+  created_at: string
+  updated_at?: string
 }
 
 interface Subscription {
@@ -245,6 +259,7 @@ export default function PanelPage() {
   })
 
   const [orders, setOrders] = useState<Order[]>([])
+  const [subscriptionOrders, setSubscriptionOrders] = useState<SubscriptionWeeklyOrder[]>([])
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -324,8 +339,11 @@ export default function PanelPage() {
     }
   }, [router])
 
-  const loadUserData = async (currentUser: any) => {
+  const loadUserData = async (currentUser: { id: string; email?: string | null }) => {
     if (!currentUser || !supabase) return
+    
+    // Email is required for some queries
+    const userEmail = currentUser.email || ''
 
     try {
       // Load profile from Supabase
@@ -343,7 +361,7 @@ export default function PanelPage() {
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
-        .or(`user_id.eq.${currentUser.id},customer_email.eq.${currentUser.email}`)
+        .or(`user_id.eq.${currentUser.id},customer_email.eq.${userEmail}`)
         .order('created_at', { ascending: false })
       
       if (ordersError) {
@@ -355,11 +373,27 @@ export default function PanelPage() {
         }
       }
 
+      // Load subscription weekly orders - these are the actual deliveries
+      const { data: subOrdersData, error: subOrdersError } = await supabase
+        .from('subscription_weekly_orders')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('delivery_date', { ascending: false })
+      
+      if (subOrdersError) {
+        console.error('Error loading subscription orders:', subOrdersError)
+      } else if (subOrdersData) {
+        setSubscriptionOrders(subOrdersData)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📦 Loaded subscription orders:', subOrdersData.length)
+        }
+      }
+
       // Load subscriptions - query by user_id OR customer_email
       const { data: subsData, error: subsError } = await supabase
         .from('subscriptions')
         .select('*')
-        .or(`user_id.eq.${currentUser.id},customer_email.eq.${currentUser.email}`)
+        .or(`user_id.eq.${currentUser.id},customer_email.eq.${userEmail}`)
         .order('created_at', { ascending: false })
       
       if (subsError) {
@@ -372,13 +406,22 @@ export default function PanelPage() {
       }
 
       // Calculate stats - include paused subscriptions in count
+      // For active subscriptions: count those with active, trialing, past_due, or paused status
       const activeSubsCount = subsData?.filter(s => ['active', 'trialing', 'past_due', 'paused'].includes(s.status)).length || 0
+      
+      // Total orders includes both regular orders and subscription weekly orders
+      const regularOrdersCount = ordersData?.length || 0
+      const subscriptionOrdersCount = subOrdersData?.length || 0
+      const totalOrdersCount = regularOrdersCount + subscriptionOrdersCount
+      
       const totalSpent = ordersData?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0
       const totalSaved = ordersData?.reduce((sum, order) => sum + (order.discount_amount || 0), 0) || 0
       
       if (process.env.NODE_ENV === 'development') {
         console.log('📊 Panel stats:', {
-          totalOrders: ordersData?.length || 0,
+          regularOrders: regularOrdersCount,
+          subscriptionOrders: subscriptionOrdersCount,
+          totalOrders: totalOrdersCount,
           activeSubscriptions: activeSubsCount,
           totalSpent,
           totalSaved
@@ -386,7 +429,7 @@ export default function PanelPage() {
       }
       
       setStats({
-        totalOrders: ordersData?.length || 0,
+        totalOrders: totalOrdersCount,
         totalSpent,
         totalSaved,
         activeSubscriptions: activeSubsCount
@@ -630,15 +673,26 @@ export default function PanelPage() {
       case 'delivered': return 'bg-green-100 text-green-800'
       case 'confirmed': case 'preparing': return 'bg-blue-100 text-blue-800'
       case 'shipped': return 'bg-yellow-100 text-yellow-800'
-      case 'canceled': return 'bg-red-100 text-red-800'
+      case 'canceled': case 'failed': return 'bg-red-100 text-red-800'
+      case 'scheduled': return 'bg-blue-100 text-blue-800'
+      case 'skipped': return 'bg-orange-100 text-orange-800'
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
   const getStatusText = (status: string) => {
     const statusMap: { [key: string]: string } = {
-      'pending': 'Oczekujące', 'confirmed': 'Potwierdzone', 'preparing': 'Przygotowywane',
-      'shipped': 'Wysłane', 'delivered': 'Dostarczone', 'canceled': 'Anulowane'
+      'pending': 'Oczekujące', 
+      'confirmed': 'Potwierdzone', 
+      'preparing': 'Przygotowywane',
+      'shipped': 'Wysłane', 
+      'delivered': 'Dostarczone', 
+      'canceled': 'Anulowane',
+      // Subscription weekly order statuses
+      'scheduled': 'Zaplanowane',
+      'skipped': 'Pominięte',
+      'failed': 'Nieudane'
     }
     return statusMap[status] || status
   }
@@ -884,7 +938,7 @@ export default function PanelPage() {
                     </Button>
                   </Link>
                 </div>
-                {orders.length === 0 ? (
+                {orders.length === 0 && subscriptionOrders.length === 0 ? (
                   <div className="text-center py-12">
                     <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Brak zamówień</h3>
@@ -897,32 +951,91 @@ export default function PanelPage() {
                     </Link>
                   </div>
                 ) : (
-                  orders.map((order) => (
-                    <Card key={order.id}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-3">
-                              <h3 className="text-lg font-semibold text-gray-900">
-                                Zamówienie #{order.id}
-                              </h3>
-                              <Badge className={getStatusBadgeColor(order.status)}>
-                                {getStatusText(order.status)}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-600">
-                              Data: {new Date(order.created_at).toLocaleDateString('pl-PL')}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
-                              {order.total_amount.toFixed(2)} zł
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                  <>
+                    {/* Subscription Weekly Orders (Deliveries) */}
+                    {subscriptionOrders.length > 0 && (
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-700 flex items-center">
+                          <RefreshCw className="w-5 h-5 mr-2 text-[var(--smakowalo-green-primary)]" />
+                          Dostawy subskrypcji
+                        </h3>
+                        {subscriptionOrders.map((subOrder) => (
+                          <Card key={`sub-${subOrder.id}`}>
+                            <CardContent className="p-6">
+                              <div className="flex justify-between items-start">
+                                <div className="space-y-2">
+                                  <div className="flex items-center space-x-3">
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                      Dostawa #{subOrder.id}
+                                    </h3>
+                                    <Badge className={getStatusBadgeColor(subOrder.status)}>
+                                      {getStatusText(subOrder.status)}
+                                    </Badge>
+                                    {subOrder.is_auto_generated && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Auto
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-600">
+                                    Dostawa: {subOrder.delivery_date 
+                                      ? new Date(subOrder.delivery_date).toLocaleDateString('pl-PL') 
+                                      : 'Nie ustalono'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Utworzono: {new Date(subOrder.created_at).toLocaleDateString('pl-PL')}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-medium text-gray-700">
+                                    {subOrder.total_meals || 0} posiłków
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Regular Orders */}
+                    {orders.length > 0 && (
+                      <div className="space-y-4">
+                        {subscriptionOrders.length > 0 && (
+                          <h3 className="text-lg font-semibold text-gray-700 flex items-center mt-6">
+                            <Package className="w-5 h-5 mr-2 text-[var(--smakowalo-green-primary)]" />
+                            Pozostałe zamówienia
+                          </h3>
+                        )}
+                        {orders.map((order) => (
+                          <Card key={order.id}>
+                            <CardContent className="p-6">
+                              <div className="flex justify-between items-start">
+                                <div className="space-y-2">
+                                  <div className="flex items-center space-x-3">
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                      Zamówienie #{order.id}
+                                    </h3>
+                                    <Badge className={getStatusBadgeColor(order.status)}>
+                                      {getStatusText(order.status)}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-gray-600">
+                                    Data: {new Date(order.created_at).toLocaleDateString('pl-PL')}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-2xl font-bold text-[var(--smakowalo-green-primary)]">
+                                    {order.total_amount.toFixed(2)} zł
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
