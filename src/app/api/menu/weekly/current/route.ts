@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+// Supabase error code for "no rows returned"
+const SUPABASE_NO_ROWS_ERROR = 'PGRST116'
+
 /**
  * GET /api/menu/weekly/current
  * Returns the current active weekly menu with all products
@@ -30,7 +33,7 @@ export async function GET(req: NextRequest) {
 
     if (menuError) {
       // If no active menu found, try to get the most recent one
-      if (menuError.code === 'PGRST116') {
+      if (menuError.code === SUPABASE_NO_ROWS_ERROR) {
         const { data: recentMenu, error: recentError } = await supabase
           .from('weekly_menus')
           .select(`

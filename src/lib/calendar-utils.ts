@@ -41,7 +41,7 @@ function escapeICSText(text: string): string {
  * Generates an ICS file content for a calendar event
  */
 export function generateICSFile(event: CalendarEvent): string {
-  const uid = `smakowalo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}@smakowalo.pl`
+  const uid = `smakowalo-${Date.now()}-${Math.random().toString(36).slice(2, 11)}@smakowalo.pl`
   const now = new Date()
   const dtstamp = formatICSDate(now)
   

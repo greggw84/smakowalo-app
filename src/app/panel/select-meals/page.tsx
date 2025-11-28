@@ -147,19 +147,21 @@ export default function SelectMealsPage() {
         setLoading(true)
 
         // Get user's subscription - include paused and trialing statuses
-        const { data: subs } = await supabase!
+        const { data: subsData, error: subsError } = await supabase!
           .from('subscriptions')
           .select('*')
           .eq('user_id', session.user.id)
           .in('status', ['active', 'trialing', 'paused'])
           .order('created_at', { ascending: false })
           .limit(1)
-          .single()
-
-        if (!subs) {
+        
+        // Handle no subscription found
+        if (subsError || !subsData || subsData.length === 0) {
           router.push('/panel')
           return
         }
+        
+        const subs = subsData[0]
 
         setSubscription(subs)
         const meals = (subs.people || 2) * (subs.days || 3)
