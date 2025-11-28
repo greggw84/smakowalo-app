@@ -329,9 +329,9 @@ export default function WeeklyMenuEditorPage() {
                         <span className="text-sm font-medium text-gray-400 w-6">
                           {index + 1}.
                         </span>
-                        <Image
-                          src={product.image || '/placeholder.jpg'}
-                          alt={product.name}
+                      <Image
+  src={product.image_url || '/placeholder.jpg'}
+  alt={product.name}
                           width={48}
                           height={48}
                           className="w-12 h-12 object-cover rounded"
@@ -400,9 +400,9 @@ export default function WeeklyMenuEditorPage() {
                         }`}>
                           {isSelected ? <Check className="w-4 h-4" /> : null}
                         </div>
-                        <Image
-                          src={product.image || '/placeholder.jpg'}
-                          alt={product.name}
+                      <Image
+  src={product.image_url || '/placeholder.jpg'}
+  alt={product.name}
                           width={40}
                           height={40}
                           className="w-10 h-10 object-cover rounded"
