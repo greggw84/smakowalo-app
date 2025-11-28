@@ -154,6 +154,11 @@ export type DeliveryDayType = 'tuesday' | 'thursday';
 
 export interface Subscription {
   id: number;
+  /**
+   * Subscription status. Uses SubscriptionStatusType for known values,
+   * but allows string for forward compatibility with new status values
+   * that may be added by Stripe or other integrations.
+   */
   status: SubscriptionStatusType | string;
   plan_type: string;
   price_per_delivery: number;
@@ -162,6 +167,10 @@ export interface Subscription {
   stripe_subscription_id?: string;
   created_at: string;
   pause_until?: string | null;
+  /**
+   * Delivery day. Uses DeliveryDayType for known values,
+   * but allows string for forward compatibility.
+   */
   delivery_day?: DeliveryDayType | string;
   people?: number;
   days?: number;

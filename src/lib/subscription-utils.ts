@@ -68,11 +68,12 @@ export const POLISH_DAY_NAMES_CAPITALIZED: Record<number, string> = {
  * The deadline is 48 hours (2 days) before the delivery date at 23:59.
  * 
  * @param deliveryDate - The delivery date
- * @returns The deadline date (48 hours before delivery at 23:59)
+ * @returns The deadline date (2 days before delivery at 23:59)
  */
 export function calculateDeadline(deliveryDate: Date): Date {
   const deadline = new Date(deliveryDate);
-  deadline.setHours(deadline.getHours() - DEADLINE_HOURS_BEFORE_DELIVERY);
+  // Subtract 2 days (48 hours / 24 hours per day = 2 days)
+  deadline.setDate(deadline.getDate() - (DEADLINE_HOURS_BEFORE_DELIVERY / 24));
   // Set to 23:59 of that day
   deadline.setHours(23, 59, 0, 0);
   return deadline;

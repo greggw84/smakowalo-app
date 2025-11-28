@@ -145,7 +145,9 @@ test.describe('Deadline Calculation (48 hours before delivery)', () => {
       
       function calculateDeadline(deliveryDate: Date): Date {
         const deadline = new Date(deliveryDate);
-        deadline.setHours(deadline.getHours() - deadlineHours);
+        // Subtract 2 days (48 hours / 24 = 2 days)
+        deadline.setDate(deadline.getDate() - (deadlineHours / 24));
+        // Set to 23:59 of that day
         deadline.setHours(23, 59, 0, 0);
         return deadline;
       }
@@ -228,12 +230,14 @@ test.describe('Deadline Calculation (48 hours before delivery)', () => {
     const results = await page.evaluate((deadlineHours) => {
       function calculateDeadline(deliveryDate: Date): Date {
         const deadline = new Date(deliveryDate);
-        deadline.setHours(deadline.getHours() - deadlineHours);
+        // Subtract 2 days (48 hours / 24 = 2 days)
+        deadline.setDate(deadline.getDate() - (deadlineHours / 24));
+        // Set to 23:59 of that day
         deadline.setHours(23, 59, 0, 0);
         return deadline;
       }
       
-      // Edge case 1: Delivery early morning should still calculate 48h back correctly
+      // Edge case 1: Delivery early morning should still calculate 2 days back correctly
       const earlyMorningDelivery = new Date(2025, 11, 9, 6, 0); // Tuesday 6am
       const earlyDeadline = calculateDeadline(earlyMorningDelivery);
       
