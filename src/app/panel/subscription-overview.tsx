@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Package,
   Calendar,
@@ -30,7 +36,10 @@ import {
   Clock,
   Settings,
   CreditCard,
-  Loader2
+  Loader2,
+  CalendarPlus,
+  Lock,
+  Download
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -40,9 +49,17 @@ import {
   getDeadlineTextForDelivery,
   isSubscriptionPaused,
   isSubscriptionActive,
+  isDeadlinePassed,
   SubscriptionStatus,
   POLISH_DAY_NAMES_CAPITALIZED,
 } from "@/lib/subscription-utils"
+import {
+  createDeliveryCalendarEvent,
+  downloadICSFile,
+  generateGoogleCalendarUrl,
+  generateOutlookCalendarUrl,
+  openCalendarUrl,
+} from "@/lib/calendar-utils"
 
 interface SubscriptionOverviewProps {
   subscription: any
@@ -194,6 +211,11 @@ export default function SubscriptionOverview({
     ? getDeadlineTextForDelivery(computedNextDeliveryDate)
     : 'niedziela 23:59'
 
+  // Check if selection deadline has passed
+  const isSelectionLocked = computedNextDeliveryDate 
+    ? isDeadlinePassed(computedNextDeliveryDate)
+    : false
+
   // Format delivery day - shows the upcoming delivery date with day name
   // Per requirements, this should show the specific date (e.g., "12.12.2025 • Czwartek")
   // When date cannot be computed, fall back to just the recurring day name
@@ -201,6 +223,29 @@ export default function SubscriptionOverview({
     ? formatDeliveryDate(computedNextDeliveryDate)
     : (subscription.delivery_day === 'tuesday' ? 'Wtorek' : 
        subscription.delivery_day === 'thursday' ? 'Czwartek' : 'Nie ustalono')
+
+  // Calendar export handlers
+  const handleAddToCalendar = (type: 'ics' | 'google' | 'outlook') => {
+    if (!computedNextDeliveryDate) return
+
+    const event = createDeliveryCalendarEvent(
+      computedNextDeliveryDate,
+      requiredMeals,
+      subscription.delivery_day || 'tuesday'
+    )
+
+    switch (type) {
+      case 'ics':
+        downloadICSFile(event)
+        break
+      case 'google':
+        openCalendarUrl(generateGoogleCalendarUrl(event))
+        break
+      case 'outlook':
+        openCalendarUrl(generateOutlookCalendarUrl(event))
+        break
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -330,9 +375,34 @@ export default function SubscriptionOverview({
               <div className="bg-green-100 p-2 rounded-lg">
                 <Truck className="w-5 h-5 text-[var(--smakowalo-green-primary)]" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm text-gray-500">Najbliższa dostawa</p>
                 <p className="font-bold text-gray-900">{deliveryDayDisplay}</p>
+                {/* Calendar export dropdown */}
+                {computedNextDeliveryDate && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="mt-1 h-auto p-1 text-xs text-blue-600 hover:text-blue-800">
+                        <CalendarPlus className="w-3 h-3 mr-1" />
+                        Dodaj do kalendarza
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onClick={() => handleAddToCalendar('google')}>
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Google Calendar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAddToCalendar('outlook')}>
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Outlook
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleAddToCalendar('ics')}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Pobierz plik .ics
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
 
@@ -369,21 +439,40 @@ export default function SubscriptionOverview({
             </div>
           </div>
 
-          {/* Weekly Order Status */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          {/* Weekly Order Status - Enhanced with selection status */}
+          <div className={`rounded-lg p-4 mb-6 ${
+            isSelectionLocked 
+              ? 'bg-gray-100 border border-gray-300' 
+              : hasSelectedMeals 
+                ? 'bg-green-50 border border-green-200'
+                : 'bg-yellow-50 border border-yellow-200'
+          }`}>
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-3">
-                <ChefHat className={`w-6 h-6 ${
-                  hasSelectedMeals ? 'text-green-600' : 'text-gray-400'
-                } flex-shrink-0 mt-0.5`} />
+                {isSelectionLocked ? (
+                  <Lock className="w-6 h-6 text-gray-500 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <ChefHat className={`w-6 h-6 ${
+                    hasSelectedMeals ? 'text-green-600' : 'text-yellow-600'
+                  } flex-shrink-0 mt-0.5`} />
+                )}
                 <div>
                   <h4 className="font-bold text-gray-900 mb-1">
-                    {hasSelectedMeals
-                      ? 'Dania wybrane!'
-                      : 'Wybierz dania na najbliższy tydzień'
+                    {isSelectionLocked
+                      ? (hasSelectedMeals ? 'Wybór zamknięty - dania zapisane' : 'Wybór zamknięty')
+                      : hasSelectedMeals
+                        ? 'Dania wybrane!'
+                        : 'Wybierz dania na najbliższy tydzień'
                     }
                   </h4>
-                  {hasSelectedMeals ? (
+                  {isSelectionLocked ? (
+                    <p className="text-sm text-gray-600">
+                      {hasSelectedMeals 
+                        ? `Wybrałeś ${weeklyOrder.items.length} dań. Zamówienie jest przygotowywane.`
+                        : 'Minął termin wyboru. System automatycznie dobrał dania według Twoich preferencji.'
+                      }
+                    </p>
+                  ) : hasSelectedMeals ? (
                     <p className="text-sm text-gray-600">
                       Wybrałeś {weeklyOrder.items.length} dań.
                       Możesz zmienić wybór do {deadlineText}.
@@ -391,19 +480,31 @@ export default function SubscriptionOverview({
                   ) : (
                     <p className="text-sm text-gray-600">
                       System automatycznie dobierze dania jeśli nic nie wybierzesz.
-                      Deadline: {deadlineText}.
+                      <strong className="text-yellow-700"> Termin: {deadlineText}.</strong>
                     </p>
                   )}
                 </div>
               </div>
-              <Link href="/panel/select-meals">
+              {isSelectionLocked ? (
                 <Button
                   variant="outline"
-                  className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)] hover:bg-green-50"
+                  disabled
+                  className="border-gray-300 text-gray-500"
                 >
-                  {hasSelectedMeals ? 'Zmień wybór' : 'Wybierz dania'}
+                  <Lock className="w-4 h-4 mr-2" />
+                  Wybór zamknięty
                 </Button>
-              </Link>
+              ) : (
+                <Link href="/panel/select-meals">
+                  <Button
+                    variant="outline"
+                    className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)] hover:bg-green-50"
+                  >
+                    <ChefHat className="w-4 h-4 mr-2" />
+                    {hasSelectedMeals ? 'Zmień wybór' : 'Chcę sam wybrać dania'}
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
 
