@@ -43,6 +43,92 @@ interface SubscriptionOverviewProps {
   loading?: boolean
 }
 
+/**
+ * Polish day names mapping (0 = Sunday, 1 = Monday, etc.)
+ */
+const POLISH_DAY_NAMES: Record<number, string> = {
+  0: 'Niedziela',
+  1: 'Poniedziałek',
+  2: 'Wtorek',
+  3: 'Środa',
+  4: 'Czwartek',
+  5: 'Piątek',
+  6: 'Sobota'
+}
+
+/**
+ * Formats a date as "DD.MM.YYYY • DayName" in Polish locale
+ */
+function formatDeliveryDate(date: Date): string {
+  const day = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear()
+  const dayName = POLISH_DAY_NAMES[date.getDay()]
+  return `${day}.${month}.${year} • ${dayName}`
+}
+
+/**
+ * Calculates the next delivery date based on a weekly delivery day
+ * @param deliveryDay - 'tuesday' or 'thursday' (or number 2 or 4)
+ * @param pauseUntil - Optional pause end date
+ * @param nextDeliveryDate - Optional existing next delivery date from subscription
+ * @returns The next delivery date or null if cannot be calculated
+ */
+function calculateNextDeliveryDate(
+  deliveryDay: string | number | undefined,
+  pauseUntil?: string | null,
+  nextDeliveryDate?: string | null
+): Date | null {
+  // If we have an explicit next_delivery_date, use it (unless paused)
+  if (nextDeliveryDate) {
+    const nextDate = new Date(nextDeliveryDate)
+    if (pauseUntil) {
+      const pauseEndDate = new Date(pauseUntil)
+      // If pause ends after the next delivery date, calculate from pause end
+      if (pauseEndDate > nextDate) {
+        return getNextDeliveryAfterDate(deliveryDay, pauseEndDate)
+      }
+    }
+    return nextDate
+  }
+
+  // Calculate from delivery day
+  const startDate = pauseUntil ? new Date(pauseUntil) : new Date()
+  return getNextDeliveryAfterDate(deliveryDay, startDate)
+}
+
+/**
+ * Gets the next delivery date after a given start date based on delivery day
+ */
+function getNextDeliveryAfterDate(
+  deliveryDay: string | number | undefined,
+  startDate: Date
+): Date | null {
+  let targetDay: number
+
+  if (typeof deliveryDay === 'number') {
+    targetDay = deliveryDay
+  } else if (deliveryDay === 'tuesday') {
+    targetDay = 2 // Tuesday
+  } else if (deliveryDay === 'thursday') {
+    targetDay = 4 // Thursday
+  } else {
+    return null
+  }
+
+  const result = new Date(startDate)
+  const currentDay = result.getDay()
+  
+  // Calculate days until next delivery day
+  let daysUntilDelivery = targetDay - currentDay
+  if (daysUntilDelivery <= 0) {
+    daysUntilDelivery += 7 // Move to next week
+  }
+  
+  result.setDate(result.getDate() + daysUntilDelivery)
+  return result
+}
+
 export default function SubscriptionOverview({
   subscription,
   weeklyOrder,
@@ -124,17 +210,23 @@ export default function SubscriptionOverview({
   const requiredMeals = (subscription.people || 2) * (subscription.days || 3)
   const hasSelectedMeals = weeklyOrder && weeklyOrder.items && weeklyOrder.items.length > 0
 
-  // Calculate next delivery date
-  const nextDelivery = subscription.next_delivery_date
-    ? new Date(subscription.next_delivery_date).toLocaleDateString('pl-PL', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
+  // Calculate next delivery date with proper formatting
+  const computedNextDeliveryDate = calculateNextDeliveryDate(
+    subscription.delivery_day,
+    subscription.pause_until,
+    subscription.next_delivery_date
+  )
+
+  // Format delivery date as "DD.MM.YYYY • DayName"
+  const nextDeliveryFormatted = computedNextDeliveryDate 
+    ? formatDeliveryDate(computedNextDeliveryDate)
     : 'Nie ustalono'
 
-  const deliveryDayName = subscription.delivery_day === 'tuesday' ? 'Wtorek' : 'Czwartek'
+  // Get the delivery day name based on subscription settings
+  const deliveryDayFormatted = computedNextDeliveryDate
+    ? formatDeliveryDate(computedNextDeliveryDate)
+    : (subscription.delivery_day === 'tuesday' ? 'Wtorek' : 
+       subscription.delivery_day === 'thursday' ? 'Czwartek' : 'Nie ustalono')
 
   return (
     <div className="space-y-6">
@@ -262,7 +354,7 @@ export default function SubscriptionOverview({
               </div>
               <div>
                 <p className="text-sm text-gray-500">Dzień dostawy</p>
-                <p className="font-bold text-gray-900">{deliveryDayName}</p>
+                <p className="font-bold text-gray-900">{deliveryDayFormatted}</p>
               </div>
             </div>
 
@@ -273,11 +365,17 @@ export default function SubscriptionOverview({
               <div>
                 <p className="text-sm text-gray-500">Następna dostawa</p>
                 <p className="font-bold text-gray-900">
-                  {nextDelivery.split(',')[0]}
-                  <br />
-                  <span className="text-sm font-normal text-gray-600">
-                    {nextDelivery.split(',').slice(1).join(',')}
-                  </span>
+                  {isPaused && subscription.pause_until ? (
+                    <>
+                      <span className="text-yellow-600">Wstrzymana do</span>
+                      <br />
+                      <span className="text-sm font-normal text-gray-600">
+                        {formatDeliveryDate(new Date(subscription.pause_until))}
+                      </span>
+                    </>
+                  ) : (
+                    nextDeliveryFormatted
+                  )}
                 </p>
               </div>
             </div>
@@ -399,49 +497,73 @@ export default function SubscriptionOverview({
       </Card>
 
       {/* Dietary Preferences */}
-      {(subscription.diets || subscription.allergies) && (
-        <Card>
-          <CardContent className="p-6">
-            <h3 className="font-bold text-lg mb-4 flex items-center">
-              <Settings className="w-5 h-5 mr-2" />
-              Twoje Preferencje
-            </h3>
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="font-bold text-lg mb-4 flex items-center">
+            <Settings className="w-5 h-5 mr-2" />
+            Twoje Preferencje
+          </h3>
 
-            {subscription.diets && subscription.diets.length > 0 && (
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Diety:</p>
-                <div className="flex flex-wrap gap-2">
-                  {subscription.diets.map((diet: string, idx: number) => (
-                    <Badge key={idx} variant="outline" className="bg-green-50">
-                      {diet}
+          <div className="mb-4">
+            <p className="text-sm text-gray-600 mb-2">Diety:</p>
+            <div className="flex flex-wrap gap-2">
+              {subscription.diets && Array.isArray(subscription.diets) && subscription.diets.length > 0 ? (
+                subscription.diets.map((diet: string | number, idx: number) => {
+                  // Handle case where diet might be stored as a number (count)
+                  const dietLabel = typeof diet === 'number' 
+                    ? `Dieta ${diet}` 
+                    : diet
+                  return (
+                    <Badge 
+                      key={idx} 
+                      variant="outline" 
+                      className="bg-green-50 text-green-700 border-green-200 px-3 py-1"
+                    >
+                      {dietLabel}
                     </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
+                  )
+                })
+              ) : subscription.dietary_preferences && Array.isArray(subscription.dietary_preferences) && subscription.dietary_preferences.length > 0 ? (
+                subscription.dietary_preferences.map((pref: string, idx: number) => (
+                  <Badge 
+                    key={idx} 
+                    variant="outline" 
+                    className="bg-green-50 text-green-700 border-green-200 px-3 py-1"
+                  >
+                    {pref}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-gray-400 text-sm italic">Brak wybranych diet</span>
+              )}
+            </div>
+          </div>
 
-            {subscription.allergies && subscription.allergies.length > 0 && (
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Alergie:</p>
-                <div className="flex flex-wrap gap-2">
-                  {subscription.allergies.map((allergy: string, idx: number) => (
-                    <Badge key={idx} variant="outline" className="bg-red-50 text-red-700">
-                      {allergy}
-                    </Badge>
-                  ))}
-                </div>
+          {subscription.allergies && Array.isArray(subscription.allergies) && subscription.allergies.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">Alergie:</p>
+              <div className="flex flex-wrap gap-2">
+                {subscription.allergies.map((allergy: string, idx: number) => (
+                  <Badge 
+                    key={idx} 
+                    variant="outline" 
+                    className="bg-red-50 text-red-700 border-red-200 px-3 py-1"
+                  >
+                    {allergy}
+                  </Badge>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            <Link href="/panel/preferences">
-              <Button variant="ghost" size="sm" className="mt-4">
-                <Edit className="w-4 h-4 mr-2" />
-                Edytuj preferencje
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
+          <Link href="/panel/preferences">
+            <Button variant="ghost" size="sm" className="mt-4">
+              <Edit className="w-4 h-4 mr-2" />
+              Edytuj preferencje
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
 
       {/* Pause Dialog */}
       <Dialog open={showPauseDialog} onOpenChange={setShowPauseDialog}>
