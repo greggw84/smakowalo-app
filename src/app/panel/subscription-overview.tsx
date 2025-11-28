@@ -33,6 +33,15 @@ import {
   Loader2
 } from "lucide-react"
 import Link from "next/link"
+import {
+  formatDeliveryDate,
+  calculateNextDeliveryDate,
+  getDeadlineTextForDelivery,
+  isSubscriptionPaused,
+  isSubscriptionActive,
+  SubscriptionStatus,
+  POLISH_DAY_NAMES_CAPITALIZED,
+} from "@/lib/subscription-utils"
 
 interface SubscriptionOverviewProps {
   subscription: any
@@ -41,92 +50,6 @@ interface SubscriptionOverviewProps {
   onResume: () => void
   onCancel: () => void
   loading?: boolean
-}
-
-/**
- * Polish day names mapping (0 = Sunday, 1 = Monday, etc.)
- */
-const POLISH_DAY_NAMES: Record<number, string> = {
-  0: 'Niedziela',
-  1: 'Poniedziałek',
-  2: 'Wtorek',
-  3: 'Środa',
-  4: 'Czwartek',
-  5: 'Piątek',
-  6: 'Sobota'
-}
-
-/**
- * Formats a date as "DD.MM.YYYY • DayName" in Polish locale
- */
-function formatDeliveryDate(date: Date): string {
-  const day = date.getDate().toString().padStart(2, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const year = date.getFullYear()
-  const dayName = POLISH_DAY_NAMES[date.getDay()]
-  return `${day}.${month}.${year} • ${dayName}`
-}
-
-/**
- * Calculates the next delivery date based on a weekly delivery day
- * @param deliveryDay - 'tuesday' or 'thursday' (or number 2 or 4)
- * @param pauseUntil - Optional pause end date
- * @param nextDeliveryDate - Optional existing next delivery date from subscription
- * @returns The next delivery date or null if cannot be calculated
- */
-function calculateNextDeliveryDate(
-  deliveryDay: string | number | undefined,
-  pauseUntil?: string | null,
-  nextDeliveryDate?: string | null
-): Date | null {
-  // If we have an explicit next_delivery_date, use it (unless paused)
-  if (nextDeliveryDate) {
-    const nextDate = new Date(nextDeliveryDate)
-    if (pauseUntil) {
-      const pauseEndDate = new Date(pauseUntil)
-      // If pause ends after the next delivery date, calculate from pause end
-      if (pauseEndDate > nextDate) {
-        return getNextDeliveryAfterDate(deliveryDay, pauseEndDate)
-      }
-    }
-    return nextDate
-  }
-
-  // Calculate from delivery day
-  const startDate = pauseUntil ? new Date(pauseUntil) : new Date()
-  return getNextDeliveryAfterDate(deliveryDay, startDate)
-}
-
-/**
- * Gets the next delivery date after a given start date based on delivery day
- */
-function getNextDeliveryAfterDate(
-  deliveryDay: string | number | undefined,
-  startDate: Date
-): Date | null {
-  let targetDay: number
-
-  if (typeof deliveryDay === 'number') {
-    targetDay = deliveryDay
-  } else if (deliveryDay === 'tuesday') {
-    targetDay = 2 // Tuesday
-  } else if (deliveryDay === 'thursday') {
-    targetDay = 4 // Thursday
-  } else {
-    return null
-  }
-
-  const result = new Date(startDate)
-  const currentDay = result.getDay()
-  
-  // Calculate days until next delivery day
-  let daysUntilDelivery = targetDay - currentDay
-  if (daysUntilDelivery <= 0) {
-    daysUntilDelivery += 7 // Move to next week
-  }
-  
-  result.setDate(result.getDate() + daysUntilDelivery)
-  return result
 }
 
 export default function SubscriptionOverview({
@@ -203,10 +126,10 @@ export default function SubscriptionOverview({
     )
   }
 
-  const isPaused = subscription.status === 'paused' || subscription.pause_until
-  const isActive = subscription.status === 'active' || subscription.status === 'trialing'
-  const isIncomplete = subscription.status === 'incomplete' || subscription.status === 'incomplete_expired'
-  const isPastDue = subscription.status === 'past_due'
+  const isPaused = isSubscriptionPaused(subscription.status, subscription.pause_until)
+  const isActive = isSubscriptionActive(subscription.status)
+  const isIncomplete = subscription.status === SubscriptionStatus.INCOMPLETE || subscription.status === SubscriptionStatus.INCOMPLETE_EXPIRED
+  const isPastDue = subscription.status === SubscriptionStatus.PAST_DUE
   const requiredMeals = (subscription.people || 2) * (subscription.days || 3)
   const hasSelectedMeals = weeklyOrder && weeklyOrder.items && weeklyOrder.items.length > 0
 
@@ -221,6 +144,11 @@ export default function SubscriptionOverview({
   const nextDeliveryFormatted = computedNextDeliveryDate 
     ? formatDeliveryDate(computedNextDeliveryDate)
     : 'Nie ustalono'
+
+  // Calculate deadline text (48 hours before delivery)
+  const deadlineText = computedNextDeliveryDate
+    ? getDeadlineTextForDelivery(computedNextDeliveryDate)
+    : 'niedziela 23:59'
 
   // Format delivery day - shows the upcoming delivery date with day name
   // Per requirements, this should show the specific date (e.g., "12.12.2025 • Czwartek")
@@ -308,14 +236,18 @@ export default function SubscriptionOverview({
 
       {/* Main Subscription Card */}
       <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white">
+        <div className={`p-6 text-white ${
+          isPaused 
+            ? 'bg-gradient-to-r from-gray-500 to-gray-600' 
+            : 'bg-gradient-to-r from-green-500 to-green-600'
+        }`}>
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center space-x-2 mb-2">
                 <Package className="w-6 h-6" />
                 <h2 className="text-2xl font-bold">Twoja Subskrypcja</h2>
               </div>
-              <p className="text-green-50">
+              <p className={isPaused ? 'text-gray-100' : 'text-green-50'}>
                 {subscription.people} osób × {subscription.days} dni tygodniowo
               </p>
             </div>
@@ -325,7 +257,7 @@ export default function SubscriptionOverview({
                 isActive 
                   ? 'bg-white text-green-600' 
                   : isPaused 
-                    ? 'bg-yellow-100 text-yellow-800' 
+                    ? 'bg-white text-gray-600' 
                     : isIncomplete
                       ? 'bg-orange-100 text-orange-800'
                       : isPastDue
@@ -334,7 +266,7 @@ export default function SubscriptionOverview({
               }`}
             >
               {isActive 
-                ? (subscription.status === 'trialing' ? 'Okres próbny' : 'Aktywna')
+                ? (subscription.status === SubscriptionStatus.TRIALING ? 'Okres próbny' : 'Aktywna')
                 : isPaused 
                   ? 'Wstrzymana' 
                   : isIncomplete
@@ -410,12 +342,12 @@ export default function SubscriptionOverview({
                   {hasSelectedMeals ? (
                     <p className="text-sm text-gray-600">
                       Wybrałeś {weeklyOrder.items.length} dań.
-                      Możesz zmienić wybór do niedzieli 23:59.
+                      Możesz zmienić wybór do {deadlineText}.
                     </p>
                   ) : (
                     <p className="text-sm text-gray-600">
                       System automatycznie dobierze dania jeśli nic nie wybierzesz.
-                      Deadline: niedziela 23:59.
+                      Deadline: {deadlineText}.
                     </p>
                   )}
                 </div>

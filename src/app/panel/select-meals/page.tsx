@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,10 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import {
+  calculateNextDeliveryDate,
+  getDeadlineTextForDelivery,
+} from "@/lib/subscription-utils"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -216,6 +220,18 @@ export default function SelectMealsPage() {
     }
   }
 
+  // Calculate deadline text based on next delivery date (48 hours before delivery)
+  const deadlineText = useMemo(() => {
+    const nextDeliveryDate = calculateNextDeliveryDate(
+      subscription?.delivery_day,
+      subscription?.pause_until,
+      subscription?.next_delivery_date
+    );
+    return nextDeliveryDate 
+      ? getDeadlineTextForDelivery(nextDeliveryDate)
+      : 'niedziela 23:59';
+  }, [subscription?.delivery_day, subscription?.pause_until, subscription?.next_delivery_date]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -323,7 +339,7 @@ export default function SelectMealsPage() {
 
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <p className="text-sm text-gray-700">
-              <strong>Ważne:</strong> Możesz zmienić wybór do niedzieli 23:59.
+              <strong>Ważne:</strong> Możesz zmienić wybór do {deadlineText}.
               Jeśli nic nie wybierzesz, system automatycznie dobierze dania według Twoich preferencji.
             </p>
           </div>
