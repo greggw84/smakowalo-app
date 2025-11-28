@@ -80,17 +80,20 @@ export function calculateDeadline(deliveryDate: Date): Date {
 }
 
 /**
- * Formats a deadline date as "DayName HH:MM" in Polish locale
- * e.g., "niedziela 23:59"
+ * Formats a deadline date as "DayName DD.MM.YYYY, HH:MM" in Polish locale
+ * e.g., "wtorek 02.12.2025, 23:59"
  * 
  * @param deadline - The deadline date
- * @returns Formatted deadline string in Polish
+ * @returns Formatted deadline string in Polish with full date
  */
 export function formatDeadlineText(deadline: Date): string {
   const dayName = POLISH_DAY_NAMES[deadline.getDay()];
+  const day = deadline.getDate().toString().padStart(2, '0');
+  const month = (deadline.getMonth() + 1).toString().padStart(2, '0');
+  const year = deadline.getFullYear();
   const hours = deadline.getHours().toString().padStart(2, '0');
   const minutes = deadline.getMinutes().toString().padStart(2, '0');
-  return `${dayName} ${hours}:${minutes}`;
+  return `${dayName} ${day}.${month}.${year}, ${hours}:${minutes}`;
 }
 
 /**

@@ -52,6 +52,31 @@ interface SubscriptionOverviewProps {
   loading?: boolean
 }
 
+/**
+ * Returns Polish grammar-correct label for people count
+ * 1 -> "osoba", 2-4 -> "osoby", 5+ -> "osób"
+ */
+function formatPeopleLabel(count: number): string {
+  if (count === 1) return 'osoba'
+  if (count >= 2 && count <= 4) return 'osoby'
+  return 'osób'
+}
+
+/**
+ * Returns Polish grammar-correct label for days count
+ * 1 -> "dzień", 2+ -> "dni"
+ */
+function formatDaysLabel(count: number): string {
+  return count === 1 ? 'dzień' : 'dni'
+}
+
+/**
+ * Formats the subscription plan display text with correct Polish grammar
+ */
+function formatPlanDisplay(people: number, days: number): string {
+  return `${people} ${formatPeopleLabel(people)} × ${days} ${formatDaysLabel(days)}`
+}
+
 export default function SubscriptionOverview({
   subscription,
   weeklyOrder,
@@ -248,7 +273,7 @@ export default function SubscriptionOverview({
                 <h2 className="text-2xl font-bold">Twoja Subskrypcja</h2>
               </div>
               <p className={isPaused ? 'text-gray-100' : 'text-green-50'}>
-                {subscription.people} osób × {subscription.days} dni tygodniowo
+                {formatPlanDisplay(subscription.people || 2, subscription.days || 3)} tygodniowo
               </p>
             </div>
             <Badge
@@ -365,13 +390,6 @@ export default function SubscriptionOverview({
 
           {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link href="/panel/manage-plan">
-              <Button variant="outline" className="w-full justify-start">
-                <Users className="w-4 h-4 mr-2" />
-                Zmień liczbę osób/dni
-              </Button>
-            </Link>
-
             <Link href="/panel/change-delivery">
               <Button variant="outline" className="w-full justify-start">
                 <Truck className="w-4 h-4 mr-2" />
@@ -438,6 +456,20 @@ export default function SubscriptionOverview({
             Twoje Preferencje
           </h3>
 
+          {/* People and Days Info */}
+          <div className="mb-4">
+            <p className="text-sm text-gray-600 mb-2">Plan:</p>
+            <div className="flex flex-wrap gap-2">
+              <Badge 
+                variant="outline" 
+                className="bg-blue-50 text-blue-700 border-blue-200 px-3 py-1"
+              >
+                <Users className="w-3 h-3 mr-1.5" />
+                {formatPlanDisplay(subscription.people || 2, subscription.days || 3)}
+              </Badge>
+            </div>
+          </div>
+
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-2">Diety:</p>
             <div className="flex flex-wrap gap-2">
@@ -490,7 +522,7 @@ export default function SubscriptionOverview({
             </div>
           )}
 
-          <Link href="/panel/preferences">
+          <Link href="/panel/manage-plan">
             <Button variant="ghost" size="sm" className="mt-4">
               <Edit className="w-4 h-4 mr-2" />
               Edytuj preferencje

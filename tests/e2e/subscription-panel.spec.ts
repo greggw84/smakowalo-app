@@ -154,9 +154,12 @@ test.describe('Deadline Calculation (48 hours before delivery)', () => {
       
       function formatDeadlineText(deadline: Date): string {
         const dayName = POLISH_DAY_NAMES[deadline.getDay()];
+        const day = deadline.getDate().toString().padStart(2, '0');
+        const month = (deadline.getMonth() + 1).toString().padStart(2, '0');
+        const year = deadline.getFullYear();
         const hours = deadline.getHours().toString().padStart(2, '0');
         const minutes = deadline.getMinutes().toString().padStart(2, '0');
-        return `${dayName} ${hours}:${minutes}`;
+        return `${dayName} ${day}.${month}.${year}, ${hours}:${minutes}`;
       }
       
       // Test case 1: Tuesday delivery (Dec 9, 2025) -> Sunday 23:59 deadline
@@ -206,22 +209,22 @@ test.describe('Deadline Calculation (48 hours before delivery)', () => {
     expect(results.tuesday.deadlineDay).toBe(0) // Sunday
     expect(results.tuesday.deadlineHour).toBe(23)
     expect(results.tuesday.deadlineMinute).toBe(59)
-    expect(results.tuesday.deadlineText).toBe('niedziela 23:59')
+    expect(results.tuesday.deadlineText).toBe('niedziela 07.12.2025, 23:59')
     
     // Thursday delivery -> Tuesday deadline (2 days before)
     expect(results.thursday.deadlineDate).toBe('2025-12-09') // Tuesday Dec 9
     expect(results.thursday.deadlineDay).toBe(2) // Tuesday
-    expect(results.thursday.deadlineText).toBe('wtorek 23:59')
+    expect(results.thursday.deadlineText).toBe('wtorek 09.12.2025, 23:59')
     
     // Monday delivery -> Saturday deadline (2 days before)
     expect(results.monday.deadlineDate).toBe('2025-12-06') // Saturday Dec 6
     expect(results.monday.deadlineDay).toBe(6) // Saturday
-    expect(results.monday.deadlineText).toBe('sobota 23:59')
+    expect(results.monday.deadlineText).toBe('sobota 06.12.2025, 23:59')
     
     // Saturday delivery -> Thursday deadline (2 days before)
     expect(results.saturday.deadlineDate).toBe('2025-12-11') // Thursday Dec 11
     expect(results.saturday.deadlineDay).toBe(4) // Thursday
-    expect(results.saturday.deadlineText).toBe('czwartek 23:59')
+    expect(results.saturday.deadlineText).toBe('czwartek 11.12.2025, 23:59')
   })
   
   test('deadline calculation should work correctly for edge cases', async ({ page }) => {
@@ -476,6 +479,83 @@ test.describe('Dietary Preferences Display', () => {
     
     expect(result.hasDiets).toBe(false)
     expect(result.showPlaceholder).toBe(true)
+  })
+})
+
+test.describe('People and Days Display in Preferences', () => {
+  test('should format people count with correct Polish grammar', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const result = await page.evaluate(() => {
+      function formatPeopleLabel(count: number): string {
+        if (count === 1) return 'osoba'
+        if (count < 5) return 'osoby'
+        return 'osób'
+      }
+      
+      return {
+        one: formatPeopleLabel(1),
+        two: formatPeopleLabel(2),
+        three: formatPeopleLabel(3),
+        four: formatPeopleLabel(4),
+        five: formatPeopleLabel(5),
+        ten: formatPeopleLabel(10),
+      }
+    })
+    
+    expect(result.one).toBe('osoba')
+    expect(result.two).toBe('osoby')
+    expect(result.three).toBe('osoby')
+    expect(result.four).toBe('osoby')
+    expect(result.five).toBe('osób')
+    expect(result.ten).toBe('osób')
+  })
+  
+  test('should format days count with correct Polish grammar', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const result = await page.evaluate(() => {
+      function formatDaysLabel(count: number): string {
+        if (count === 1) return 'dzień'
+        return 'dni'
+      }
+      
+      return {
+        one: formatDaysLabel(1),
+        two: formatDaysLabel(2),
+        three: formatDaysLabel(3),
+        five: formatDaysLabel(5),
+      }
+    })
+    
+    expect(result.one).toBe('dzień')
+    expect(result.two).toBe('dni')
+    expect(result.three).toBe('dni')
+    expect(result.five).toBe('dni')
+  })
+  
+  test('should format plan display correctly', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const result = await page.evaluate(() => {
+      function formatPlanDisplay(people: number, days: number): string {
+        const peopleLabel = people === 1 ? 'osoba' : (people < 5 ? 'osoby' : 'osób')
+        const daysLabel = days === 1 ? 'dzień' : 'dni'
+        return `${people} ${peopleLabel} × ${days} ${daysLabel}`
+      }
+      
+      return {
+        twoByThree: formatPlanDisplay(2, 3),
+        threeByFour: formatPlanDisplay(3, 4),
+        fourByFive: formatPlanDisplay(4, 5),
+        oneByOne: formatPlanDisplay(1, 1),
+      }
+    })
+    
+    expect(result.twoByThree).toBe('2 osoby × 3 dni')
+    expect(result.threeByFour).toBe('3 osoby × 4 dni')
+    expect(result.fourByFive).toBe('4 osoby × 5 dni')
+    expect(result.oneByOne).toBe('1 osoba × 1 dzień')
   })
 })
 

@@ -38,3 +38,4 @@ next-env.d.ts
 
 # Core dumps
 core.*
+test-results/
