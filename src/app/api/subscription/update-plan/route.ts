@@ -8,6 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 /**
  * POST /api/subscription/update-plan
  * Update Stripe subscription to new price (change people/days)
+ * Also updates metadata for diets and allergies
  */
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +17,9 @@ export async function POST(req: NextRequest) {
       stripe_subscription_id,
       new_price_id,
       people,
-      days
+      days,
+      diets,
+      allergies
     } = body
 
     if (!stripe_subscription_id || !new_price_id) {
@@ -29,6 +32,21 @@ export async function POST(req: NextRequest) {
     // Get current subscription
     const subscription = await stripe.subscriptions.retrieve(stripe_subscription_id)
 
+    // Build metadata update - preserve existing metadata and add new fields
+    const updatedMetadata: Record<string, string> = {
+      ...subscription.metadata,
+      number_of_people: String(people),
+      number_of_days: String(days),
+    }
+
+    // Add diets and allergies to metadata if provided
+    if (diets !== undefined) {
+      updatedMetadata.diets = Array.isArray(diets) ? diets.join(',') : ''
+    }
+    if (allergies !== undefined) {
+      updatedMetadata.allergies = Array.isArray(allergies) ? allergies.join(',') : ''
+    }
+
     // Update subscription to new price
     const updatedSubscription = await stripe.subscriptions.update(
       stripe_subscription_id,
@@ -38,11 +56,7 @@ export async function POST(req: NextRequest) {
           price: new_price_id,
         }],
         proration_behavior: 'always_invoice', // Prorate the difference
-        metadata: {
-          ...subscription.metadata,
-          number_of_people: String(people),
-          number_of_days: String(days),
-        }
+        metadata: updatedMetadata
       }
     )
 
@@ -55,10 +69,11 @@ export async function POST(req: NextRequest) {
       }
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error updating subscription plan:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update plan'
     return NextResponse.json(
-      { error: error.message || 'Failed to update plan' },
+      { error: errorMessage },
       { status: 500 }
     )
   }
