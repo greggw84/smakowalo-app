@@ -52,6 +52,31 @@ interface SubscriptionOverviewProps {
   loading?: boolean
 }
 
+/**
+ * Returns Polish grammar-correct label for people count
+ * 1 -> "osoba", 2-4 -> "osoby", 5+ -> "osób"
+ */
+function formatPeopleLabel(count: number): string {
+  if (count === 1) return 'osoba'
+  if (count >= 2 && count <= 4) return 'osoby'
+  return 'osób'
+}
+
+/**
+ * Returns Polish grammar-correct label for days count
+ * 1 -> "dzień", 2+ -> "dni"
+ */
+function formatDaysLabel(count: number): string {
+  return count === 1 ? 'dzień' : 'dni'
+}
+
+/**
+ * Formats the subscription plan display text with correct Polish grammar
+ */
+function formatPlanDisplay(people: number, days: number): string {
+  return `${people} ${formatPeopleLabel(people)} × ${days} ${formatDaysLabel(days)}`
+}
+
 export default function SubscriptionOverview({
   subscription,
   weeklyOrder,
@@ -248,7 +273,7 @@ export default function SubscriptionOverview({
                 <h2 className="text-2xl font-bold">Twoja Subskrypcja</h2>
               </div>
               <p className={isPaused ? 'text-gray-100' : 'text-green-50'}>
-                {subscription.people} osób × {subscription.days} dni tygodniowo
+                {formatPlanDisplay(subscription.people || 2, subscription.days || 3)} tygodniowo
               </p>
             </div>
             <Badge
@@ -440,7 +465,7 @@ export default function SubscriptionOverview({
                 className="bg-blue-50 text-blue-700 border-blue-200 px-3 py-1"
               >
                 <Users className="w-3 h-3 mr-1.5" />
-                {subscription.people || 2} {(subscription.people || 2) === 1 ? 'osoba' : (subscription.people || 2) < 5 ? 'osoby' : 'osób'} × {subscription.days || 3} {(subscription.days || 3) === 1 ? 'dzień' : 'dni'}
+                {formatPlanDisplay(subscription.people || 2, subscription.days || 3)}
               </Badge>
             </div>
           </div>
