@@ -213,6 +213,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     stripe_subscription_id: subscriptionId,
     status: subscription.status,
     plan_type: planType,
+    plan_name: subscription.metadata?.plan_type || planType || 'weekly',
     people,
     days,
     delivery_day: deliveryDay,
@@ -512,6 +513,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
       stripe_customer_id: customerId,
       status: subscription.status,
       plan_type: subscription.metadata?.plan_type || 'weekly',
+      plan_name: subscription.metadata?.plan_type || 'weekly',
       current_period_start: stripeTimestampToISO(subscription.current_period_start),
       current_period_end: stripeTimestampToISO(subscription.current_period_end),
       trial_end: stripeTimestampToISO(subscription.trial_end),
@@ -555,6 +557,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supa
     .from('subscriptions')
     .update({
       status: subscription.status,
+      plan_name: subscription.metadata?.plan_type || 'weekly',
       current_period_start: stripeTimestampToISO(subscription.current_period_start),
       current_period_end: stripeTimestampToISO(subscription.current_period_end),
       trial_end: stripeTimestampToISO(subscription.trial_end),
