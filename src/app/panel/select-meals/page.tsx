@@ -487,11 +487,11 @@ export default function SelectMealsPage() {
               >
                 <CardContent className="p-0">
                   <div className="relative">
-                    <Image
-                      src={product.image || '/placeholder.jpg'}
-                      alt={product.name}
-                      width={400}
-                      height={300}
+                 <Image
+  src={product.image_url || '/placeholder.jpg'}
+  alt={product.name}
+  width={400}
+  height={300}
                       className={`w-full h-48 object-cover rounded-t-lg ${hasAllergenWarning ? 'grayscale' : ''}`}
                     />
                     {/* Selected indicator */}
