@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,8 @@ import {
   Clock,
   Settings,
   CreditCard,
-  Loader2
+  Loader2,
+  CalendarPlus
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -43,6 +44,13 @@ import {
   SubscriptionStatus,
   POLISH_DAY_NAMES_CAPITALIZED,
 } from "@/lib/subscription-utils"
+import {
+  getSelectionStatusInfo,
+  getSelectMealsButtonStyle,
+  getSelectionStatusBadgeClass,
+  SELECTION_STATUS_LABELS,
+} from "@/lib/subscription/selectionStatus"
+import CalendarIconButton from "@/components/CalendarIconButton"
 
 interface SubscriptionOverviewProps {
   subscription: any
@@ -330,9 +338,19 @@ export default function SubscriptionOverview({
               <div className="bg-green-100 p-2 rounded-lg">
                 <Truck className="w-5 h-5 text-[var(--smakowalo-green-primary)]" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm text-gray-500">Najbliższa dostawa</p>
-                <p className="font-bold text-gray-900">{deliveryDayDisplay}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-gray-900">{deliveryDayDisplay}</p>
+                  {computedNextDeliveryDate && (
+                    <CalendarIconButton
+                      deliveryDate={computedNextDeliveryDate}
+                      deliveryDay={subscription.delivery_day}
+                      planDescription={formatPlanDisplay(subscription.people || 2, subscription.days || 3)}
+                      mealsCount={requiredMeals}
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -340,21 +358,31 @@ export default function SubscriptionOverview({
               <div className="bg-blue-100 p-2 rounded-lg">
                 <Calendar className="w-5 h-5 text-blue-600" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm text-gray-500">Kolejna dostawa</p>
-                <p className="font-bold text-gray-900">
-                  {isPaused && subscription.pause_until ? (
-                    <>
-                      <span className="text-yellow-600">Wstrzymana do</span>
-                      <br />
-                      <span className="text-sm font-normal text-gray-600">
-                        {formatDeliveryDate(new Date(subscription.pause_until))}
-                      </span>
-                    </>
-                  ) : (
-                    subsequentDeliveryFormatted
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-gray-900">
+                    {isPaused && subscription.pause_until ? (
+                      <>
+                        <span className="text-yellow-600">Wstrzymana do</span>
+                        <br />
+                        <span className="text-sm font-normal text-gray-600">
+                          {formatDeliveryDate(new Date(subscription.pause_until))}
+                        </span>
+                      </>
+                    ) : (
+                      subsequentDeliveryFormatted
+                    )}
+                  </p>
+                  {computedSubsequentDeliveryDate && !isPaused && (
+                    <CalendarIconButton
+                      deliveryDate={computedSubsequentDeliveryDate}
+                      deliveryDay={subscription.delivery_day}
+                      planDescription={formatPlanDisplay(subscription.people || 2, subscription.days || 3)}
+                      mealsCount={requiredMeals}
+                    />
                   )}
-                </p>
+                </div>
               </div>
             </div>
 
@@ -369,43 +397,82 @@ export default function SubscriptionOverview({
             </div>
           </div>
 
-          {/* Weekly Order Status */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start space-x-3">
-                <ChefHat className={`w-6 h-6 ${
-                  hasSelectedMeals ? 'text-green-600' : 'text-gray-400'
-                } flex-shrink-0 mt-0.5`} />
-                <div>
-                  <h4 className="font-bold text-gray-900 mb-1">
-                    {hasSelectedMeals
-                      ? 'Dania wybrane!'
-                      : 'Wybierz dania na najbliższy tydzień'
-                    }
-                  </h4>
-                  {hasSelectedMeals ? (
-                    <p className="text-sm text-gray-600">
-                      Wybrałeś {weeklyOrder.items.length} dań.
-                      Możesz zmienić wybór do {deadlineText}.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-600">
-                      System automatycznie dobierze dania jeśli nic nie wybierzesz.
-                      Deadline: {deadlineText}.
-                    </p>
-                  )}
+          {/* Weekly Order Status with Selection Status */}
+          {(() => {
+            // Calculate selection status using the helper
+            const currentSelections = weeklyOrder?.items?.map((item: any) => item.product_id) || [];
+            const selectionStatusInfo = getSelectionStatusInfo(
+              new Date(),
+              computedNextDeliveryDate,
+              currentSelections,
+              requiredMeals
+            );
+            const buttonStyle = getSelectMealsButtonStyle(selectionStatusInfo.status);
+
+            return (
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="flex items-start justify-between flex-wrap gap-4">
+                  <div className="flex items-start space-x-3">
+                    <ChefHat className={`w-6 h-6 ${
+                      selectionStatusInfo.status === 'completed' ? 'text-green-600' : 
+                      selectionStatusInfo.status === 'closed' ? 'text-gray-400' :
+                      'text-yellow-500'
+                    } flex-shrink-0 mt-0.5`} />
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-bold text-gray-900">
+                          {selectionStatusInfo.status === 'completed'
+                            ? 'Dania wybrane!'
+                            : selectionStatusInfo.status === 'closed'
+                              ? 'Wybór dań zamknięty'
+                              : 'Wybierz dania na najbliższy tydzień'
+                          }
+                        </h4>
+                        <Badge className={getSelectionStatusBadgeClass(selectionStatusInfo.status)}>
+                          {SELECTION_STATUS_LABELS[selectionStatusInfo.status]}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {selectionStatusInfo.status === 'completed' ? (
+                          <>
+                            Wybrałeś {selectionStatusInfo.selectedCount}/{selectionStatusInfo.requiredCount} dań.
+                            {selectionStatusInfo.canSelect && (
+                              <> Możesz zmienić wybór do <strong>{selectionStatusInfo.deadlineText}</strong>.</>
+                            )}
+                          </>
+                        ) : selectionStatusInfo.status === 'closed' ? (
+                          <>
+                            Termin wyboru dań minął ({selectionStatusInfo.deadlineText}).
+                            System automatycznie dobrał dania według Twoich preferencji.
+                          </>
+                        ) : selectionStatusInfo.status === 'incomplete' ? (
+                          <>
+                            Wybrano {selectionStatusInfo.selectedCount}/{selectionStatusInfo.requiredCount} dań.
+                            Dokończ wybór do <strong>{selectionStatusInfo.deadlineText}</strong>.
+                          </>
+                        ) : (
+                          <>
+                            Masz czas do <strong>{selectionStatusInfo.deadlineText}</strong> na wybór dań.
+                            Jeśli nie wybierzesz, system automatycznie dobierze dania.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <Link href="/panel/select-meals">
+                    <Button
+                      variant={buttonStyle.variant}
+                      className={buttonStyle.className}
+                      disabled={buttonStyle.disabled}
+                      title={buttonStyle.disabled ? 'Wybór dań zamknięty 48h przed dostawą' : undefined}
+                    >
+                      {buttonStyle.label}
+                    </Button>
+                  </Link>
                 </div>
               </div>
-              <Link href="/panel/select-meals">
-                <Button
-                  variant="outline"
-                  className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)] hover:bg-green-50"
-                >
-                  {hasSelectedMeals ? 'Zmień wybór' : 'Wybierz dania'}
-                </Button>
-              </Link>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
