@@ -81,9 +81,13 @@ export async function GET(req: NextRequest) {
     const productIds = menuItems?.map(item => item.product_id) || []
     
     // Try to get products from API
+    // Use SITE_URL (server-only) or fall back to localhost
     let products: Record<number, unknown> = {}
     try {
-      const productsResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/products`)
+      const siteUrl = process.env.SITE_URL || process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'http://localhost:3000'
+      const productsResponse = await fetch(`${siteUrl}/api/products`)
       const productsData = await productsResponse.json()
       if (productsData.success && productsData.products) {
         // Create a map of product_id to product

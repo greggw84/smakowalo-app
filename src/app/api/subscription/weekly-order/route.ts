@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
     if (selected_product_ids.length !== requiredMeals) {
       return NextResponse.json(
         {
-          error: `Musisz wybrać dokładnie ${requiredMeals} dań (${requiredMeals} dni × ${peopleCount} osób = ${requiredMeals} różnych dań)`,
+          error: `Musisz wybrać dokładnie ${requiredMeals} dań. Twój plan: ${peopleCount} osób × ${requiredMeals} dni wymaga ${requiredMeals} różnych dań (każde danie dla ${peopleCount} osób).`,
           required: requiredMeals,
           provided: selected_product_ids.length
         },

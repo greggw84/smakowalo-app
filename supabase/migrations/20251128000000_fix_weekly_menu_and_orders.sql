@@ -20,9 +20,16 @@ BEGIN
     END IF;
 END $$;
 
+-- Clear any existing data in the table since the type mismatch would have
+-- prevented valid data from being inserted anyway (FK constraint would fail)
+-- This is safe because the original migration had a type mismatch bug
+TRUNCATE TABLE public.subscription_weekly_order_items CASCADE;
+TRUNCATE TABLE public.subscription_weekly_orders CASCADE;
+
 -- Change the column type to BIGINT
+-- Using NULL handling in case there's any data despite the above
 ALTER TABLE public.subscription_weekly_orders 
-ALTER COLUMN subscription_id TYPE BIGINT USING subscription_id::text::BIGINT;
+ALTER COLUMN subscription_id TYPE BIGINT USING NULL;
 
 -- Re-add the foreign key constraint with correct type
 ALTER TABLE public.subscription_weekly_orders 

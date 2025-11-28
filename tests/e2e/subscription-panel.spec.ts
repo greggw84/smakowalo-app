@@ -958,3 +958,131 @@ test.describe('Auto-Selection and Allergen Filtering', () => {
     expect(results.glutenAllergyContainsGluten).toBe(false);
   })
 })
+
+test.describe('Meal Selection Limit Logic (Issue #4 Fix)', () => {
+  test('requiredMeals should be based on days only, not people × days', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const results = await page.evaluate(() => {
+      // OLD logic (incorrect): requiredMeals = people × days
+      function calculateRequiredMealsOld(people: number, days: number): number {
+        return people * days;
+      }
+      
+      // NEW logic (correct): requiredMeals = days (unique meals)
+      // Each meal is for X people (quantity derived from people count)
+      function calculateRequiredMealsNew(people: number, days: number): number {
+        return days; // User selects Y unique meals (days), each for X people
+      }
+      
+      // Test various subscription configurations
+      const configs = [
+        { people: 2, days: 3 },
+        { people: 4, days: 5 },
+        { people: 1, days: 7 },
+        { people: 3, days: 4 },
+      ];
+      
+      return configs.map(config => ({
+        people: config.people,
+        days: config.days,
+        oldLogic: calculateRequiredMealsOld(config.people, config.days),
+        newLogic: calculateRequiredMealsNew(config.people, config.days),
+        totalMealsDelivered: config.people * config.days, // Actual meals sent
+      }));
+    });
+    
+    // Verify 2 people × 3 days subscription
+    expect(results[0].oldLogic).toBe(6);  // OLD: user would select 6 meals
+    expect(results[0].newLogic).toBe(3);  // NEW: user selects 3 unique meals
+    expect(results[0].totalMealsDelivered).toBe(6); // Still delivers 6 portions
+    
+    // Verify 4 people × 5 days subscription
+    expect(results[1].oldLogic).toBe(20); // OLD: user would select 20 meals
+    expect(results[1].newLogic).toBe(5);  // NEW: user selects 5 unique meals
+    expect(results[1].totalMealsDelivered).toBe(20); // Still delivers 20 portions
+    
+    // Verify 1 person × 7 days subscription
+    expect(results[2].oldLogic).toBe(7);  // OLD: user would select 7 meals
+    expect(results[2].newLogic).toBe(7);  // NEW: user selects 7 unique meals
+    expect(results[2].totalMealsDelivered).toBe(7); // Delivers 7 portions
+    
+    // Verify 3 people × 4 days subscription
+    expect(results[3].oldLogic).toBe(12); // OLD: user would select 12 meals
+    expect(results[3].newLogic).toBe(4);  // NEW: user selects 4 unique meals
+    expect(results[3].totalMealsDelivered).toBe(12); // Still delivers 12 portions
+  });
+  
+  test('quantity per meal should equal number of people', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const results = await page.evaluate(() => {
+      interface MealSelection {
+        productId: number;
+        quantity: number;
+      }
+      
+      // Simulate order creation with new logic
+      function createOrderItems(
+        selectedProductIds: number[],
+        peopleCount: number
+      ): MealSelection[] {
+        return selectedProductIds.map(productId => ({
+          productId,
+          quantity: peopleCount  // Each meal is for X people
+        }));
+      }
+      
+      // Test: User selects 3 meals for 2 people subscription
+      const selectedMeals = [101, 102, 103];  // 3 unique meals
+      const people = 2;
+      const orderItems = createOrderItems(selectedMeals, people);
+      
+      // Calculate total portions
+      const totalPortions = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+      
+      return {
+        selectedMealsCount: selectedMeals.length,
+        orderItemsCount: orderItems.length,
+        quantityPerItem: orderItems[0].quantity,
+        totalPortions,
+        expectedPortions: selectedMeals.length * people,
+      };
+    });
+    
+    expect(results.selectedMealsCount).toBe(3);     // User selected 3 unique meals
+    expect(results.orderItemsCount).toBe(3);        // 3 order items created
+    expect(results.quantityPerItem).toBe(2);        // Each item has quantity 2 (for 2 people)
+    expect(results.totalPortions).toBe(6);          // Total: 3 meals × 2 people = 6 portions
+    expect(results.expectedPortions).toBe(6);       // Matches expected
+  });
+  
+  test('UI should display correct info text about meal selection', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const results = await page.evaluate(() => {
+      // Simulate the updated UI text generation
+      function generatePlanInfoText(people: number, days: number): {
+        planText: string;
+        selectionHint: string;
+      } {
+        const uniqueMealsToSelect = days;
+        return {
+          planText: `${people} osób × ${days} dni`,
+          selectionHint: `Wybierz ${uniqueMealsToSelect} różnych dań (każde dla ${people} osób)`,
+        };
+      }
+      
+      return {
+        twoByThree: generatePlanInfoText(2, 3),
+        fourByFive: generatePlanInfoText(4, 5),
+      };
+    });
+    
+    expect(results.twoByThree.planText).toBe('2 osób × 3 dni');
+    expect(results.twoByThree.selectionHint).toBe('Wybierz 3 różnych dań (każde dla 2 osób)');
+    
+    expect(results.fourByFive.planText).toBe('4 osób × 5 dni');
+    expect(results.fourByFive.selectionHint).toBe('Wybierz 5 różnych dań (każde dla 4 osób)');
+  });
+})

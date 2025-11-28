@@ -317,7 +317,7 @@ export default function WeeklyMenuEditorPage() {
                   <div className="text-center py-8 text-gray-500">
                     <ChefHat className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                     <p>Brak produktów w menu</p>
-                    <p className="text-sm">Kliknij &quot;Dodaj produkty&quot; aby wybrać dania</p>
+                    <p className="text-sm">Kliknij "Dodaj produkty" aby wybrać dania</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
