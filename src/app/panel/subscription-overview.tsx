@@ -365,13 +365,6 @@ export default function SubscriptionOverview({
 
           {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link href="/panel/manage-plan">
-              <Button variant="outline" className="w-full justify-start">
-                <Users className="w-4 h-4 mr-2" />
-                Zmień liczbę osób/dni
-              </Button>
-            </Link>
-
             <Link href="/panel/change-delivery">
               <Button variant="outline" className="w-full justify-start">
                 <Truck className="w-4 h-4 mr-2" />
@@ -438,6 +431,20 @@ export default function SubscriptionOverview({
             Twoje Preferencje
           </h3>
 
+          {/* People and Days Info */}
+          <div className="mb-4">
+            <p className="text-sm text-gray-600 mb-2">Plan:</p>
+            <div className="flex flex-wrap gap-2">
+              <Badge 
+                variant="outline" 
+                className="bg-blue-50 text-blue-700 border-blue-200 px-3 py-1"
+              >
+                <Users className="w-3 h-3 mr-1.5" />
+                {subscription.people || 2} {(subscription.people || 2) === 1 ? 'osoba' : (subscription.people || 2) < 5 ? 'osoby' : 'osób'} × {subscription.days || 3} {(subscription.days || 3) === 1 ? 'dzień' : 'dni'}
+              </Badge>
+            </div>
+          </div>
+
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-2">Diety:</p>
             <div className="flex flex-wrap gap-2">
@@ -490,7 +497,7 @@ export default function SubscriptionOverview({
             </div>
           )}
 
-          <Link href="/panel/preferences">
+          <Link href="/panel/manage-plan">
             <Button variant="ghost" size="sm" className="mt-4">
               <Edit className="w-4 h-4 mr-2" />
               Edytuj preferencje
