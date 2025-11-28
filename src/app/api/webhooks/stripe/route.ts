@@ -38,6 +38,14 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 // Helper: UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Helper: Extract weekly price from Stripe subscription price data
+// Returns price in PLN (divides by 100 to convert from cents/pennies)
+// Falls back to 0 if price data is unavailable
+function getWeeklyPriceFromSubscription(subscription: Stripe.Subscription): number {
+  const unitAmount = subscription.items?.data[0]?.price?.unit_amount;
+  return (unitAmount ?? 0) / 100;
+}
+
 // Logging helper
 function logWebhook(level: 'info' | 'success' | 'error' | 'warn', message: string, data?: any) {
   const emoji = {
@@ -207,6 +215,9 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   const deliveryDay = session.metadata?.delivery_day || 'tuesday';
   const planType = session.metadata?.plan_type || 'weekly';
 
+  // Get weekly price from Stripe subscription
+  const weeklyPrice = getWeeklyPriceFromSubscription(subscription);
+
   // Upsert subscription to database (userId or customerId)
   const subscriptionData: any = {
     stripe_customer_id: customerId,
@@ -227,6 +238,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     allergies: mealPlanConfig.selected_allergies || [],
     selected_meals: mealPlanConfig.selected_meals || [],
     delivery_frequency: 'weekly',
+    weekly_price: weeklyPrice,
     updated_at: new Date().toISOString(),
   };
 
@@ -504,6 +516,9 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
     return;
   }
 
+  // Get weekly price from Stripe subscription
+  const weeklyPrice = getWeeklyPriceFromSubscription(subscription);
+
   // Upsert subscription
   const { error } = await supabase
     .from('subscriptions')
@@ -519,6 +534,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
       trial_end: stripeTimestampToISO(subscription.trial_end),
       canceled_at: stripeTimestampToISO(subscription.canceled_at),
       cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+      weekly_price: weeklyPrice,
       updated_at: new Date().toISOString(),
     }, {
       onConflict: 'stripe_subscription_id',
@@ -552,6 +568,9 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supa
     .eq('stripe_subscription_id', subscription.id)
     .single();
 
+  // Get weekly price from Stripe subscription
+  const weeklyPrice = getWeeklyPriceFromSubscription(subscription);
+
   // Update subscription in database
   const { error } = await supabase
     .from('subscriptions')
@@ -563,6 +582,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supa
       trial_end: stripeTimestampToISO(subscription.trial_end),
       canceled_at: stripeTimestampToISO(subscription.canceled_at),
       cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+      weekly_price: weeklyPrice,
       updated_at: new Date().toISOString(),
     })
     .eq('stripe_subscription_id', subscription.id);
