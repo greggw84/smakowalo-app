@@ -17,6 +17,12 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { sendEmail, emailTemplates } from '@/lib/email';
 
+// Helper: safely convert Stripe timestamps (seconds) to ISO string
+function stripeTimestampToISO(ts?: number | null): string | null {
+  if (!ts || Number.isNaN(ts)) return null;
+  return new Date(ts * 1000).toISOString();
+}
+
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
