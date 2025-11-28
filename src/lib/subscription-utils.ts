@@ -198,7 +198,7 @@ export function getDeadlineTextForDelivery(deliveryDate: Date): string {
  */
 export function calculateSubsequentDeliveryDate(
   nearestDeliveryDate: Date,
-  frequencyDays: number = 7
+  frequencyDays = 7
 ): Date {
   const subsequentDate = new Date(nearestDeliveryDate);
   subsequentDate.setDate(subsequentDate.getDate() + frequencyDays);
