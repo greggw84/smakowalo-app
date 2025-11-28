@@ -217,13 +217,15 @@ export default function SubscriptionOverview({
     subscription.next_delivery_date
   )
 
-  // Format delivery date as "DD.MM.YYYY • DayName"
+  // Format delivery date as "DD.MM.YYYY • DayName" for next delivery display
   const nextDeliveryFormatted = computedNextDeliveryDate 
     ? formatDeliveryDate(computedNextDeliveryDate)
     : 'Nie ustalono'
 
-  // Get the delivery day name based on subscription settings
-  const deliveryDayFormatted = computedNextDeliveryDate
+  // Format delivery day - shows the upcoming delivery date with day name
+  // Per requirements, this should show the specific date (e.g., "12.12.2025 • Czwartek")
+  // When date cannot be computed, fall back to just the recurring day name
+  const deliveryDayDisplay = computedNextDeliveryDate
     ? formatDeliveryDate(computedNextDeliveryDate)
     : (subscription.delivery_day === 'tuesday' ? 'Wtorek' : 
        subscription.delivery_day === 'thursday' ? 'Czwartek' : 'Nie ustalono')
@@ -354,7 +356,7 @@ export default function SubscriptionOverview({
               </div>
               <div>
                 <p className="text-sm text-gray-500">Dzień dostawy</p>
-                <p className="font-bold text-gray-900">{deliveryDayFormatted}</p>
+                <p className="font-bold text-gray-900">{deliveryDayDisplay}</p>
               </div>
             </div>
 

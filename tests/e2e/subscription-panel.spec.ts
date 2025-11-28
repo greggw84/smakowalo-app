@@ -32,7 +32,7 @@ test.describe('Date Formatting Utilities', () => {
     // We test the formatting function behavior through its usage in the component
     // The formatDeliveryDate function should produce format: "DD.MM.YYYY • DayName"
     
-    // Test date: December 12, 2025 (Thursday)
+    // Test date: December 12, 2025 (Friday)
     const testDate = new Date(2025, 11, 12) // Month is 0-indexed
     const expectedFormat = /^\d{2}\.\d{2}\.\d{4} • (Niedziela|Poniedziałek|Wtorek|Środa|Czwartek|Piątek|Sobota)$/
     
@@ -56,99 +56,18 @@ test.describe('Date Formatting Utilities', () => {
         return `${day}.${month}.${year} • ${dayName}`
       }
       
-      const testDate = new Date(2025, 11, 12) // December 12, 2025
+      const testDate = new Date(2025, 11, 12) // December 12, 2025 (Friday)
       return formatDeliveryDate(testDate)
     })
     
     expect(formattedDate).toBe('12.12.2025 • Piątek')
   })
   
-  test('calculateNextDeliveryDate should calculate next Tuesday correctly', async ({ page }) => {
+  test('calculateNextDeliveryDate should calculate delivery dates correctly', async ({ page }) => {
     await page.goto(BASE_URL)
     
-    const result = await page.evaluate(() => {
-      function getNextDeliveryAfterDate(
-        deliveryDay: string | number,
-        startDate: Date
-      ): Date | null {
-        let targetDay: number
-
-        if (typeof deliveryDay === 'number') {
-          targetDay = deliveryDay
-        } else if (deliveryDay === 'tuesday') {
-          targetDay = 2
-        } else if (deliveryDay === 'thursday') {
-          targetDay = 4
-        } else {
-          return null
-        }
-
-        const result = new Date(startDate)
-        const currentDay = result.getDay()
-        
-        let daysUntilDelivery = targetDay - currentDay
-        if (daysUntilDelivery <= 0) {
-          daysUntilDelivery += 7
-        }
-        
-        result.setDate(result.getDate() + daysUntilDelivery)
-        return result
-      }
-      
-      // Test: from Monday Dec 8, 2025, next Tuesday should be Dec 9, 2025
-      const monday = new Date(2025, 11, 8) // Monday Dec 8, 2025
-      const nextTuesday = getNextDeliveryAfterDate('tuesday', monday)
-      return nextTuesday?.toISOString().split('T')[0]
-    })
-    
-    expect(result).toBe('2025-12-09')
-  })
-  
-  test('calculateNextDeliveryDate should calculate next Thursday correctly', async ({ page }) => {
-    await page.goto(BASE_URL)
-    
-    const result = await page.evaluate(() => {
-      function getNextDeliveryAfterDate(
-        deliveryDay: string | number,
-        startDate: Date
-      ): Date | null {
-        let targetDay: number
-
-        if (typeof deliveryDay === 'number') {
-          targetDay = deliveryDay
-        } else if (deliveryDay === 'tuesday') {
-          targetDay = 2
-        } else if (deliveryDay === 'thursday') {
-          targetDay = 4
-        } else {
-          return null
-        }
-
-        const result = new Date(startDate)
-        const currentDay = result.getDay()
-        
-        let daysUntilDelivery = targetDay - currentDay
-        if (daysUntilDelivery <= 0) {
-          daysUntilDelivery += 7
-        }
-        
-        result.setDate(result.getDate() + daysUntilDelivery)
-        return result
-      }
-      
-      // Test: from Friday Dec 12, 2025, next Thursday should be Dec 18, 2025
-      const friday = new Date(2025, 11, 12) // Friday Dec 12, 2025
-      const nextThursday = getNextDeliveryAfterDate('thursday', friday)
-      return nextThursday?.toISOString().split('T')[0]
-    })
-    
-    expect(result).toBe('2025-12-18')
-  })
-  
-  test('should return null for invalid delivery day', async ({ page }) => {
-    await page.goto(BASE_URL)
-    
-    const result = await page.evaluate(() => {
+    const results = await page.evaluate(() => {
+      // Helper function - defined once and used for all test cases
       function getNextDeliveryAfterDate(
         deliveryDay: string | number | undefined,
         startDate: Date
@@ -177,11 +96,32 @@ test.describe('Date Formatting Utilities', () => {
         return result
       }
       
-      const result = getNextDeliveryAfterDate('invalid', new Date())
-      return result
+      // Test case 1: from Monday Dec 8, 2025, next Tuesday should be Dec 9, 2025
+      const monday = new Date(2025, 11, 8) // Monday Dec 8, 2025
+      const nextTuesday = getNextDeliveryAfterDate('tuesday', monday)
+      
+      // Test case 2: from Friday Dec 12, 2025, next Thursday should be Dec 18, 2025
+      const friday = new Date(2025, 11, 12) // Friday Dec 12, 2025
+      const nextThursday = getNextDeliveryAfterDate('thursday', friday)
+      
+      // Test case 3: invalid delivery day should return null
+      const invalidResult = getNextDeliveryAfterDate('invalid', new Date())
+      
+      return {
+        tuesdayResult: nextTuesday?.toISOString().split('T')[0],
+        thursdayResult: nextThursday?.toISOString().split('T')[0],
+        invalidResult: invalidResult
+      }
     })
     
-    expect(result).toBeNull()
+    // Verify Tuesday calculation
+    expect(results.tuesdayResult).toBe('2025-12-09')
+    
+    // Verify Thursday calculation
+    expect(results.thursdayResult).toBe('2025-12-18')
+    
+    // Verify invalid delivery day returns null
+    expect(results.invalidResult).toBeNull()
   })
 })
 
