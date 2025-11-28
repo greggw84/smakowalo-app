@@ -115,17 +115,40 @@ export async function POST(req: NextRequest) {
     // Validate
     if (!week_start_date || !week_end_date || !label) {
       return NextResponse.json(
-        { error: 'Missing required fields: week_start_date, week_end_date, label' },
+        { error: 'Brak wymaganych pól: data rozpoczęcia, data zakończenia, nazwa' },
         { status: 400 }
       )
     }
 
-    // If setting as active, deactivate other menus
+    // Validate date format
+    const startDate = new Date(week_start_date)
+    const endDate = new Date(week_end_date)
+    
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      return NextResponse.json(
+        { error: 'Nieprawidłowy format daty' },
+        { status: 400 }
+      )
+    }
+
+    if (startDate >= endDate) {
+      return NextResponse.json(
+        { error: 'Data rozpoczęcia musi być wcześniejsza niż data zakończenia' },
+        { status: 400 }
+      )
+    }
+
+    // If setting as active, deactivate other menus first
     if (is_active) {
-      await supabase
+      const { error: deactivateError } = await supabase
         .from('weekly_menus')
         .update({ is_active: false })
         .eq('is_active', true)
+
+      if (deactivateError) {
+        console.error('Error deactivating existing menus:', deactivateError)
+        // Continue anyway - not critical
+      }
     }
 
     // Create menu
@@ -144,8 +167,17 @@ export async function POST(req: NextRequest) {
 
     if (menuError) {
       console.error('Error creating menu:', menuError)
+      
+      // Provide more specific error messages
+      if (menuError.code === '23505') {
+        return NextResponse.json(
+          { error: 'Menu na ten tydzień już istnieje lub jest aktywne inne menu' },
+          { status: 409 }
+        )
+      }
+      
       return NextResponse.json(
-        { error: 'Error creating menu' },
+        { error: `Błąd tworzenia menu: ${menuError.message}` },
         { status: 500 }
       )
     }
