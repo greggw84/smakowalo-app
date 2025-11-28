@@ -189,6 +189,23 @@ export function getDeadlineTextForDelivery(deliveryDate: Date): string {
 }
 
 /**
+ * Calculates the subsequent delivery date after the nearest delivery
+ * For weekly subscriptions, this adds 7 days to the nearest delivery date
+ * 
+ * @param nearestDeliveryDate - The nearest/closest delivery date
+ * @param frequencyDays - Number of days between deliveries (default 7 for weekly)
+ * @returns The subsequent delivery date
+ */
+export function calculateSubsequentDeliveryDate(
+  nearestDeliveryDate: Date,
+  frequencyDays: number = 7
+): Date {
+  const subsequentDate = new Date(nearestDeliveryDate);
+  subsequentDate.setDate(subsequentDate.getDate() + frequencyDays);
+  return subsequentDate;
+}
+
+/**
  * Checks if the current time is past the deadline for a delivery date
  * 
  * @param deliveryDate - The delivery date

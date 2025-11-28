@@ -36,6 +36,7 @@ import Link from "next/link"
 import {
   formatDeliveryDate,
   calculateNextDeliveryDate,
+  calculateSubsequentDeliveryDate,
   getDeadlineTextForDelivery,
   isSubscriptionPaused,
   isSubscriptionActive,
@@ -165,9 +166,27 @@ export default function SubscriptionOverview({
     subscription.next_delivery_date
   )
 
+  // Calculate subsequent delivery date (for weekly subscription: +7 days)
+  // delivery_frequency can be number (7) or string ('weekly'), handle both
+  const getDeliveryFrequencyDays = (freq: number | string | undefined): number => {
+    if (typeof freq === 'number') return freq
+    if (freq === 'weekly') return 7
+    if (freq === 'bi-weekly') return 14
+    return 7 // default to weekly
+  }
+  const deliveryFrequencyDays = getDeliveryFrequencyDays(subscription.delivery_frequency)
+  const computedSubsequentDeliveryDate = computedNextDeliveryDate
+    ? calculateSubsequentDeliveryDate(computedNextDeliveryDate, deliveryFrequencyDays)
+    : null
+
   // Format delivery date as "DD.MM.YYYY • DayName" for next delivery display
   const nextDeliveryFormatted = computedNextDeliveryDate 
     ? formatDeliveryDate(computedNextDeliveryDate)
+    : 'Nie ustalono'
+
+  // Format subsequent delivery date (Kolejna dostawa)
+  const subsequentDeliveryFormatted = computedSubsequentDeliveryDate
+    ? formatDeliveryDate(computedSubsequentDeliveryDate)
     : 'Nie ustalono'
 
   // Calculate deadline text (48 hours before delivery)
@@ -312,7 +331,7 @@ export default function SubscriptionOverview({
                 <Truck className="w-5 h-5 text-[var(--smakowalo-green-primary)]" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Dzień dostawy</p>
+                <p className="text-sm text-gray-500">Najbliższa dostawa</p>
                 <p className="font-bold text-gray-900">{deliveryDayDisplay}</p>
               </div>
             </div>
@@ -322,7 +341,7 @@ export default function SubscriptionOverview({
                 <Calendar className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Następna dostawa</p>
+                <p className="text-sm text-gray-500">Kolejna dostawa</p>
                 <p className="font-bold text-gray-900">
                   {isPaused && subscription.pause_until ? (
                     <>
@@ -333,7 +352,7 @@ export default function SubscriptionOverview({
                       </span>
                     </>
                   ) : (
-                    nextDeliveryFormatted
+                    subsequentDeliveryFormatted
                   )}
                 </p>
               </div>
