@@ -42,6 +42,9 @@ export default function SubscriptionTab() {
           .limit(1)
           .single()
 
+        // Track whether subscription was found by email lookup
+        let foundByEmailLookup = false
+
         // If no subscription found by user_id and we have email, try by customer_email
         // This handles the case where webhook created subscription before user was linked
         if (!subs && userEmail && subsError?.code === 'PGRST116') {
@@ -57,6 +60,7 @@ export default function SubscriptionTab() {
           if (subsByEmail) {
             subs = subsByEmail
             subsError = null
+            foundByEmailLookup = true // Track that we found this by email
             
             // Automatically link this subscription to the user for future queries
             const { error: updateError } = await supabase
@@ -69,7 +73,8 @@ export default function SubscriptionTab() {
             } else {
               console.log('✅ Subscription linked to user account:', {
                 subscription_id: subsByEmail.id,
-                user_id: session.user.id
+                user_id: session.user.id,
+                foundByEmailLookup
               })
             }
           } else if (emailError && emailError.code !== 'PGRST116') {
@@ -92,7 +97,7 @@ export default function SubscriptionTab() {
             found: !!subs,
             subscription_id: subs?.id,
             status: subs?.status,
-            linkedByEmail: subs && !subs.user_id
+            foundByEmailLookup
           })
         }
 

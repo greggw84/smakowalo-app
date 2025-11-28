@@ -131,15 +131,13 @@ test.describe('Subscription Flow', () => {
         await subsTab.click()
         await page.waitForLoadState('networkidle')
         
-        // If there's a subscription, verify the overview shows key info
-        const hasOverview = await page.locator('[class*="subscription"]').first().isVisible().catch(() => false)
-        if (hasOverview) {
-          // Should show status, delivery info, etc.
-          const statusVisible = await page.locator('text=Aktywna').isVisible().catch(() => false) ||
-                               await page.locator('text=Wstrzymana').isVisible().catch(() => false) ||
-                               await page.locator('text=Brak aktywnej subskrypcji').isVisible().catch(() => false)
-          expect(statusVisible).toBeTruthy()
-        }
+        // Check for subscription status text as more reliable selectors
+        // Should show either active subscription status or "no subscription" message
+        const statusVisible = await page.locator('text=Aktywna').isVisible().catch(() => false) ||
+                             await page.locator('text=Wstrzymana').isVisible().catch(() => false) ||
+                             await page.locator('text=Twoja Subskrypcja').isVisible().catch(() => false) ||
+                             await page.locator('text=Brak aktywnej subskrypcji').isVisible().catch(() => false)
+        expect(statusVisible).toBeTruthy()
       }
     }
   })
