@@ -211,10 +211,13 @@ export function generateAutoSelection(
     }
   }
 
+  // Safety multiplier for loop limits to prevent infinite loops
+  const LOOP_SAFETY_MULTIPLIER = 2;
+
   // Third pass: If still need more, allow duplicates from preferred meals
   if (selections.length < requiredMeals) {
     let loopCount = 0;
-    const maxLoops = requiredMeals * 2; // Prevent infinite loop
+    const maxLoops = requiredMeals * LOOP_SAFETY_MULTIPLIER;
 
     while (selections.length < requiredMeals && loopCount < maxLoops) {
       for (const meal of mealPool) {
@@ -227,7 +230,7 @@ export function generateAutoSelection(
   // Final pass: If still need more, use any safe meal
   if (selections.length < requiredMeals && safeMeals.length > 0) {
     let loopCount = 0;
-    const maxLoops = requiredMeals * 2;
+    const maxLoops = requiredMeals * LOOP_SAFETY_MULTIPLIER;
 
     while (selections.length < requiredMeals && loopCount < maxLoops) {
       for (const meal of safeMeals) {

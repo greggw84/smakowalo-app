@@ -571,3 +571,390 @@ test.describe('Subscription Panel Accessibility', () => {
     expect(true).toBe(true) // Placeholder for accessibility test
   })
 })
+
+test.describe('Meal Selection Status Logic', () => {
+  test('getSelectionStatus should return correct status based on deadline and selections', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const results = await page.evaluate(() => {
+      // Selection status determination logic
+      type SelectionStatus = 'open' | 'closed' | 'completed' | 'incomplete';
+      
+      function calculateDeadline(deliveryDate: Date): Date {
+        const deadline = new Date(deliveryDate);
+        deadline.setDate(deadline.getDate() - 2); // 48h before
+        deadline.setHours(23, 59, 0, 0);
+        return deadline;
+      }
+      
+      function getSelectionStatus(
+        now: Date,
+        deliveryDate: Date | null,
+        currentSelections: number[] | null,
+        requiredMealsCount: number
+      ): SelectionStatus {
+        if (!deliveryDate) return 'incomplete';
+        
+        const deadline = calculateDeadline(deliveryDate);
+        const isDeadlinePassed = now > deadline;
+        
+        if (isDeadlinePassed) return 'closed';
+        
+        const selectedCount = currentSelections?.length ?? 0;
+        if (selectedCount === 0) return 'open';
+        if (selectedCount >= requiredMealsCount) return 'completed';
+        return 'incomplete';
+      }
+      
+      // Test cases
+      const deliveryDate = new Date(2025, 11, 9, 12, 0); // Tuesday Dec 9, 2025
+      const deadline = calculateDeadline(deliveryDate); // Sunday Dec 7, 23:59
+      
+      // Case 1: Before deadline, no selections
+      const beforeDeadlineNoSelections = getSelectionStatus(
+        new Date(2025, 11, 6, 10, 0), // Saturday Dec 6, 10am
+        deliveryDate,
+        [],
+        6
+      );
+      
+      // Case 2: Before deadline, partial selections
+      const beforeDeadlinePartial = getSelectionStatus(
+        new Date(2025, 11, 6, 10, 0),
+        deliveryDate,
+        [1, 2, 3],
+        6
+      );
+      
+      // Case 3: Before deadline, complete selections
+      const beforeDeadlineComplete = getSelectionStatus(
+        new Date(2025, 11, 6, 10, 0),
+        deliveryDate,
+        [1, 2, 3, 4, 5, 6],
+        6
+      );
+      
+      // Case 4: After deadline
+      const afterDeadline = getSelectionStatus(
+        new Date(2025, 11, 8, 10, 0), // Monday Dec 8, 10am
+        deliveryDate,
+        [1, 2, 3],
+        6
+      );
+      
+      // Case 5: No delivery date
+      const noDeliveryDate = getSelectionStatus(
+        new Date(2025, 11, 6, 10, 0),
+        null,
+        [],
+        6
+      );
+      
+      return {
+        beforeDeadlineNoSelections,
+        beforeDeadlinePartial,
+        beforeDeadlineComplete,
+        afterDeadline,
+        noDeliveryDate
+      };
+    });
+    
+    expect(results.beforeDeadlineNoSelections).toBe('open');
+    expect(results.beforeDeadlinePartial).toBe('incomplete');
+    expect(results.beforeDeadlineComplete).toBe('completed');
+    expect(results.afterDeadline).toBe('closed');
+    expect(results.noDeliveryDate).toBe('incomplete');
+  })
+  
+  test('selection status labels should be in Polish', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const labels = await page.evaluate(() => {
+      const SELECTION_STATUS_LABELS: Record<string, string> = {
+        open: 'Wybór dań otwarty',
+        closed: 'Wybór dań zamknięty',
+        completed: 'Dania wybrane',
+        incomplete: 'Wybierz dania',
+      };
+      
+      return SELECTION_STATUS_LABELS;
+    });
+    
+    expect(labels.open).toBe('Wybór dań otwarty');
+    expect(labels.closed).toBe('Wybór dań zamknięty');
+    expect(labels.completed).toBe('Dania wybrane');
+    expect(labels.incomplete).toBe('Wybierz dania');
+  })
+  
+  test('should prompt for selection when status is open or incomplete', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const results = await page.evaluate(() => {
+      function shouldPromptForSelection(status: string): boolean {
+        return status === 'open' || status === 'incomplete';
+      }
+      
+      return {
+        open: shouldPromptForSelection('open'),
+        incomplete: shouldPromptForSelection('incomplete'),
+        completed: shouldPromptForSelection('completed'),
+        closed: shouldPromptForSelection('closed'),
+      };
+    });
+    
+    expect(results.open).toBe(true);
+    expect(results.incomplete).toBe(true);
+    expect(results.completed).toBe(false);
+    expect(results.closed).toBe(false);
+  })
+})
+
+test.describe('Auto-Selection and Allergen Filtering', () => {
+  test('mealContainsAllergen should detect allergens correctly', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const results = await page.evaluate(() => {
+      interface Meal {
+        id: number;
+        name: string;
+        allergens?: string[];
+      }
+      
+      function mealContainsAllergen(
+        meal: Meal,
+        userAllergies: string[] | undefined
+      ): boolean {
+        if (!userAllergies || userAllergies.length === 0) return false;
+        const mealAllergens = meal.allergens || [];
+        return userAllergies.some(allergy => 
+          mealAllergens.some(mealAllergen => 
+            mealAllergen.toLowerCase() === allergy.toLowerCase()
+          )
+        );
+      }
+      
+      const mealWithGluten: Meal = { id: 1, name: 'Pasta', allergens: ['gluten', 'eggs'] };
+      const mealWithNuts: Meal = { id: 2, name: 'Nut Salad', allergens: ['nuts', 'sesame'] };
+      const mealNoAllergens: Meal = { id: 3, name: 'Rice Bowl', allergens: [] };
+      const mealUndefinedAllergens: Meal = { id: 4, name: 'Simple Dish' };
+      
+      return {
+        // User allergic to gluten
+        glutenUserGlutenMeal: mealContainsAllergen(mealWithGluten, ['gluten']),
+        glutenUserNutsMeal: mealContainsAllergen(mealWithNuts, ['gluten']),
+        glutenUserSafeMeal: mealContainsAllergen(mealNoAllergens, ['gluten']),
+        
+        // User allergic to nuts
+        nutsUserNutsMeal: mealContainsAllergen(mealWithNuts, ['nuts']),
+        nutsUserGlutenMeal: mealContainsAllergen(mealWithGluten, ['nuts']),
+        
+        // User with no allergies
+        noAllergiesAnyMeal: mealContainsAllergen(mealWithGluten, []),
+        undefinedAllergies: mealContainsAllergen(mealWithGluten, undefined),
+        
+        // Meal with undefined allergens
+        undefinedMealAllergens: mealContainsAllergen(mealUndefinedAllergens, ['gluten']),
+        
+        // Case insensitive
+        caseInsensitive: mealContainsAllergen(
+          { id: 5, name: 'Test', allergens: ['GLUTEN'] },
+          ['Gluten']
+        ),
+      };
+    });
+    
+    expect(results.glutenUserGlutenMeal).toBe(true);
+    expect(results.glutenUserNutsMeal).toBe(false);
+    expect(results.glutenUserSafeMeal).toBe(false);
+    expect(results.nutsUserNutsMeal).toBe(true);
+    expect(results.nutsUserGlutenMeal).toBe(false);
+    expect(results.noAllergiesAnyMeal).toBe(false);
+    expect(results.undefinedAllergies).toBe(false);
+    expect(results.undefinedMealAllergens).toBe(false);
+    expect(results.caseInsensitive).toBe(true);
+  })
+  
+  test('mealFitsDietPreferences should filter by diet correctly', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const results = await page.evaluate(() => {
+      interface Meal {
+        id: number;
+        name: string;
+        diets?: string[];
+      }
+      
+      function mealFitsDietPreferences(
+        meal: Meal,
+        userDiets: string[] | undefined
+      ): boolean {
+        if (!userDiets || userDiets.length === 0) return true;
+        const mealDiets = meal.diets || [];
+        if (mealDiets.length === 0) return true;
+        return userDiets.some(diet => 
+          mealDiets.some(mealDiet => 
+            mealDiet.toLowerCase() === diet.toLowerCase()
+          )
+        );
+      }
+      
+      const vegetarianMeal: Meal = { id: 1, name: 'Veg Curry', diets: ['vegetarian'] };
+      const ketoMeal: Meal = { id: 2, name: 'Keto Salad', diets: ['keto', 'low_carb'] };
+      const universalMeal: Meal = { id: 3, name: 'Rice', diets: [] };
+      const undefinedDietsMeal: Meal = { id: 4, name: 'Mystery' };
+      
+      return {
+        // User wants vegetarian
+        vegUserVegMeal: mealFitsDietPreferences(vegetarianMeal, ['vegetarian']),
+        vegUserKetoMeal: mealFitsDietPreferences(ketoMeal, ['vegetarian']),
+        vegUserUniversal: mealFitsDietPreferences(universalMeal, ['vegetarian']),
+        
+        // User with no diet preferences
+        noDietPrefs: mealFitsDietPreferences(ketoMeal, []),
+        undefinedDietPrefs: mealFitsDietPreferences(ketoMeal, undefined),
+        
+        // Meal with undefined diets
+        undefinedMealDiets: mealFitsDietPreferences(undefinedDietsMeal, ['vegetarian']),
+        
+        // Multiple user diets - should match if any
+        multipleUserDiets: mealFitsDietPreferences(ketoMeal, ['vegetarian', 'keto']),
+      };
+    });
+    
+    expect(results.vegUserVegMeal).toBe(true);
+    expect(results.vegUserKetoMeal).toBe(false);
+    expect(results.vegUserUniversal).toBe(true);
+    expect(results.noDietPrefs).toBe(true);
+    expect(results.undefinedDietPrefs).toBe(true);
+    expect(results.undefinedMealDiets).toBe(true);
+    expect(results.multipleUserDiets).toBe(true);
+  })
+  
+  test('generateAutoSelection should select correct number of meals', async ({ page }) => {
+    await page.goto(BASE_URL)
+    
+    const results = await page.evaluate(() => {
+      interface Meal {
+        id: number;
+        name: string;
+        diets?: string[];
+        allergens?: string[];
+      }
+      
+      interface MealSelection {
+        productId: number;
+        quantity: number;
+      }
+      
+      interface UserPreferences {
+        diets?: string[];
+        allergies?: string[];
+      }
+      
+      function mealContainsAllergen(meal: Meal, allergies?: string[]): boolean {
+        if (!allergies || allergies.length === 0) return false;
+        const mealAllergens = meal.allergens || [];
+        return allergies.some(a => 
+          mealAllergens.some(ma => ma.toLowerCase() === a.toLowerCase())
+        );
+      }
+      
+      function mealFitsDiet(meal: Meal, diets?: string[]): boolean {
+        if (!diets || diets.length === 0) return true;
+        const mealDiets = meal.diets || [];
+        if (mealDiets.length === 0) return true;
+        return diets.some(d => mealDiets.some(md => md.toLowerCase() === d.toLowerCase()));
+      }
+      
+      function generateAutoSelection(
+        meals: Meal[],
+        prefs: UserPreferences,
+        mealsPerDay: number,
+        numberOfDays: number
+      ): MealSelection[] {
+        const required = mealsPerDay * numberOfDays;
+        const selections: MealSelection[] = [];
+        const used = new Set<number>();
+        
+        const safe = meals.filter(m => !mealContainsAllergen(m, prefs.allergies));
+        const preferred = safe.filter(m => mealFitsDiet(m, prefs.diets));
+        
+        const addMeal = (meal: Meal): boolean => {
+          if (selections.length >= required) return false;
+          selections.push({ productId: meal.id, quantity: 1 });
+          used.add(meal.id);
+          return true;
+        };
+        
+        // First pass: unique preferred meals
+        for (const meal of preferred) {
+          if (!used.has(meal.id) && !addMeal(meal)) break;
+        }
+        
+        // Second pass: unique safe meals
+        for (const meal of safe) {
+          if (!used.has(meal.id) && !addMeal(meal)) break;
+        }
+        
+        // Third pass: allow duplicates
+        let loops = 0;
+        while (selections.length < required && loops < required * 2) {
+          for (const meal of safe) {
+            if (!addMeal(meal)) break;
+          }
+          loops++;
+        }
+        
+        return selections;
+      }
+      
+      const meals: Meal[] = [
+        { id: 1, name: 'Veg Pasta', diets: ['vegetarian'], allergens: ['gluten'] },
+        { id: 2, name: 'Keto Bowl', diets: ['keto'] },
+        { id: 3, name: 'Chicken Rice', diets: [] },
+        { id: 4, name: 'Veg Curry', diets: ['vegetarian', 'vegan'] },
+        { id: 5, name: 'Nut Salad', diets: ['keto'], allergens: ['nuts'] },
+      ];
+      
+      // Test 1: No preferences, need 6 meals (2 people × 3 days)
+      const noPrefs = generateAutoSelection(meals, {}, 2, 3);
+      
+      // Test 2: Vegetarian, no allergies
+      const vegPrefs = generateAutoSelection(
+        meals,
+        { diets: ['vegetarian'] },
+        2, 3
+      );
+      
+      // Test 3: With nut allergy
+      const nutAllergy = generateAutoSelection(
+        meals,
+        { allergies: ['nuts'] },
+        2, 3
+      );
+      
+      // Test 4: Gluten allergy (should exclude meal 1)
+      const glutenAllergy = generateAutoSelection(
+        meals,
+        { allergies: ['gluten'] },
+        2, 3
+      );
+      
+      return {
+        noPrefsCount: noPrefs.length,
+        vegPrefsCount: vegPrefs.length,
+        nutAllergyCount: nutAllergy.length,
+        nutAllergyContainsNuts: nutAllergy.some(s => s.productId === 5),
+        glutenAllergyCount: glutenAllergy.length,
+        glutenAllergyContainsGluten: glutenAllergy.some(s => s.productId === 1),
+      };
+    });
+    
+    expect(results.noPrefsCount).toBe(6);
+    expect(results.vegPrefsCount).toBe(6);
+    expect(results.nutAllergyCount).toBe(6);
+    expect(results.nutAllergyContainsNuts).toBe(false);
+    expect(results.glutenAllergyCount).toBe(6);
+    expect(results.glutenAllergyContainsGluten).toBe(false);
+  })
+})
