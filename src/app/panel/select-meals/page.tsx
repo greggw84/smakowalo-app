@@ -17,14 +17,28 @@ import {
   Users,
   ShoppingCart,
   Truck,
-  Info
+  Info,
+  AlertTriangle,
+  Sparkles
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import {
   calculateNextDeliveryDate,
   getDeadlineTextForDelivery,
+  isDeadlinePassed,
 } from "@/lib/subscription-utils"
+import {
+  getSelectionStatusInfo,
+  isSelectionDeadlinePassed,
+} from "@/lib/subscription/selectionStatus"
+import {
+  mealContainsAllergen,
+  mealFitsDietPreferences,
+  getMealsWithAllergenWarning,
+  getRecommendedMeals,
+} from "@/lib/subscription/autoSelection"
+import type { UserPreferences } from "@/types/subscription"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -168,8 +182,61 @@ export default function SelectMealsPage() {
     fetchData()
   }, [session, router])
 
-  // Toggle meal selection
+  // Build user preferences for filtering
+  const userPreferences: UserPreferences = useMemo(() => ({
+    diets: subscription?.diets || subscription?.dietary_preferences || [],
+    allergies: subscription?.allergies || [],
+  }), [subscription?.diets, subscription?.dietary_preferences, subscription?.allergies])
+
+  // Calculate meals with allergen warnings and recommended meals
+  const mealsWithAllergenWarning = useMemo(() => 
+    getMealsWithAllergenWarning(availableProducts, userPreferences),
+    [availableProducts, userPreferences]
+  )
+  
+  const recommendedMealIds = useMemo(() => 
+    getRecommendedMeals(availableProducts, userPreferences),
+    [availableProducts, userPreferences]
+  )
+
+  // Calculate next delivery date and check deadline
+  const nextDeliveryDate = useMemo(() => calculateNextDeliveryDate(
+    subscription?.delivery_day,
+    subscription?.pause_until,
+    subscription?.next_delivery_date
+  ), [subscription?.delivery_day, subscription?.pause_until, subscription?.next_delivery_date])
+
+  const isDeadlineClosed = useMemo(() => 
+    nextDeliveryDate ? isSelectionDeadlinePassed(nextDeliveryDate) : false,
+    [nextDeliveryDate]
+  )
+
+  // Calculate selection status info
+  const selectionStatusInfo = useMemo(() => 
+    getSelectionStatusInfo(
+      new Date(),
+      nextDeliveryDate,
+      selectedProductIds,
+      requiredMeals
+    ),
+    [nextDeliveryDate, selectedProductIds, requiredMeals]
+  )
+
+  // Toggle meal selection - with allergen check
   const toggleMeal = (productId: number) => {
+    // Don't allow selection if deadline passed
+    if (isDeadlineClosed) {
+      alert('Wybór dań zamknięty. Termin minął 48h przed dostawą.')
+      return
+    }
+
+    // Check if meal contains allergen
+    const product = availableProducts.find(p => p.id === productId)
+    if (product && mealContainsAllergen(product, userPreferences.allergies)) {
+      alert('⚠️ To danie zawiera składniki, na które masz alergię. Nie możesz go wybrać.')
+      return
+    }
+
     if (selectedProductIds.includes(productId)) {
       setSelectedProductIds(prev => prev.filter(id => id !== productId))
     } else {
@@ -183,6 +250,11 @@ export default function SelectMealsPage() {
 
   // Save selection
   const handleSave = async () => {
+    if (isDeadlineClosed) {
+      alert('Wybór dań zamknięty. Termin minął 48h przed dostawą.')
+      return
+    }
+
     if (selectedProductIds.length !== requiredMeals) {
       alert(`Musisz wybrać dokładnie ${requiredMeals} dań (${selectedProductIds.length}/${requiredMeals})`)
       return
@@ -222,15 +294,10 @@ export default function SelectMealsPage() {
 
   // Calculate deadline text based on next delivery date (48 hours before delivery)
   const deadlineText = useMemo(() => {
-    const nextDeliveryDate = calculateNextDeliveryDate(
-      subscription?.delivery_day,
-      subscription?.pause_until,
-      subscription?.next_delivery_date
-    );
     return nextDeliveryDate 
       ? getDeadlineTextForDelivery(nextDeliveryDate)
       : 'niedziela 23:59';
-  }, [subscription?.delivery_day, subscription?.pause_until, subscription?.next_delivery_date]);
+  }, [nextDeliveryDate]);
 
   if (loading) {
     return (
@@ -248,10 +315,12 @@ export default function SelectMealsPage() {
             <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Brak menu tygodniowego</h2>
             <p className="text-gray-600 mb-6">
-              Aktualnie nie ma dostępnego menu na najbliższy tydzień. Skontaktuj się z nami.
+              Aktualnie nie ma dostępnego menu na najbliższy tydzień. 
+              Menu zostanie opublikowane wkrótce. W międzyczasie system automatycznie dobierze 
+              dania według Twoich preferencji.
             </p>
             <Link href="/panel">
-              <Button>
+              <Button className="bg-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-dark)]">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Wróć do panelu
               </Button>
@@ -264,6 +333,18 @@ export default function SelectMealsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Deadline Closed Banner */}
+      {isDeadlineClosed && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center justify-center space-x-2">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <span className="text-red-800 font-medium">
+              Wybór dań zamknięty 48h przed dostawą. System automatycznie dobrał dania.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -281,7 +362,9 @@ export default function SelectMealsPage() {
                 <p className={`text-lg font-bold ${
                   selectedProductIds.length === requiredMeals
                     ? 'text-green-600'
-                    : 'text-gray-900'
+                    : isDeadlineClosed
+                      ? 'text-gray-500'
+                      : 'text-gray-900'
                 }`}>
                   {selectedProductIds.length} / {requiredMeals}
                 </p>
@@ -290,14 +373,17 @@ export default function SelectMealsPage() {
               <Button
                 size="lg"
                 onClick={handleSave}
-                disabled={saving || selectedProductIds.length !== requiredMeals}
+                disabled={saving || selectedProductIds.length !== requiredMeals || isDeadlineClosed}
                 className="bg-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-dark)]"
+                title={isDeadlineClosed ? 'Wybór dań zamknięty 48h przed dostawą' : undefined}
               >
                 {saving ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Zapisywanie...
                   </>
+                ) : isDeadlineClosed ? (
+                  'Wybór zamknięty'
                 ) : (
                   <>
                     <Check className="w-4 h-4 mr-2" />
@@ -311,9 +397,25 @@ export default function SelectMealsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Allergies Warning */}
+        {userPreferences.allergies && userPreferences.allergies.length > 0 && mealsWithAllergenWarning.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-red-800 mb-1">Uwaga na alergeny</h4>
+                <p className="text-sm text-red-700">
+                  Niektóre dania zawierają składniki, na które masz alergię ({userPreferences.allergies.join(', ')}).
+                  Te dania są oznaczone czerwonym trójkątem i nie możesz ich wybrać.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Week info */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Wybierz Dania na Najbliższy Tydzień
@@ -337,10 +439,19 @@ export default function SelectMealsPage() {
             </div>
           </div>
 
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className={`border rounded-lg p-4 ${isDeadlineClosed ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
             <p className="text-sm text-gray-700">
-              <strong>Ważne:</strong> Możesz zmienić wybór do {deadlineText}.
-              Jeśli nic nie wybierzesz, system automatycznie dobierze dania według Twoich preferencji.
+              {isDeadlineClosed ? (
+                <>
+                  <strong>Wybór zamknięty:</strong> Termin na wybór dań minął ({deadlineText}).
+                  System automatycznie dobrał dania według Twoich preferencji.
+                </>
+              ) : (
+                <>
+                  <strong>Ważne:</strong> Możesz zmienić wybór do <strong>{deadlineText}</strong>.
+                  Jeśli nic nie wybierzesz, system automatycznie dobierze dania według Twoich preferencji.
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -349,17 +460,25 @@ export default function SelectMealsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {availableProducts.map((product) => {
             const isSelected = selectedProductIds.includes(product.id)
-            const quantity = selectedProductIds.filter(id => id === product.id).length
+            const hasAllergenWarning = mealsWithAllergenWarning.includes(product.id)
+            const isRecommended = recommendedMealIds.includes(product.id)
+            const isDisabled = hasAllergenWarning || isDeadlineClosed
 
             return (
               <Card
                 key={product.id}
-                className={`cursor-pointer transition-all hover:shadow-lg ${
+                className={`transition-all ${
+                  isDisabled 
+                    ? 'opacity-60 cursor-not-allowed' 
+                    : 'cursor-pointer hover:shadow-lg'
+                } ${
                   isSelected
                     ? 'ring-2 ring-[var(--smakowalo-green-primary)] shadow-lg'
-                    : 'hover:border-[var(--smakowalo-green-primary)]'
+                    : hasAllergenWarning
+                      ? 'border-red-300 bg-red-50'
+                      : 'hover:border-[var(--smakowalo-green-primary)]'
                 }`}
-                onClick={() => toggleMeal(product.id)}
+                onClick={() => !isDisabled && toggleMeal(product.id)}
               >
                 <CardContent className="p-0">
                   <div className="relative">
@@ -368,17 +487,31 @@ export default function SelectMealsPage() {
                       alt={product.name}
                       width={400}
                       height={300}
-                      className="w-full h-48 object-cover rounded-t-lg"
+                      className={`w-full h-48 object-cover rounded-t-lg ${hasAllergenWarning ? 'grayscale' : ''}`}
                     />
+                    {/* Selected indicator */}
                     {isSelected && (
                       <div className="absolute top-3 right-3 w-10 h-10 bg-[var(--smakowalo-green-primary)] rounded-full flex items-center justify-center shadow-lg">
                         <Check className="w-6 h-6 text-white" />
                       </div>
                     )}
+                    {/* Allergen warning indicator */}
+                    {hasAllergenWarning && (
+                      <div className="absolute top-3 left-3 w-10 h-10 bg-red-500 rounded-full flex items-center justify-center shadow-lg" title="Zawiera alergeny">
+                        <AlertTriangle className="w-6 h-6 text-white" />
+                      </div>
+                    )}
+                    {/* Recommended indicator */}
+                    {isRecommended && !hasAllergenWarning && !isSelected && (
+                      <div className="absolute top-3 right-3 px-2 py-1 bg-yellow-400 rounded-full flex items-center shadow-lg" title="Rekomendowane dla Ciebie">
+                        <Sparkles className="w-4 h-4 text-yellow-800" />
+                        <span className="text-xs font-medium text-yellow-800 ml-1">Dla Ciebie</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-4">
-                    <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2">
+                    <h3 className={`font-bold text-lg mb-2 line-clamp-2 ${hasAllergenWarning ? 'text-gray-500' : 'text-gray-900'}`}>
                       {product.name}
                     </h3>
 
@@ -396,6 +529,15 @@ export default function SelectMealsPage() {
                         <span>{product.calories} kcal</span>
                       </div>
                     </div>
+
+                    {/* Allergen warning text */}
+                    {hasAllergenWarning && (
+                      <div className="bg-red-100 border border-red-200 rounded-md px-2 py-1 mb-2">
+                        <p className="text-xs text-red-700 font-medium">
+                          ⚠️ Zawiera alergeny z Twojej listy
+                        </p>
+                      </div>
+                    )}
 
                     {/* Diet badges */}
                     {product.diets && product.diets.length > 0 && (
@@ -427,14 +569,18 @@ export default function SelectMealsPage() {
         )}
 
         {/* Bottom action bar */}
-        <div className="sticky bottom-0 bg-white border-t shadow-lg mt-8 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4">
+        <div className={`sticky bottom-0 border-t shadow-lg mt-8 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 ${
+          isDeadlineClosed ? 'bg-gray-100' : 'bg-white'
+        }`}>
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Wybrano dań:</p>
               <p className={`text-2xl font-bold ${
-                selectedProductIds.length === requiredMeals
-                  ? 'text-green-600'
-                  : 'text-gray-900'
+                isDeadlineClosed
+                  ? 'text-gray-500'
+                  : selectedProductIds.length === requiredMeals
+                    ? 'text-green-600'
+                    : 'text-gray-900'
               }`}>
                 {selectedProductIds.length} / {requiredMeals}
               </p>
@@ -443,13 +589,22 @@ export default function SelectMealsPage() {
             <Button
               size="lg"
               onClick={handleSave}
-              disabled={saving || selectedProductIds.length !== requiredMeals}
-              className="bg-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-dark)] px-8"
+              disabled={saving || selectedProductIds.length !== requiredMeals || isDeadlineClosed}
+              className={isDeadlineClosed 
+                ? 'bg-gray-400 cursor-not-allowed px-8' 
+                : 'bg-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-dark)] px-8'
+              }
+              title={isDeadlineClosed ? 'Wybór dań zamknięty 48h przed dostawą' : undefined}
             >
               {saving ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Zapisywanie...
+                </>
+              ) : isDeadlineClosed ? (
+                <>
+                  <AlertTriangle className="w-5 h-5 mr-2" />
+                  Wybór zamknięty
                 </>
               ) : (
                 <>
