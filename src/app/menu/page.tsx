@@ -67,6 +67,11 @@ const dietTypes = [
   { code: "wegańska", name: "Wegańska", color: "bg-emerald-500" }
 ]
 
+// Helper function to get product image URL (prefers image_url from weekly menu, falls back to image)
+const getProductImage = (product: Product): string => {
+  return product.image_url || product.image || '/placeholder.jpg'
+}
+
 // Helper function to truncate text
 const truncateText = (text: string, maxLength: number) => {
   if (text.length <= maxLength) return text
@@ -129,10 +134,10 @@ export default function MenuPage() {
           if (menuData.success && menuData.menu?.items?.length > 0) {
             setWeeklyMenu(menuData.menu)
             
-            // Extract products from weekly menu items
-            const weeklyProducts = menuData.menu.items
-              .map((item: { product: Product | null }) => item.product)
-              .filter((p: Product | null): p is Product => p !== null)
+            // Extract products from weekly menu items using WeeklyMenu type structure
+            const weeklyProducts = (menuData.menu as WeeklyMenu).items
+              .map((item) => item.product)
+              .filter((p): p is Product => p !== null)
 
             if (weeklyProducts.length > 0) {
               setProducts(weeklyProducts)
@@ -377,8 +382,7 @@ export default function MenuPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
                 {filteredProducts.map((product) => {
-                  // Use image_url (from weekly menu) or image (from products API)
-                  const productImage = product.image_url || product.image || '/placeholder.jpg'
+                  const productImage = getProductImage(product)
                   
                   return (
                   <Card
