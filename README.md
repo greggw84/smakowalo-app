@@ -190,6 +190,15 @@ Detailed documentation in `.same/` directory:
 - Resume subscription
 - Cancel (immediate or end of period)
 
+### Menu & Product Data
+- **Data Source**: Supabase database (PostgreSQL)
+- Product catalog with nutritional information
+- Category filtering
+- Dietary preference filters (keto, vegetarian, vegan, etc.)
+- Featured products
+- Search functionality
+- Fallback to mock data if Supabase is unavailable
+
 ### Email Notifications
 - Welcome email
 - Subscription paused/resumed
