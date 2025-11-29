@@ -2,11 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import Image from 'next/image'
-
-/**
- * Default placeholder image for products
- */
-const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop'
+import { PLACEHOLDER_IMAGE } from '@/lib/supabase-storage'
 
 interface ProductImageProps {
   src: string | null | undefined

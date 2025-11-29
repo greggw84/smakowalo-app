@@ -132,15 +132,24 @@ export async function listStorageImages(folder?: string) {
  * Used for client-side validation
  *
  * @param url - The image URL to validate
+ * @param timeoutMs - Timeout in milliseconds (default: 5000ms)
  * @returns Promise resolving to true if image loads, false otherwise
  */
-export async function validateImageUrl(url: string): Promise<boolean> {
+export async function validateImageUrl(url: string, timeoutMs: number = 5000): Promise<boolean> {
   if (!url) return false
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
   try {
-    const response = await fetch(url, { method: 'HEAD' })
+    const response = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal,
+    })
     return response.ok
   } catch {
     return false
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
