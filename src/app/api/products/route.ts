@@ -1,31 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { createSupabaseClient } from '@/lib/supabase'
-import { fetchOpenCartProducts, fetchOpenCartCategories, fetchOpenCartStockMap } from '@/lib/opencart'
-import { scrapeProducts, scrapeCategories } from '@/lib/opencart-scraper'
+import { fetchSupabaseProducts, isSupabaseConfigured } from '@/lib/supabase-menu'
 
-// OpenCart Product interface
-interface OpenCartProduct {
-  product_id: string
-  name: string
-  description: string
-  image: string
-  price: number
-  category_id?: number
-  cook_time?: number
-  difficulty?: string
-  calories?: number
-  protein?: number
-  ingredients?: string[]
-  diets?: string[]
-  rating?: number
-  category?: {
-    name: string
-    slug: string
-  }
-}
-
-// Real OpenCart products from smakowalo.pl
-const realOpenCartProducts = [
+// Fallback products (used when Supabase is not configured or fails)
+const fallbackProducts = [
   {
     id: 1,
     name: "Krewetki z Harissą i Miodem z Ryżem z Kalafiora i Greckim Jogurtem",
@@ -688,19 +665,12 @@ const realOpenCartProducts = [
   }
 ]
 
-// Helper to decide whether to use OpenCart
-const hasOpenCart = !!(
-  process.env.OPENCART_URL &&
-  process.env.OPENCART_API_USERNAME &&
-  process.env.OPENCART_API_PASSWORD
-)
-const opencartImageBase = process.env.OPENCART_IMAGE_BASE || (process.env.OPENCART_URL ? `${process.env.OPENCART_URL}/image/` : '')
+// Check if Supabase is configured
+const hasSupabase = isSupabaseConfigured()
 
-console.log('OpenCart configuration:', {
-  hasOpenCart,
-  url: process.env.OPENCART_URL,
-  hasUsername: !!process.env.OPENCART_API_USERNAME,
-  hasPassword: !!process.env.OPENCART_API_PASSWORD
+console.log('Data source configuration:', {
+  hasSupabase,
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'configured' : 'not configured',
 })
 
 export async function GET(request: NextRequest) {
@@ -711,108 +681,63 @@ export async function GET(request: NextRequest) {
     const search = url.searchParams.get('search')
     const featured = url.searchParams.get('featured')
 
-    // Always try OpenCart first if configured
-    if (hasOpenCart) {
+    // Try Supabase first if configured
+    if (hasSupabase) {
       try {
-        console.log('🔍 Fetching products from OpenCart...')
+        console.log('🔍 Fetching products from Supabase...')
 
-        // Try scraping first (API doesn't exist on this OpenCart)
-        let products: any[] = []
-        let categories: any[] = []
-        let stockMap: Record<number, number> = {}
-
-        try {
-          console.log('🕷️ Using web scraper (API not available)')
-          products = await scrapeProducts()
-          categories = await scrapeCategories()
-          console.log(`✅ Scraped ${products.length} products from OpenCart`)
-        } catch (scrapeError) {
-          console.error('❌ Scraping failed, trying API...', scrapeError)
-          // Fallback to API if scraping fails
-          stockMap = await fetchOpenCartStockMap()
-          products = await fetchOpenCartProducts()
-          categories = await fetchOpenCartCategories()
-          console.log(`✅ Got ${products.length} products from OpenCart API`)
-        }
-
-        if (products.length === 0) {
-          throw new Error('No products found from OpenCart')
-        }
-
-        // Attach stock and map images - use OpenCart images directly
-        const enriched = products.map(p => ({
-          ...p,
-          stock: stockMap[p.id] ?? p.stock ?? 0,
-          // Use the image from OpenCart directly - it's already formatted with full URL
-          image: p.image || `${opencartImageBase}catalog/no-image.jpg`,
-          cook_time: p.cook_time ?? 25,
-          difficulty: p.difficulty ?? 'Średni',
-          calories: p.calories ?? 500,
-          protein: p.protein ?? 25,
-          ingredients: p.ingredients ?? [],
-          // Map OpenCart categories to diets array
-          diets: p.categories ? p.categories.map((cat: string) => cat.toLowerCase()) : (p.diets ?? ['zdrowa']),
-          rating: p.rating ?? 4.6,
-          servings: p.servings ?? 2,
-          categories: categories.find((c: any) => c.id === p.category_id) || { name: 'Dania główne', slug: 'dania-glowne' },
-        }))
-
-        // Basic filters
-        let filtered = enriched
-        if (category) {
-          filtered = filtered.filter(p => p.categories?.slug === category || String(p.category_id) === category)
-        }
-        if (diet && diet !== 'all') {
-          filtered = filtered.filter(p => p.diets?.includes(diet))
-        }
-        if (search) {
-          filtered = filtered.filter(p =>
-            p.name?.toLowerCase().includes(search.toLowerCase()) ||
-            p.description?.toLowerCase().includes(search.toLowerCase())
-          )
-        }
-        if (featured === 'true') {
-          filtered = filtered.filter(p => p.featured)
-        }
-
-        console.log(`✅ Returning ${filtered.length} products from OpenCart`)
-
-        return NextResponse.json({
-          success: true,
-          products: filtered,
-          total: filtered.length,
-          source: 'opencart'
+        const products = await fetchSupabaseProducts({
+          category: category || undefined,
+          diet: diet || undefined,
+          search: search || undefined,
+          featured: featured === 'true',
         })
-      } catch (openCartError) {
-        console.error('❌ OpenCart fetch failed, falling back to mock data:', openCartError)
+
+        if (products.length > 0) {
+          console.log(`✅ Returning ${products.length} products from Supabase`)
+
+          return NextResponse.json({
+            success: true,
+            products,
+            total: products.length,
+            source: 'supabase',
+          })
+        }
+
+        console.log('⚠️ No products found in Supabase, falling back to mock data')
+      } catch (supabaseError) {
+        console.error('❌ Supabase fetch failed, falling back to mock data:', supabaseError)
         // Fall through to mock data
       }
     }
 
     // Fallback to mock data
-    let filteredProducts = [...realOpenCartProducts]
+    let filteredProducts = [...fallbackProducts]
 
     if (category) {
-      filteredProducts = filteredProducts.filter(p => p.categories?.slug === category || String(p.category_id) === category)
+      filteredProducts = filteredProducts.filter(
+        (p) => p.categories?.slug === category || String(p.category_id) === category
+      )
     }
     if (diet && diet !== 'all') {
-      filteredProducts = filteredProducts.filter(p => p.diets && p.diets.includes(diet))
+      filteredProducts = filteredProducts.filter((p) => p.diets?.includes(diet))
     }
     if (search) {
-      filteredProducts = filteredProducts.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.description.toLowerCase().includes(search.toLowerCase())
+      filteredProducts = filteredProducts.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search.toLowerCase()) ||
+          p.description.toLowerCase().includes(search.toLowerCase())
       )
     }
     if (featured === 'true') {
-      filteredProducts = filteredProducts.filter(p => p.featured)
+      filteredProducts = filteredProducts.filter((p) => p.featured)
     }
 
     return NextResponse.json({
       success: true,
       products: filteredProducts,
       total: filteredProducts.length,
-      source: 'mock'
+      source: 'mock',
     })
   } catch (error) {
     console.error('❌ Products API error:', error)
@@ -823,29 +748,32 @@ export async function GET(request: NextRequest) {
     const search = url.searchParams.get('search')
     const featured = url.searchParams.get('featured')
 
-    let filteredProducts = [...realOpenCartProducts]
+    let filteredProducts = [...fallbackProducts]
 
     if (category) {
-      filteredProducts = filteredProducts.filter(p => p.categories?.slug === category || String(p.category_id) === category)
+      filteredProducts = filteredProducts.filter(
+        (p) => p.categories?.slug === category || String(p.category_id) === category
+      )
     }
     if (diet && diet !== 'all') {
-      filteredProducts = filteredProducts.filter(p => p.diets && p.diets.includes(diet))
+      filteredProducts = filteredProducts.filter((p) => p.diets?.includes(diet))
     }
     if (search) {
-      filteredProducts = filteredProducts.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.description.toLowerCase().includes(search.toLowerCase())
+      filteredProducts = filteredProducts.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search.toLowerCase()) ||
+          p.description.toLowerCase().includes(search.toLowerCase())
       )
     }
     if (featured === 'true') {
-      filteredProducts = filteredProducts.filter(p => p.featured)
+      filteredProducts = filteredProducts.filter((p) => p.featured)
     }
 
     return NextResponse.json({
       success: true,
       products: filteredProducts,
       total: filteredProducts.length,
-      source: 'mock-error-fallback'
+      source: 'mock-error-fallback',
     })
   }
 }
