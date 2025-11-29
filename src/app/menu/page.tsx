@@ -9,8 +9,8 @@ import { MenuGridSkeleton } from "@/components/Loading"
 import { ErrorFallback } from "@/components/ErrorBoundary"
 import { trackEvent } from "@/components/Analytics"
 import FavoriteButton from "@/components/FavoriteButton"
+import ProductImage from "@/components/ProductImage"
 import Link from "next/link"
-import Image from "next/image"
 import Logo from "@/components/Logo"
 import { useCart } from "@/contexts/CartContext"
 
@@ -333,17 +333,11 @@ export default function MenuPage() {
                     className="w-full overflow-hidden shadow hover:shadow-xl cursor-pointer flex flex-col"
                   >
                     <div className="relative h-56">
-                      <Image
+                      <ProductImage
                         src={product.image}
                         alt={product.name}
                         fill
                         className="object-cover"
-                        onError={(e) => {
-                          // Fallback to OpenCart no-image if the specific image fails
-                          const target = e.target as HTMLImageElement;
-                          // Use a nice food placeholder image instead of broken link
-                          target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop';
-                        }}
                       />
 
                       <div className="absolute top-2 left-2 flex space-x-2">

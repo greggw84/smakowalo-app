@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { fetchSupabaseProducts, isSupabaseConfigured } from '@/lib/supabase-menu'
+import { processProductImages } from '@/lib/supabase-storage'
 
 // Fallback products (used when Supabase is not configured or fails)
 const fallbackProducts = [
@@ -696,10 +697,13 @@ export async function GET(request: NextRequest) {
         if (products.length > 0) {
           console.log(`✅ Returning ${products.length} products from Supabase`)
 
+          // Process images to generate proper URLs for storage paths
+          const productsWithImages = processProductImages(products)
+
           return NextResponse.json({
             success: true,
-            products,
-            total: products.length,
+            products: productsWithImages,
+            total: productsWithImages.length,
             source: 'supabase',
           })
         }

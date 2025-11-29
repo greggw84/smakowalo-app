@@ -133,6 +133,23 @@ test.describe('Menu Page - Supabase Data Source', () => {
     }
   })
 
+  test('products should have valid image URLs', async ({ page }) => {
+    // Test that all products have valid image URLs
+    const response = await page.request.get(`${BASE_URL}/api/products`)
+    const data = await response.json()
+
+    expect(data.success).toBeTruthy()
+    expect(data.products).toBeDefined()
+    expect(Array.isArray(data.products)).toBeTruthy()
+
+    // Check each product has a valid image URL (starts with http/https)
+    for (const product of data.products) {
+      expect(product.image).toBeDefined()
+      expect(typeof product.image).toBe('string')
+      expect(product.image.startsWith('http://') || product.image.startsWith('https://')).toBeTruthy()
+    }
+  })
+
   test('should display proper API source in console (development check)', async ({ page }) => {
     // This test verifies the API returns the correct source field
     const response = await page.request.get(`${BASE_URL}/api/products`)
