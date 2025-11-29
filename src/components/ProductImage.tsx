@@ -16,6 +16,13 @@ interface ProductImageProps {
 }
 
 /**
+ * Determines if the provided src is a valid image source
+ */
+function isValidSrc(src: string | null | undefined): src is string {
+  return typeof src === 'string' && src.length > 0
+}
+
+/**
  * A robust image component for product images that handles errors gracefully
  * Falls back to a placeholder image if the original fails to load
  */
@@ -29,12 +36,12 @@ export function ProductImage({
   priority = false,
   sizes,
 }: ProductImageProps) {
-  const [imgSrc, setImgSrc] = useState<string>(src || PLACEHOLDER_IMAGE)
+  const [imgSrc, setImgSrc] = useState<string>(isValidSrc(src) ? src : PLACEHOLDER_IMAGE)
   const [hasError, setHasError] = useState(false)
 
   // Update imgSrc when src prop changes
   useEffect(() => {
-    if (src) {
+    if (isValidSrc(src)) {
       setImgSrc(src)
       setHasError(false)
     } else {

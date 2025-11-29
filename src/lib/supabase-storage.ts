@@ -128,8 +128,27 @@ export async function listStorageImages(folder?: string) {
 }
 
 /**
- * Validate if an image URL is accessible
- * Used for client-side validation
+ * Validate if an image URL is accessible.
+ *
+ * This utility function can be used for:
+ * - Pre-validating image URLs before displaying them
+ * - Checking if Supabase Storage URLs are accessible
+ * - Admin tools to verify uploaded images
+ * - Background jobs that verify image availability
+ *
+ * @example
+ * ```typescript
+ * import { validateImageUrl } from '@/lib/supabase-storage'
+ *
+ * // Check if an image URL is accessible
+ * const isValid = await validateImageUrl('https://example.com/image.jpg')
+ * if (!isValid) {
+ *   console.log('Image is not accessible')
+ * }
+ *
+ * // With custom timeout
+ * const isValid = await validateImageUrl(url, 3000) // 3 second timeout
+ * ```
  *
  * @param url - The image URL to validate
  * @param timeoutMs - Timeout in milliseconds (default: 5000ms)

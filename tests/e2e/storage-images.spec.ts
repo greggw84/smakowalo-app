@@ -78,7 +78,8 @@ test.describe('Image Fallback Behavior', () => {
     // Wait for products to load - use try/catch for clearer error handling
     let productsLoaded = false
     try {
-      await page.waitForSelector('.overflow-hidden.shadow', { timeout: 10000 })
+      // Wait for any product card to appear
+      await page.waitForSelector('[class*="Card"]', { timeout: 10000 })
       productsLoaded = true
     } catch {
       // Products may not have loaded - test will still check for images
@@ -115,14 +116,19 @@ test.describe('Image Fallback Behavior', () => {
       await firstRecipeButton.click()
       await page.waitForLoadState('networkidle')
 
-      // Check if main product image is displayed using semantic selector
-      // Look for the hero image container that contains the product image
-      const heroSection = page.locator('.bg-white.rounded-2xl.overflow-hidden.shadow-xl').first()
-      const mainImage = heroSection.locator('img').first()
+      // Check if main product image is displayed using aria-label or alt text
+      // The product image will have the product name as alt text
+      const productImages = page.locator('img[alt]:not([alt=""])')
+      const imageCount = await productImages.count()
 
-      const imageVisible = await mainImage.isVisible()
+      // Should have at least one product image
+      expect(imageCount).toBeGreaterThan(0)
+
+      // Check the first product image has a valid src
+      const firstImage = productImages.first()
+      const imageVisible = await firstImage.isVisible()
       if (imageVisible) {
-        const src = await mainImage.getAttribute('src')
+        const src = await firstImage.getAttribute('src')
         expect(src).toBeTruthy()
       }
     }
