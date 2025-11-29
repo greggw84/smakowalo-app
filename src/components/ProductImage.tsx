@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Image from 'next/image'
 import { PLACEHOLDER_IMAGE } from '@/lib/supabase-storage'
 
@@ -31,6 +31,16 @@ export function ProductImage({
 }: ProductImageProps) {
   const [imgSrc, setImgSrc] = useState<string>(src || PLACEHOLDER_IMAGE)
   const [hasError, setHasError] = useState(false)
+
+  // Update imgSrc when src prop changes
+  useEffect(() => {
+    if (src) {
+      setImgSrc(src)
+      setHasError(false)
+    } else {
+      setImgSrc(PLACEHOLDER_IMAGE)
+    }
+  }, [src])
 
   const handleError = useCallback(() => {
     if (!hasError) {

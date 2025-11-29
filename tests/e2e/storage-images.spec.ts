@@ -75,14 +75,21 @@ test.describe('Image Fallback Behavior', () => {
     await page.goto(`${BASE_URL}/menu`)
     await page.waitForLoadState('networkidle')
 
-    // Wait for products to load
-    await page.waitForSelector('.overflow-hidden.shadow', { timeout: 10000 }).catch(() => null)
+    // Wait for products to load - use try/catch for clearer error handling
+    let productsLoaded = false
+    try {
+      await page.waitForSelector('.overflow-hidden.shadow', { timeout: 10000 })
+      productsLoaded = true
+    } catch {
+      // Products may not have loaded - test will still check for images
+      console.log('Products did not load within timeout - checking available images')
+    }
 
     // Get all images on the page
     const images = page.locator('img[alt]')
     const imageCount = await images.count()
 
-    // Should have at least some images (logo, product images)
+    // Should have at least some images (logo, product images if loaded)
     expect(imageCount).toBeGreaterThan(0)
 
     // Each visible image should have a valid src
@@ -102,13 +109,19 @@ test.describe('Image Fallback Behavior', () => {
 
     // Try to click on a product
     const firstRecipeButton = page.locator('text=Zobacz przepis').first()
-    if (await firstRecipeButton.isVisible()) {
+    const isVisible = await firstRecipeButton.isVisible()
+
+    if (isVisible) {
       await firstRecipeButton.click()
       await page.waitForLoadState('networkidle')
 
-      // Check if main product image is displayed
-      const mainImage = page.locator('.relative.h-80.lg\\:h-96 img, .relative img[fill]').first()
-      if (await mainImage.isVisible()) {
+      // Check if main product image is displayed using semantic selector
+      // Look for the hero image container that contains the product image
+      const heroSection = page.locator('.bg-white.rounded-2xl.overflow-hidden.shadow-xl').first()
+      const mainImage = heroSection.locator('img').first()
+
+      const imageVisible = await mainImage.isVisible()
+      if (imageVisible) {
         const src = await mainImage.getAttribute('src')
         expect(src).toBeTruthy()
       }
