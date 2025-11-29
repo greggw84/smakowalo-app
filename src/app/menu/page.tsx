@@ -99,13 +99,13 @@ export default function MenuPage() {
   const [expandedIds, setExpandedIds] = useState<number[]>([])
   const { addItem, totalItems } = useCart()
 
-  // Fetch products and categories from OpenCart
+  // Fetch products and categories from Supabase (with fallback to mock data)
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
 
-        console.log('🛒 Fetching products from OpenCart (shop.smakowalo.pl)...')
+        console.log('🔍 Fetching menu data...')
 
         // Fetch products and categories in parallel
         const [productsResponse, categoriesResponse] = await Promise.all([
@@ -118,7 +118,7 @@ export default function MenuPage() {
           categoriesResponse.json()
         ])
 
-        console.log('📦 OpenCart Response:', {
+        console.log('📦 Menu Data Response:', {
           success: productsData.success,
           source: productsData.source,
           products_count: productsData.products?.length || 0,
@@ -127,17 +127,17 @@ export default function MenuPage() {
 
         if (productsData.success && productsData.products) {
           setProducts(productsData.products)
-          console.log(`✅ Loaded ${productsData.products.length} products from ${productsData.source || 'OpenCart'}`)
+          console.log(`✅ Loaded ${productsData.products.length} products from ${productsData.source || 'API'}`)
         } else {
-          setError('Nie udało się pobrać produktów z OpenCart')
+          setError('Nie udało się pobrać produktów')
         }
 
         if (categoriesData.success && categoriesData.categories) {
           setCategories(categoriesData.categories)
         }
       } catch (err) {
-        console.error('❌ Error fetching data from OpenCart:', err)
-        setError('Wystąpił błąd podczas ładowania danych z OpenCart')
+        console.error('❌ Error fetching menu data:', err)
+        setError('Wystąpił błąd podczas ładowania danych menu')
       } finally {
         setLoading(false)
       }
