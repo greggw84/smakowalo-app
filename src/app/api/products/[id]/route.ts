@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createSupabaseClient } from '@/lib/supabase'
 import type { Database } from '@/lib/supabase'
+import { processProductImage } from '@/lib/supabase-storage'
 
 type Product = Database['public']['Tables']['products']['Row']
 type ProductUpdate = Database['public']['Tables']['products']['Update']
@@ -56,8 +57,11 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch product' }, { status: 500 })
     }
 
+    // Process product image to generate proper URL for storage paths
+    const productWithImage = processProductImage(product)
+
     return NextResponse.json({
-      product,
+      product: productWithImage,
       success: true
     })
 

@@ -7,6 +7,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import Navigation from "@/components/Navigation"
+import ProductImage from "@/components/ProductImage"
 import { ArrowLeft, Clock, Users, ChefHat, Zap, ShoppingCart } from "lucide-react"
 import { ProductDetailSkeleton } from "@/components/Loading"
 import { ErrorFallback } from "@/components/ErrorBoundary"
@@ -686,16 +687,11 @@ function DishPageClient({ dishId }: { dishId: string }) {
             {/* Hero section */}
             <div className="bg-white rounded-2xl overflow-hidden shadow-xl">
               <div className="relative h-80 lg:h-96">
-                <Image
+                <ProductImage
                   src={dish.image}
                   alt={dish.name}
                   fill
                   className="object-cover"
-                  onError={(e) => {
-                    // Fallback to nice food placeholder if OpenCart image fails
-                    const target = e.target as HTMLImageElement;
-                    target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop';
-                  }}
                 />
 
               </div>
