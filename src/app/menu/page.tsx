@@ -78,7 +78,6 @@ const truncateText = (text: string | null | undefined, maxLength: number) => {
   if (text.length <= maxLength) return text
   return `${text.substring(0, maxLength)}...`
 }
-
 // Add component for diet type badges
 function DietBadge({ type }: { type: string }) {
   const getBadgeStyle = () => {
