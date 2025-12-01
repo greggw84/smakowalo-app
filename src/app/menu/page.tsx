@@ -14,12 +14,13 @@ import Link from "next/link"
 import Logo from "@/components/Logo"
 import { useCart } from "@/contexts/CartContext"
 
-// Product interface matching our Supabase types
+// Product interface matching Supabase weekly menu products
 interface Product {
   id: number
   name: string
   description: string
   image: string
+  image_url?: string // Products from weekly menu API use image_url
   cook_time: number
   difficulty: string
   diets: string[]
@@ -34,6 +35,17 @@ interface Product {
     name: string
     slug: string
   }
+}
+
+// Weekly menu interface
+interface WeeklyMenu {
+  id: string
+  week_start_date: string
+  week_end_date: string
+  label: string
+  items: {
+    product: Product
+  }[]
 }
 
 // Category interface
@@ -54,6 +66,11 @@ const dietTypes = [
   { code: "wegetariańska", name: "Wegetariańska", color: "bg-orange-500" },
   { code: "wegańska", name: "Wegańska", color: "bg-emerald-500" }
 ]
+
+// Helper function to get product image URL (prefers image_url from weekly menu, falls back to image)
+const getProductImage = (product: Product): string => {
+  return product.image_url || product.image || '/placeholder.jpg'
+}
 
 // Helper function to truncate text
 const truncateText = (text: string, maxLength: number) => {
@@ -92,14 +109,16 @@ function DietBadge({ type }: { type: string }) {
 export default function MenuPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenu | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedDiet, setSelectedDiet] = useState('all')
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [expandedIds, setExpandedIds] = useState<number[]>([])
+  const [dataSource, setDataSource] = useState<string>('')
   const { addItem, totalItems } = useCart()
 
-  // Fetch products and categories from Supabase (with fallback to mock data)
+  // Fetch products from weekly menu API (primary) or products API (fallback)
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -107,7 +126,41 @@ export default function MenuPage() {
 
         console.log('🔍 Fetching menu data...')
 
-        // Fetch products and categories in parallel
+        // First try to get the weekly menu (same source as /panel/select-meals)
+        try {
+          const menuResponse = await fetch('/api/menu/weekly/current')
+          const menuData = await menuResponse.json()
+
+          if (menuData.success && menuData.menu?.items?.length > 0) {
+            setWeeklyMenu(menuData.menu)
+            
+            // Extract products from weekly menu items using WeeklyMenu type structure
+            const weeklyProducts = (menuData.menu as WeeklyMenu).items
+              .map((item) => item.product)
+              .filter((p): p is Product => p !== null)
+
+            if (weeklyProducts.length > 0) {
+              setProducts(weeklyProducts)
+              setDataSource('supabase-weekly-menu')
+              console.log(`✅ Loaded ${weeklyProducts.length} products from weekly menu (Supabase)`)
+              
+              // Also fetch categories for filtering
+              const categoriesResponse = await fetch('/api/categories')
+              const categoriesData = await categoriesResponse.json()
+              if (categoriesData.success && categoriesData.categories) {
+                setCategories(categoriesData.categories)
+              }
+              
+              setLoading(false)
+              return
+            }
+          }
+          console.log('⚠️ No weekly menu products found, falling back to products API')
+        } catch (weeklyMenuError) {
+          console.log('⚠️ Weekly menu fetch failed, falling back to products API:', weeklyMenuError)
+        }
+
+        // Fallback to products API
         const [productsResponse, categoriesResponse] = await Promise.all([
           fetch('/api/products'),
           fetch('/api/categories')
@@ -127,6 +180,7 @@ export default function MenuPage() {
 
         if (productsData.success && productsData.products) {
           setProducts(productsData.products)
+          setDataSource(productsData.source || 'api')
           console.log(`✅ Loaded ${productsData.products.length} products from ${productsData.source || 'API'}`)
         } else {
           setError('Nie udało się pobrać produktów')
@@ -327,14 +381,17 @@ export default function MenuPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-                {filteredProducts.map((product) => (
+                {filteredProducts.map((product) => {
+                  const productImage = getProductImage(product)
+                  
+                  return (
                   <Card
                     key={product.id}
                     className="w-full overflow-hidden shadow hover:shadow-xl cursor-pointer flex flex-col"
                   >
                     <div className="relative h-56">
                       <ProductImage
-                        src={product.image}
+                        src={productImage}
                         alt={product.name}
                         fill
                         className="object-cover"
@@ -353,7 +410,7 @@ export default function MenuPage() {
                           product={{
                             id: product.id,
                             name: product.name,
-                            image: product.image,
+                            image: productImage,
                             price: product.price
                           }}
                           variant="minimal"
@@ -428,7 +485,8 @@ export default function MenuPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  )
+                })}
               </div>
             )
         )}
