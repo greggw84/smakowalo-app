@@ -159,13 +159,7 @@ export async function fetchSupabaseProductById(
   try {
     const { data, error } = await supabase
       .from('products')
-      .select(`
-        *,
-        categories (
-          name,
-          slug
-        )
-      `)
+     .select('*')
       .eq('id', id)
       .eq('active', true)
       .single()
