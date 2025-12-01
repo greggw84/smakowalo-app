@@ -93,7 +93,7 @@ let query = supabase
   .from('products')
   .select('*')        // tymczasowo bez joinu categories
   .eq('active', true)
-  .order('created_at', { ascending: false })
+
 
     // Apply filters
     if (filters?.featured) {
@@ -183,7 +183,9 @@ export async function fetchSupabaseProductById(
 /**
  * Fetch categories from Supabase database
  */
-export async function fetchSupabaseCategories(): Promise<SupabaseCategory[]> {
+export async function fetchSupabaseProducts(
+  filters?: ProductFilterOptions
+): Promise<MenuProduct[]> {
   const supabase = createSupabaseClient()
 
   if (!supabase) {
@@ -191,26 +193,60 @@ export async function fetchSupabaseCategories(): Promise<SupabaseCategory[]> {
   }
 
   try {
-    const { data, error } = await supabase
-      .from('categories')
+    console.log('[supabase-menu] fetching products with filters:', filters)
+
+    let query = supabase
+      .from('products')        // upewnij się, że tak nazywa się tabela
       .select('*')
       .eq('active', true)
-      .order('name', { ascending: true })
+    // UWAGA: NIE SORTUJEMY PO created_at, bo tej kolumny nie ma
+
+    if (filters?.featured) {
+      query = query.eq('featured', true)
+    }
+
+    if (filters?.search) {
+      query = query.or(
+        `name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`
+      )
+    }
+
+    const { data, error } = await query
 
     if (error) {
-      console.error('❌ Supabase categories fetch error:', error)
+      console.error('[supabase-menu] ❌ Supabase products fetch error:', error)
       throw error
     }
 
     if (!data || data.length === 0) {
-      console.log('⚠️ No categories found in Supabase')
+      console.log('[supabase-menu] ⚠️ No products found in Supabase')
       return []
     }
 
-    console.log(`✅ Fetched ${data.length} categories from Supabase`)
-    return data as SupabaseCategory[]
+    console.log(
+      `[supabase-menu] ✅ Fetched ${data.length} products from Supabase`
+    )
+
+    let products = data as MenuProduct[]
+
+    if (filters?.category) {
+      products = products.filter(
+        (p) =>
+          p.categories?.slug === filters.category ||
+          String(p.category_id) === filters.category
+      )
+    }
+
+    if (filters?.diet && filters.diet !== 'all') {
+      products = products.filter((p) => p.diets?.includes(filters.diet as string))
+    }
+
+    return products
   } catch (error) {
-    console.error('❌ Error fetching categories from Supabase:', error)
+    console.error(
+      '[supabase-menu] ❌ Error fetching products from Supabase:',
+      error
+    )
     throw error
   }
 }
