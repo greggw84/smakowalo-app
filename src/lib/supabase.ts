@@ -69,8 +69,9 @@ export const supabase = createSupabaseClient()
  * Server-side Supabase client using service role key
  * Used for server API routes where elevated permissions are needed
  * This client bypasses Row Level Security - use with caution
+ * Returns an untyped client to allow access to tables not in the Database type
  */
-let supabaseServerClient: ReturnType<typeof createClient> | null = null
+let supabaseServerClient: ReturnType<typeof createClient<Record<string, unknown>>> | null = null
 
 export function getSupabaseServerClient() {
   if (supabaseServerClient) {
@@ -90,7 +91,9 @@ export function getSupabaseServerClient() {
     throw new Error("Supabase configuration contains placeholder values")
   }
 
-  supabaseServerClient = createClient(url, serviceRoleKey, {
+  // Use generic type to allow any table operations
+  // This is needed for NutriChef tables that aren't in the typed Database schema
+  supabaseServerClient = createClient<Record<string, unknown>>(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
