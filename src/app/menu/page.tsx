@@ -202,7 +202,7 @@ export default function MenuPage() {
 
   // Filter products by selected diet and category
   const filteredProducts = products.filter(product => {
-    const matchesDiet = selectedDiet === 'all' || product.diets.includes(selectedDiet)
+    const matchesDiet = selectedDiet === 'all' || (product.diets ?? []).includes(selectedDiet)
     const matchesCategory = selectedCategory === null || product.category_id === selectedCategory
     return matchesDiet && matchesCategory
   })
@@ -383,6 +383,7 @@ export default function MenuPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
                 {filteredProducts.map((product) => {
                   const productImage = getProductImage(product)
+                  const diets = product.diets ?? []
                   
                   return (
                   <Card
@@ -430,18 +431,17 @@ export default function MenuPage() {
                       </h3>
 
                       <p className="text-xs text-gray-600 line-clamp-2 mt-1 mb-2">
-                        {product.description}
+                        {truncateText(product.description, 120)}
                       </p>
 
-                   // src/app/menu/page.tsx
-<div className="flex flex-wrap gap-1 mb-2">
-  {product.diets.slice(0, 2).map((diet) => (
-    <DietBadge key={`diet-${product.id}-${diet}`} type={diet} />
-  ))}
-  {product.diets.length > 2 && (
-    <span className="text-xs px-1 text-gray-500">+{product.diets.length - 2}</span>
-  )}
-</div>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {diets.slice(0, 2).map((diet) => (
+                          <DietBadge key={`diet-${product.id}-${diet}`} type={diet} />
+                        ))}
+                        {diets.length > 2 && (
+                          <span className="text-xs px-1 text-gray-500">+{diets.length - 2}</span>
+                        )}
+                      </div>
                       <div className="flex gap-6 text-xs my-2">
                         <div className="flex items-center">
                           <Users className="w-3 h-3 mr-1" />

@@ -62,7 +62,7 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params;
-    const productId = parseInt(resolvedParams.productId, 10);
+    const productId = Number.parseInt(resolvedParams.productId, 10);
 
     if (isNaN(productId)) {
       return NextResponse.json(
