@@ -4,9 +4,19 @@ import Stripe from 'stripe'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-})
+
+// Lazy initialization to avoid build-time errors
+let stripeInstance: Stripe | null = null
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const secretKey = process.env.STRIPE_SECRET_KEY
+    if (!secretKey) throw new Error('STRIPE_SECRET_KEY not configured')
+    stripeInstance = new Stripe(secretKey, {
+      apiVersion: '2024-12-18.acacia',
+    })
+  }
+  return stripeInstance
+}
 
 /**
  * POST /api/subscription/manage
@@ -56,7 +66,7 @@ export async function POST(req: NextRequest) {
         return await resumeSubscription(subscription, supabase)
 
       case 'cancel':
-        return await cancelSubscription(subscription, supabase, stripe)
+        return await cancelSubscription(subscription, supabase, getStripe())
 
       default:
         return NextResponse.json(
@@ -101,6 +111,7 @@ async function pauseSubscription(subscription: any, supabase: any) {
 
     // If Stripe subscription exists, pause it
     if (subscription.stripe_subscription_id) {
+      const stripe = getStripe()
       await stripe.subscriptions.update(subscription.stripe_subscription_id, {
         pause_collection: {
           behavior: 'void',
@@ -141,6 +152,7 @@ async function resumeSubscription(subscription: any, supabase: any) {
 
     // If Stripe subscription exists, resume it
     if (subscription.stripe_subscription_id) {
+      const stripe = getStripe()
       await stripe.subscriptions.update(subscription.stripe_subscription_id, {
         pause_collection: null
       })

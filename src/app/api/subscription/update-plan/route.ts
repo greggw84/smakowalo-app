@@ -1,9 +1,18 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-})
+// Lazy initialization to avoid build-time errors
+let stripeInstance: Stripe | null = null
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const secretKey = process.env.STRIPE_SECRET_KEY
+    if (!secretKey) throw new Error('STRIPE_SECRET_KEY not configured')
+    stripeInstance = new Stripe(secretKey, {
+      apiVersion: '2024-12-18.acacia',
+    })
+  }
+  return stripeInstance
+}
 
 /**
  * POST /api/subscription/update-plan
@@ -30,6 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get current subscription
+    const stripe = getStripe()
     const subscription = await stripe.subscriptions.retrieve(stripe_subscription_id)
 
     // Build metadata update - preserve existing metadata and add new fields

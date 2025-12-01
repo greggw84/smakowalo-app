@@ -1,14 +1,30 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+// Lazy initialization to avoid build-time errors
+let supabaseInstance: SupabaseClient | null = null
+function getSupabase(): SupabaseClient {
+  if (!supabaseInstance) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!url || !key) throw new Error('Supabase not configured')
+    supabaseInstance = createClient(url, key)
+  }
+  return supabaseInstance
+}
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-})
+let stripeInstance: Stripe | null = null
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const secretKey = process.env.STRIPE_SECRET_KEY
+    if (!secretKey) throw new Error('STRIPE_SECRET_KEY not configured')
+    stripeInstance = new Stripe(secretKey, {
+      apiVersion: '2024-12-18.acacia',
+    })
+  }
+  return stripeInstance
+}
 
 /**
  * GDPR-compliant account deletion
@@ -30,6 +46,8 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Create Supabase client with user's tokens
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const userSupabase = createClient(supabaseUrl, supabaseServiceKey, {
       global: {
         headers: {
@@ -53,13 +71,14 @@ export async function DELETE(req: NextRequest) {
 
     // 1. Cancel all active Stripe subscriptions
     try {
-      const { data: subscriptions } = await supabase
+      const { data: subscriptions } = await getSupabase()
         .from('subscriptions')
         .select('stripe_subscription_id, stripe_customer_id')
         .eq('user_id', userId)
         .eq('status', 'active')
 
       if (subscriptions && subscriptions.length > 0) {
+        const stripe = getStripe()
         for (const sub of subscriptions) {
           if (sub.stripe_subscription_id) {
             try {
@@ -99,7 +118,7 @@ export async function DELETE(req: NextRequest) {
 
     // Delete subscriptions
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('subscriptions')
         .delete()
         .eq('user_id', userId)
@@ -114,7 +133,7 @@ export async function DELETE(req: NextRequest) {
 
     // Delete orders
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('orders')
         .delete()
         .eq('user_id', userId)
@@ -129,7 +148,7 @@ export async function DELETE(req: NextRequest) {
 
     // Delete favorites (if you have this table)
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('favorites')
         .delete()
         .eq('user_id', userId)
@@ -144,7 +163,7 @@ export async function DELETE(req: NextRequest) {
 
     // Delete profile
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('profiles')
         .delete()
         .eq('id', userId)
@@ -159,7 +178,7 @@ export async function DELETE(req: NextRequest) {
 
     // 3. Delete auth user (this is the final step)
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId)
+      const { error } = await getSupabase().auth.admin.deleteUser(userId)
 
       if (!error) {
         deletionResults.auth = true
