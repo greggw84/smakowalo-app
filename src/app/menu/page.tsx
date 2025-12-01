@@ -73,7 +73,8 @@ const getProductImage = (product: Product): string => {
 }
 
 // Helper function to truncate text
-const truncateText = (text: string, maxLength: number) => {
+const truncateText = (text: string | null | undefined, maxLength: number) => {
+  if (!text) return ''
   if (text.length <= maxLength) return text
   return `${text.substring(0, maxLength)}...`
 }
