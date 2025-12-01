@@ -154,7 +154,7 @@ export async function listStorageImages(folder?: string) {
  * @param timeoutMs - Timeout in milliseconds (default: 5000ms)
  * @returns Promise resolving to true if image loads, false otherwise
  */
-export async function validateImageUrl(url: string, timeoutMs: number = 5000): Promise<boolean> {
+export async function validateImageUrl(url: string, timeoutMs = 5000): Promise<boolean> {
   if (!url) return false
 
   const controller = new AbortController()
