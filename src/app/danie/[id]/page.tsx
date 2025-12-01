@@ -8,10 +8,53 @@ import Link from "next/link"
 import Image from "next/image"
 import Navigation from "@/components/Navigation"
 import ProductImage from "@/components/ProductImage"
-import { ArrowLeft, Clock, Users, ChefHat, Zap, ShoppingCart } from "lucide-react"
+import { ArrowLeft, Clock, Users, ChefHat, Zap, ShoppingCart, Loader2 } from "lucide-react"
 import { ProductDetailSkeleton } from "@/components/Loading"
 import { ErrorFallback } from "@/components/ErrorBoundary"
 import { trackEvent } from "@/components/Analytics"
+
+// Interface for ingredient with quantity
+interface IngredientWithQuantity {
+  name: string
+  grams?: number
+}
+
+// Interface for NutriChef generated data
+interface NutriChefData {
+  recipe: {
+    id: string
+    name: string
+    servings: number
+    created_at: string
+  } | null
+  nutrition: {
+    calories: number
+    protein: number
+    fat: number
+    carbs: number
+    fiber: number
+    salt: number
+    allergens: string[]
+    score: number
+  } | null
+  ingredients: Array<{
+    id: string
+    ingredient_name: string
+    amount_grams: number
+  }>
+  steps: Array<{
+    id: string
+    order: number
+    title: string
+    description: string
+  }>
+  generatedText: {
+    short_description: string
+    long_description: string
+    health_benefits: string
+    substitutions: string
+  } | null
+}
 
 // Interface for dish data
 interface DishData {
@@ -32,6 +75,7 @@ interface DishData {
   diets: string[]
   allergens: string[]
   ingredients: string[]
+  ingredientsWithQuantity?: IngredientWithQuantity[]
   equipment?: string[]
   instructions: Array<{
     step: number
@@ -44,6 +88,7 @@ interface DishData {
     carbs: number
     fat: number
     fiber: number
+    salt?: number
   }
   tags: string[]
   rating?: number
@@ -56,6 +101,11 @@ interface DishData {
     protein: string
     salt: string
   }
+  // NutriChef-specific fields
+  healthScore?: number
+  healthBenefits?: string
+  substitutions?: string
+  hasNutriChefData?: boolean
 }
 
 // Dane dań z OpenCart (w prawdziwej aplikacji byłyby pobierane z API)
@@ -353,129 +403,131 @@ function DishPageClient({ dishId }: { dishId: string }) {
     try {
       setLoadingInstructions(true);
 
-      // PRIORITY 1: Fetch from products list API (same as menu page) to get the CORRECT OpenCart image
+      // PRIORITY 1: Fetch from products list API (same as menu page) to get base product data
       const productsResponse = await fetch('/api/products');
       let baseProduct = null;
 
       if (productsResponse.ok) {
         const productsData = await productsResponse.json();
         if (productsData.success && productsData.products) {
-          // Find the specific product by ID from the list (this has OpenCart images!)
           baseProduct = productsData.products.find((p: any) => p.id === Number.parseInt(productId));
-          console.log(`📸 Product ${productId} - OpenCart image:`, baseProduct?.image);
+          console.log(`📸 Product ${productId} - Base product data:`, baseProduct?.name);
         }
       }
 
-      // PRIORITY 2: Try to fetch detailed instructions from OpenCart API
+      // PRIORITY 2: Fetch NutriChef generated data (nutrition with grams, instructions, etc.)
+      let nutriChefData: NutriChefData | null = null;
+      try {
+        const nutriChefResponse = await fetch(`/api/nutrichef/products/${productId}`);
+        if (nutriChefResponse.ok) {
+          const nutriChefResult = await nutriChefResponse.json();
+          if (nutriChefResult.success && nutriChefResult.data?.recipe) {
+            nutriChefData = nutriChefResult.data;
+            console.log(`🍽️ NutriChef data found for product ${productId}:`, {
+              hasNutrition: !!nutriChefData?.nutrition,
+              ingredientsCount: nutriChefData?.ingredients?.length || 0,
+              stepsCount: nutriChefData?.steps?.length || 0,
+            });
+          }
+        }
+      } catch (error) {
+        console.log(`⚠️ NutriChef data not available for product ${productId}`);
+      }
+
+      // PRIORITY 3: Try to fetch detailed instructions from OpenCart API (legacy fallback)
       const opencartResponse = await fetch(`/api/opencart/product/${productId}`);
+      let opencartProduct = null;
       if (opencartResponse.ok) {
         const opencartData = await opencartResponse.json();
-
         if (opencartData.success && opencartData.product?.preparation_instructions) {
-          // Merge: Use the CORRECT image from products API + instructions from OpenCart
-          const opencartProduct = opencartData.product;
-          const dishData: DishData = {
-            id: Number.parseInt(productId),
-            name: baseProduct?.name || opencartProduct.name,
-            description: baseProduct?.description || opencartProduct.description,
-            image: baseProduct?.image || opencartProduct.main_image || "https://ext.same-assets.com/817389662/206723592.jpeg", // Use products API image first!
-            cookTime: baseProduct?.cook_time || (opencartProduct.nutrition_info?.prep_time ? Number.parseInt(opencartProduct.nutrition_info.prep_time) : 30),
-            servings: baseProduct?.servings || opencartProduct.nutrition_info?.servings || 2,
-            difficulty: baseProduct?.difficulty || opencartProduct.nutrition_info?.difficulty || "Średni",
-            calories: baseProduct?.calories || opencartProduct.nutrition_info?.calories || 400,
-            protein: baseProduct?.protein || Number.parseInt(opencartProduct.nutrition_info?.protein || "20"),
-            carbs: baseProduct?.carbs || Number.parseInt(opencartProduct.nutrition_info?.carbs || "25"),
-            fat: baseProduct?.fat || Number.parseInt(opencartProduct.nutrition_info?.fat || "15"),
-            fiber: baseProduct?.fiber || Number.parseInt(opencartProduct.nutrition_info?.fiber || "5"),
-            price: baseProduct?.price || 35.00,
-            rating: baseProduct?.rating || 4.5,
-            category: baseProduct?.categories?.name || "Dania",
-            diets: baseProduct?.diets || ["Zdrowa"],
-            allergens: baseProduct?.allergens || [],
-            ingredients: baseProduct?.ingredients || opencartProduct.ingredients?.map((ing: any) => ing.name || ing) || ["Składniki dostępne w szczegółach produktu"],
-            equipment: baseProduct?.equipment || opencartProduct.equipment_needed || ["Podstawowe wyposażenie kuchni"],
-            // Use OpenCart instructions (the whole point of checking OpenCart)
-            instructions: opencartProduct.preparation_instructions?.map((inst: any) => ({
+          opencartProduct = opencartData.product;
+        }
+      }
+
+      // Build dish data with NutriChef data taking priority for nutrition and ingredients
+      if (baseProduct || nutriChefData) {
+        const dishData: DishData = {
+          id: Number.parseInt(productId),
+          name: baseProduct?.name || nutriChefData?.recipe?.name || `Przepis ${productId}`,
+          description: nutriChefData?.generatedText?.long_description || baseProduct?.description || "Opis dania",
+          image: baseProduct?.image || "https://ext.same-assets.com/817389662/206723592.jpeg",
+          cookTime: baseProduct?.cook_time || 30,
+          servings: nutriChefData?.recipe?.servings || baseProduct?.servings || 2,
+          difficulty: baseProduct?.difficulty || "Średni",
+          // Use NutriChef nutrition if available, otherwise fall back to base product
+          calories: nutriChefData?.nutrition?.calories || baseProduct?.calories || 400,
+          protein: nutriChefData?.nutrition?.protein || baseProduct?.protein || 20,
+          carbs: nutriChefData?.nutrition?.carbs || baseProduct?.carbs || 25,
+          fat: nutriChefData?.nutrition?.fat || baseProduct?.fat || 15,
+          fiber: nutriChefData?.nutrition?.fiber || baseProduct?.fiber || 5,
+          price: baseProduct?.price || 35.00,
+          rating: baseProduct?.rating || 4.5,
+          category: baseProduct?.categories?.name || "Dania",
+          diets: baseProduct?.diets || ["Zdrowa"],
+          // Use NutriChef allergens if available
+          allergens: nutriChefData?.nutrition?.allergens || baseProduct?.allergens || [],
+          // Basic ingredient names
+          ingredients: nutriChefData?.ingredients?.map(ing => ing.ingredient_name) || 
+                       baseProduct?.ingredients || 
+                       ["Składniki będą dostępne wkrótce"],
+          // Ingredients with quantities from NutriChef
+          ingredientsWithQuantity: nutriChefData?.ingredients?.map(ing => ({
+            name: ing.ingredient_name,
+            grams: ing.amount_grams,
+          })),
+          equipment: baseProduct?.equipment || opencartProduct?.equipment_needed || ["Podstawowe wyposażenie kuchni"],
+          // Use NutriChef steps if available, otherwise OpenCart or base product
+          instructions: nutriChefData?.steps?.length ? 
+            nutriChefData.steps.map(step => ({
+              step: step.order,
+              title: step.title,
+              description: step.description,
+            })) :
+            opencartProduct?.preparation_instructions?.map((inst: any) => ({
               step: inst.step,
               title: inst.title,
-              description: inst.description
-            })) || baseProduct?.instructions || [
+              description: inst.description,
+            })) ||
+            baseProduct?.instructions || [
               {
                 step: 1,
                 title: "Przygotowanie",
-                description: "Szczegółowe instrukcje przygotowania będą dostępne wkrótce."
-              }
+                description: "Szczegółowe instrukcje przygotowania będą dostępne wkrótce.",
+              },
             ],
-            nutrition: {
-              calories: baseProduct?.calories || opencartProduct.nutrition_info?.calories || 400,
-              protein: baseProduct?.protein || Number.parseInt(opencartProduct.nutrition_info?.protein || "20"),
-              carbs: baseProduct?.carbs || Number.parseInt(opencartProduct.nutrition_info?.carbs || "25"),
-              fat: baseProduct?.fat || Number.parseInt(opencartProduct.nutrition_info?.fat || "15"),
-              fiber: baseProduct?.fiber || Number.parseInt(opencartProduct.nutrition_info?.fiber || "5")
-            },
-            tags: baseProduct?.tags || [],
-            nutritionPer100g: baseProduct?.nutrition_per_100g || {
-              energy: "120 kcal",
-              fat: "6 g",
-              saturatedFat: "2 g",
-              carbs: "12 g",
-              sugar: "3 g",
-              protein: "10 g",
-              salt: "0.5 g"
-            }
-          };
-
-          setDish(dishData);
-          return;
-        }
-      }
-
-      // If we have a base product but no OpenCart data, use the base product
-      if (baseProduct) {
-        const dishData: DishData = {
-          id: baseProduct.id,
-          name: baseProduct.name,
-          description: baseProduct.description,
-          image: baseProduct.image, // This is the correct image from the database!
-          cookTime: baseProduct.cook_time || 30,
-          servings: baseProduct.servings || 2,
-          difficulty: baseProduct.difficulty || "Średni",
-          calories: baseProduct.calories || 400,
-          protein: baseProduct.protein || 20,
-          carbs: baseProduct.carbs || 25,
-          fat: baseProduct.fat || 15,
-          fiber: baseProduct.fiber || 5,
-          price: baseProduct.price || 35.00,
-          rating: baseProduct.rating || 4.5,
-          category: baseProduct.categories?.name || "Dania",
-          diets: baseProduct.diets || ["Zdrowa"],
-          allergens: baseProduct.allergens || [],
-          ingredients: baseProduct.ingredients || ["Składniki będą dostępne wkrótce"],
-          equipment: baseProduct.equipment || ["Podstawowe wyposażenie kuchni"],
-          instructions: baseProduct.instructions || [
-            {
-              step: 1,
-              title: "Przygotowanie",
-              description: "Szczegółowe instrukcje przygotowania tego dania będą dostępne wkrótce."
-            }
-          ],
           nutrition: {
-            calories: baseProduct.calories || 400,
-            protein: baseProduct.protein || 20,
-            carbs: baseProduct.carbs || 25,
-            fat: baseProduct.fat || 15,
-            fiber: baseProduct.fiber || 5
+            calories: nutriChefData?.nutrition?.calories || baseProduct?.calories || 400,
+            protein: nutriChefData?.nutrition?.protein || baseProduct?.protein || 20,
+            carbs: nutriChefData?.nutrition?.carbs || baseProduct?.carbs || 25,
+            fat: nutriChefData?.nutrition?.fat || baseProduct?.fat || 15,
+            fiber: nutriChefData?.nutrition?.fiber || baseProduct?.fiber || 5,
+            salt: nutriChefData?.nutrition?.salt,
           },
-          tags: baseProduct.tags || [],
-          nutritionPer100g: baseProduct.nutrition_per_100g || {
-            energy: "120 kcal",
-            fat: "6 g",
-            saturatedFat: "2 g",
-            carbs: "12 g",
-            sugar: "3 g",
-            protein: "10 g",
-            salt: "0.5 g"
-          }
+          tags: baseProduct?.tags || [],
+          // Convert per-serving values to per-100g estimates (assuming ~400g average serving)
+          nutritionPer100g: baseProduct?.nutrition_per_100g || (() => {
+            // Approximate divisor to convert per-serving to per-100g (assuming ~400g serving = divisor of 4)
+            const SERVING_TO_100G_DIVISOR = 4;
+            const cal = nutriChefData?.nutrition?.calories || 400;
+            const fat = nutriChefData?.nutrition?.fat || 15;
+            const carb = nutriChefData?.nutrition?.carbs || 25;
+            const prot = nutriChefData?.nutrition?.protein || 20;
+            const slt = nutriChefData?.nutrition?.salt || 1.5;
+            return {
+              energy: `${Math.round(cal / SERVING_TO_100G_DIVISOR)} kcal`,
+              fat: `${(fat / SERVING_TO_100G_DIVISOR).toFixed(1)} g`,
+              saturatedFat: "2 g",
+              carbs: `${(carb / SERVING_TO_100G_DIVISOR).toFixed(1)} g`,
+              sugar: "3 g",
+              protein: `${(prot / SERVING_TO_100G_DIVISOR).toFixed(1)} g`,
+              salt: `${(slt / SERVING_TO_100G_DIVISOR).toFixed(2)} g`,
+            };
+          })(),
+          // NutriChef-specific fields
+          healthScore: nutriChefData?.nutrition?.score,
+          healthBenefits: nutriChefData?.generatedText?.health_benefits,
+          substitutions: nutriChefData?.generatedText?.substitutions,
+          hasNutriChefData: !!nutriChefData?.recipe,
         };
 
         setDish(dishData);
@@ -878,13 +930,74 @@ function DishPageClient({ dishId }: { dishId: string }) {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Nutrition info */}
+            {/* Main Nutrition info - per serving from NutriChef */}
             <Card className="border-0 shadow-xl">
               <CardHeader>
                 <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
                   Wartości odżywcze
                 </CardTitle>
-                <p className="text-sm text-gray-600">Na 100g produktu</p>
+                <p className="text-sm text-gray-600">Na porcję ({dish.servings} os.)</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-orange-50 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-orange-600">{dish.nutrition.calories}</p>
+                    <p className="text-xs text-gray-600">kcal</p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-red-600">{dish.nutrition.protein}g</p>
+                    <p className="text-xs text-gray-600">Białko</p>
+                  </div>
+                  <div className="bg-yellow-50 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-yellow-600">{dish.nutrition.fat}g</p>
+                    <p className="text-xs text-gray-600">Tłuszcz</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-blue-600">{dish.nutrition.carbs}g</p>
+                    <p className="text-xs text-gray-600">Węglowodany</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-3 text-center">
+                    <p className="text-xl font-bold text-green-600">{dish.nutrition.fiber}g</p>
+                    <p className="text-xs text-gray-600">Błonnik</p>
+                  </div>
+                  {dish.nutrition.salt !== undefined && (
+                    <div className="bg-purple-50 rounded-lg p-3 text-center">
+                      <p className="text-xl font-bold text-purple-600">{dish.nutrition.salt}g</p>
+                      <p className="text-xs text-gray-600">Sól</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Health Score from NutriChef */}
+                {dish.healthScore !== undefined && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-600">Wynik zdrowotny</span>
+                      <span className="text-lg font-bold text-emerald-600">{dish.healthScore}/100</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-emerald-500 h-2 rounded-full transition-all" 
+                        style={{ width: `${dish.healthScore}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {dish.hasNutriChefData && (
+                  <p className="text-xs text-green-600 mt-3 flex items-center gap-1">
+                    <span>✓</span> Dane wygenerowane przez NutriChef
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Per 100g nutrition - detailed view */}
+            <Card className="border-0 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
+                  Wartości na 100g
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -894,7 +1007,7 @@ function DishPageClient({ dishId }: { dishId: string }) {
                       fat: "Tłuszcze",
                       saturatedFat: "Tłuszcze nasycone",
                       carbs: "Węglowodany",
-                      sugars: "Cukry",
+                      sugar: "Cukry",
                       protein: "Białko",
                       salt: "Sól"
                     }
@@ -918,13 +1031,35 @@ function DishPageClient({ dishId }: { dishId: string }) {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {dish.ingredients.map((ingredient: string, index: number) => (
-                    <li key={`ingredient-${ingredient}`} className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-[var(--smakowalo-green-primary)] rounded-full" />
-                      <span className="text-gray-700">{ingredient}</span>
-                    </li>
-                  ))}
+                  {/* Display ingredients with quantities if NutriChef data is available */}
+                  {dish.ingredientsWithQuantity && dish.ingredientsWithQuantity.length > 0 ? (
+                    dish.ingredientsWithQuantity.map((ingredient, index) => (
+                      <li key={`ingredient-${index}-${ingredient.name}`} className="flex items-center justify-between bg-gray-50 rounded-lg p-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-[var(--smakowalo-green-primary)] rounded-full" />
+                          <span className="text-gray-700">{ingredient.name}</span>
+                        </div>
+                        {ingredient.grams && (
+                          <span className="text-sm font-medium text-[var(--smakowalo-green-primary)] bg-white px-2 py-0.5 rounded">
+                            {ingredient.grams}g
+                          </span>
+                        )}
+                      </li>
+                    ))
+                  ) : (
+                    dish.ingredients.map((ingredient: string, index: number) => (
+                      <li key={`ingredient-${ingredient}`} className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-[var(--smakowalo-green-primary)] rounded-full" />
+                        <span className="text-gray-700">{ingredient}</span>
+                      </li>
+                    ))
+                  )}
                 </ul>
+                {dish.hasNutriChefData && (
+                  <p className="text-xs text-green-600 mt-3 flex items-center gap-1">
+                    <span>✓</span> Składniki z dokładnymi gramaturami wygenerowane przez NutriChef
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -976,6 +1111,34 @@ function DishPageClient({ dishId }: { dishId: string }) {
                 </CardHeader>
                 <CardContent>
                   <Badge className="bg-green-100 text-green-800">Brak alergenów</Badge>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Health Benefits from NutriChef */}
+            {dish.healthBenefits && (
+              <Card className="border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
+                    💪 Korzyści zdrowotne
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-700 leading-relaxed">{dish.healthBenefits}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Substitutions from NutriChef */}
+            {dish.substitutions && (
+              <Card className="border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
+                    🔄 Możliwe zamienniki
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-700 leading-relaxed">{dish.substitutions}</p>
                 </CardContent>
               </Card>
             )}

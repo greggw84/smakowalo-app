@@ -1,14 +1,30 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+// Lazy initialization to avoid build-time errors
+let supabaseInstance: SupabaseClient | null = null
+function getSupabase(): SupabaseClient {
+  if (!supabaseInstance) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!url || !key) throw new Error('Supabase not configured')
+    supabaseInstance = createClient(url, key)
+  }
+  return supabaseInstance
+}
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-})
+let stripeInstance: Stripe | null = null
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const secretKey = process.env.STRIPE_SECRET_KEY
+    if (!secretKey) throw new Error('STRIPE_SECRET_KEY not configured')
+    stripeInstance = new Stripe(secretKey, {
+      apiVersion: '2024-12-18.acacia',
+    })
+  }
+  return stripeInstance
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,6 +52,7 @@ export async function POST(req: NextRequest) {
           pauseParams.pause_collection.resumes_at = Math.floor(resumeDate.getTime() / 1000)
         }
 
+        const stripe = getStripe()
         await stripe.subscriptions.update(stripe_subscription_id, pauseParams)
 
         console.log('✅ Stripe subscription paused:', stripe_subscription_id)
@@ -58,7 +75,7 @@ export async function POST(req: NextRequest) {
       updateData.pause_until = pause_until
     }
 
-    const { error: dbError } = await supabase
+    const { error: dbError } = await getSupabase()
       .from('subscriptions')
       .update(updateData)
       .eq('id', subscription_id)
@@ -76,14 +93,14 @@ export async function POST(req: NextRequest) {
       const { sendSubscriptionPausedEmail } = await import('@/lib/email-notifications')
       
       // Get user email and name from database
-      const { data: subscription } = await supabase
+      const { data: subscription } = await getSupabase()
         .from('subscriptions')
         .select('user_id')
         .eq('id', subscription_id)
         .single()
 
       if (subscription?.user_id) {
-        const { data: profile } = await supabase
+        const { data: profile } = await getSupabase()
           .from('profiles')
           .select('email, first_name')
           .eq('id', subscription.user_id)

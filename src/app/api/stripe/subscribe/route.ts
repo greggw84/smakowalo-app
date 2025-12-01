@@ -3,9 +3,18 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-12-18.acacia',
-})
+// Lazy initialization to avoid build-time errors
+let stripeInstance: Stripe | null = null
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const secretKey = process.env.STRIPE_SECRET_KEY
+    if (!secretKey) throw new Error('STRIPE_SECRET_KEY not configured')
+    stripeInstance = new Stripe(secretKey, {
+      apiVersion: '2024-12-18.acacia',
+    })
+  }
+  return stripeInstance
+}
 
 const STRIPE_PRICE_IDS = {
   basic: process.env.STRIPE_BASIC_PRICE_ID || 'price_basic_placeholder',
@@ -70,6 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe Checkout session
+    const stripe = getStripe()
     const checkoutSession = await stripe.checkout.sessions.create({
       customer_email: session.user.email,
       mode: 'subscription',

@@ -23,10 +23,18 @@ function stripeTimestampToISO(ts?: number | null): string | null {
   return new Date(ts * 1000).toISOString();
 }
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-});
+// Lazy initialization to avoid build-time errors
+let stripeInstance: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) throw new Error('STRIPE_SECRET_KEY not configured');
+    stripeInstance = new Stripe(secretKey, {
+      apiVersion: '2024-12-18.acacia',
+    });
+  }
+  return stripeInstance;
+}
 
 // Initialize Supabase with service role key for admin operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -88,6 +96,7 @@ export async function POST(req: NextRequest) {
   // Verify webhook signature
   let event: Stripe.Event;
   try {
+    const stripe = getStripe();
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     logWebhook('success', `Webhook signature verified: ${event.type}`, { id: event.id });
   } catch (err: any) {
@@ -198,6 +207,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   // Get full subscription details from Stripe
   let subscription: Stripe.Subscription;
   try {
+    const stripe = getStripe();
     subscription = await stripe.subscriptions.retrieve(subscriptionId);
     logWebhook('success', 'Retrieved subscription from Stripe', { subscriptionId });
   } catch (err: any) {
@@ -499,6 +509,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
     logWebhook('warn', 'No user_id in subscription metadata, attempting email lookup');
     
     // Try to find user by customer email
+    const stripe = getStripe();
     const customer = await stripe.customers.retrieve(customerId);
     const email = (customer as Stripe.Customer).email;
     
@@ -598,6 +609,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supa
 
   // Send notification emails for status changes (non-blocking)
   try {
+    const stripe = getStripe();
     const customer = await stripe.customers.retrieve(subscription.customer as string);
     const email = (customer as Stripe.Customer).email;
 
@@ -686,6 +698,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice, supabase: 
         : 'Subskrypcja Smakowało';
 
       // Get subscription to find next payment date
+      const stripe = getStripe();
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       
       await sendEmail({
@@ -754,6 +767,7 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, supabase: any
         : 'Subskrypcja Smakowało';
 
       // Get subscription to find customer
+      const stripe = getStripe();
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
       // Create Stripe Customer Portal session for updating payment method
@@ -794,6 +808,7 @@ async function handleTrialWillEnd(subscription: Stripe.Subscription, supabase: a
   logWebhook('info', 'Processing trial_will_end', { subscriptionId: subscription.id });
 
   try {
+    const stripe = getStripe();
     const customer = await stripe.customers.retrieve(subscription.customer as string);
     const email = (customer as Stripe.Customer).email;
 

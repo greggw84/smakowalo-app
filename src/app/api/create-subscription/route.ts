@@ -2,9 +2,20 @@ import { type NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-})
+// Lazy initialization to avoid build-time errors when env vars are not set
+let stripeInstance: Stripe | null = null
+function getStripe() {
+  if (!stripeInstance) {
+    const secretKey = process.env.STRIPE_SECRET_KEY
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY is not configured')
+    }
+    stripeInstance = new Stripe(secretKey, {
+      apiVersion: '2024-12-18.acacia',
+    })
+  }
+  return stripeInstance
+}
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -89,6 +100,7 @@ export async function POST(req: NextRequest) {
     })
 
     // Create or retrieve Stripe customer
+    const stripe = getStripe()
     let customerId: string | null = null
 
     // Check if customer already exists
