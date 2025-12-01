@@ -88,118 +88,12 @@ export async function fetchSupabaseProducts(
   }
 
   try {
-    // Build the query
-let query = supabase
-  .from('products')
-  .select('*')        // tymczasowo bez joinu categories
-  .eq('active', true)
-
-
-    // Apply filters
-    if (filters?.featured) {
-      query = query.eq('featured', true)
-    }
-
-    if (filters?.search) {
-      query = query.or(
-        `name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`
-      )
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      console.error('❌ Supabase products fetch error:', error)
-      throw error
-    }
-
-    if (!data || data.length === 0) {
-      console.log('⚠️ No products found in Supabase')
-      return []
-    }
-
-    console.log(`✅ Fetched ${data.length} products from Supabase`)
-
-    // Apply client-side filters that aren't easily done in Supabase
-    let products = data as MenuProduct[]
-
-    // Filter by category
-    if (filters?.category) {
-      products = products.filter(
-        (p) =>
-          p.categories?.slug === filters.category ||
-          String(p.category_id) === filters.category
-      )
-    }
-
-    // Filter by diet
-    if (filters?.diet && filters.diet !== 'all') {
-      products = products.filter((p) => p.diets?.includes(filters.diet as string))
-    }
-
-    return products
-  } catch (error) {
-    console.error('❌ Error fetching products from Supabase:', error)
-    throw error
-  }
-}
-
-/**
- * Fetch a single product by ID from Supabase
- */
-export async function fetchSupabaseProductById(
-  id: number
-): Promise<MenuProduct | null> {
-  const supabase = createSupabaseClient()
-
-  if (!supabase) {
-    throw new Error('Supabase client not configured')
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('products')
-     .select('*')
-      .eq('id', id)
-      .eq('active', true)
-      .single()
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // No rows returned
-        return null
-      }
-      console.error('❌ Supabase product fetch error:', error)
-      throw error
-    }
-
-    return data as MenuProduct
-  } catch (error) {
-    console.error(`❌ Error fetching product ${id} from Supabase:`, error)
-    throw error
-  }
-}
-
-/**
- * Fetch categories from Supabase database
- */
-export async function fetchSupabaseProducts(
-  filters?: ProductFilterOptions
-): Promise<MenuProduct[]> {
-  const supabase = createSupabaseClient()
-
-  if (!supabase) {
-    throw new Error('Supabase client not configured')
-  }
-
-  try {
     console.log('[supabase-menu] fetching products with filters:', filters)
 
     let query = supabase
-      .from('products')        // upewnij się, że tak nazywa się tabela
+      .from('products')
       .select('*')
       .eq('active', true)
-    // UWAGA: NIE SORTUJEMY PO created_at, bo tej kolumny nie ma
 
     if (filters?.featured) {
       query = query.eq('featured', true)
@@ -250,6 +144,47 @@ export async function fetchSupabaseProducts(
     throw error
   }
 }
+
+/**
+ * Fetch a single product by ID from Supabase
+ */
+export async function fetchSupabaseProductById(
+  id: number
+): Promise<MenuProduct | null> {
+  const supabase = createSupabaseClient()
+
+  if (!supabase) {
+    throw new Error('Supabase client not configured')
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('products')
+     .select('*')
+      .eq('id', id)
+      .eq('active', true)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows returned
+        return null
+      }
+      console.error('❌ Supabase product fetch error:', error)
+      throw error
+    }
+
+    return data as MenuProduct
+  } catch (error) {
+    console.error(`❌ Error fetching product ${id} from Supabase:`, error)
+    throw error
+  }
+}
+
+/**
+ * Fetch categories from Supabase database
+ */
+
 
 /**
  * Check if Supabase is properly configured
