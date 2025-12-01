@@ -65,6 +65,41 @@ export const createSupabaseComponentClient = () => {
 // Main client instance
 export const supabase = createSupabaseClient()
 
+/**
+ * Server-side Supabase client using service role key
+ * Used for server API routes where elevated permissions are needed
+ * This client bypasses Row Level Security - use with caution
+ */
+let supabaseServerClient: ReturnType<typeof createClient> | null = null
+
+export function getSupabaseServerClient() {
+  if (supabaseServerClient) {
+    return supabaseServerClient
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!url || !serviceRoleKey) {
+    throw new Error(
+      "Missing Supabase server configuration. Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set."
+    )
+  }
+
+  if (url.includes("placeholder") || serviceRoleKey.includes("placeholder")) {
+    throw new Error("Supabase configuration contains placeholder values")
+  }
+
+  supabaseServerClient = createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+
+  return supabaseServerClient
+}
+
 // Database types
 export type Database = {
   public: {
