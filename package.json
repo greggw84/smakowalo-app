@@ -41,11 +41,13 @@
     "next": "^15.3.2",
     "next-auth": "^4.24.11",
     "nodemailer": "^7.0.5",
+    "openai": "^6.9.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "stripe": "^18.3.0",
     "tailwind-merge": "^3.3.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
