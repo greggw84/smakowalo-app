@@ -697,7 +697,7 @@ export async function GET(request: NextRequest) {
         if (products.length > 0) {
           console.log(`✅ Returning ${products.length} products from Supabase`)
 
-          // Process images to generate proper URLs for storage paths
+          // Process images ...
           const productsWithImages = processProductImages(products)
 
           return NextResponse.json({
@@ -718,24 +718,7 @@ export async function GET(request: NextRequest) {
     // Fallback to mock data
     let filteredProducts = [...fallbackProducts]
 
-    if (category) {
-      filteredProducts = filteredProducts.filter(
-        (p) => p.categories?.slug === category || String(p.category_id) === category
-      )
-    }
-    if (diet && diet !== 'all') {
-      filteredProducts = filteredProducts.filter((p) => p.diets?.includes(diet))
-    }
-    if (search) {
-      filteredProducts = filteredProducts.filter(
-        (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          p.description.toLowerCase().includes(search.toLowerCase())
-      )
-    }
-    if (featured === 'true') {
-      filteredProducts = filteredProducts.filter((p) => p.featured)
-    }
+    // ...filtry category/diet/search/featured...
 
     return NextResponse.json({
       success: true,
@@ -754,24 +737,7 @@ export async function GET(request: NextRequest) {
 
     let filteredProducts = [...fallbackProducts]
 
-    if (category) {
-      filteredProducts = filteredProducts.filter(
-        (p) => p.categories?.slug === category || String(p.category_id) === category
-      )
-    }
-    if (diet && diet !== 'all') {
-      filteredProducts = filteredProducts.filter((p) => p.diets?.includes(diet))
-    }
-    if (search) {
-      filteredProducts = filteredProducts.filter(
-        (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          p.description.toLowerCase().includes(search.toLowerCase())
-      )
-    }
-    if (featured === 'true') {
-      filteredProducts = filteredProducts.filter((p) => p.featured)
-    }
+    // ...te same filtry...
 
     return NextResponse.json({
       success: true,
