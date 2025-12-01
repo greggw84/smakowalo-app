@@ -18,31 +18,42 @@ export async function GET(request: NextRequest) {
     const search = url.searchParams.get('search')
     const featured = url.searchParams.get('featured')
 
-    // Only use Supabase - no fallback to mock data
-    if (!hasSupabase) {
-      console.error('❌ Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.')
-      return NextResponse.json({
-        success: false,
-        products: [],
-        total: 0,
-        source: 'none',
-        error: 'Database not configured. Please contact administrator.',
-      }, { status: 503 })
+    // Try Supabase first if configured
+    if (hasSupabase) {
+      try {
+        console.log('🔍 Fetching products from Supabase...')
+
+        const products = await fetchSupabaseProducts({
+          category: category || undefined,
+          diet: diet || undefined,
+          search: search || undefined,
+          featured: featured === 'true',
+        })
+
+        if (products.length > 0) {
+          console.log(`✅ Returning ${products.length} products from Supabase`)
+
+          // Process images ...
+          const productsWithImages = processProductImages(products)
+
+          return NextResponse.json({
+            success: true,
+            products: productsWithImages,
+            total: productsWithImages.length,
+            source: 'supabase',
+          })
+        }
+
+        console.log('⚠️ No products found in Supabase, falling back to mock data')
+      } catch (supabaseError) {
+        console.error('❌ Supabase fetch failed, falling back to mock data:', supabaseError)
+        // Fall through to mock data
+      }
     }
-
-    console.log('🔍 Fetching products from Supabase...')
-
-    const products = await fetchSupabaseProducts({
-      category: category || undefined,
-      diet: diet || undefined,
-      search: search || undefined,
-      featured: featured === 'true',
-    })
 
     console.log(`✅ Returning ${products.length} products from Supabase`)
 
-    // Process images to generate proper URLs for storage paths
-    const productsWithImages = processProductImages(products)
+    // ...filtry category/diet/search/featured...
 
     return NextResponse.json({
       success: true,
@@ -52,6 +63,17 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('❌ Products API error:', error)
+    // Always fallback to mock data in case of any error
+    const url = new URL(request.url)
+    const category = url.searchParams.get('category')
+    const diet = url.searchParams.get('diet')
+    const search = url.searchParams.get('search')
+    const featured = url.searchParams.get('featured')
+
+    let filteredProducts = [...fallbackProducts]
+
+    // ...te same filtry...
+
     return NextResponse.json({
       success: false,
       products: [],

@@ -89,17 +89,11 @@ export async function fetchSupabaseProducts(
 
   try {
     // Build the query
-    let query = supabase
-      .from('products')
-      .select(`
-        *,
-        categories (
-          name,
-          slug
-        )
-      `)
-      .eq('active', true)
-      .order('created_at', { ascending: false })
+let query = supabase
+  .from('products')
+  .select('*')        // tymczasowo bez joinu categories
+  .eq('active', true)
+  .order('created_at', { ascending: false })
 
     // Apply filters
     if (filters?.featured) {
@@ -165,13 +159,7 @@ export async function fetchSupabaseProductById(
   try {
     const { data, error } = await supabase
       .from('products')
-      .select(`
-        *,
-        categories (
-          name,
-          slug
-        )
-      `)
+     .select('*')
       .eq('id', id)
       .eq('active', true)
       .single()
