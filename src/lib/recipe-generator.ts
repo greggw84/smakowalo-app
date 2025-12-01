@@ -4,7 +4,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 
 // Type definitions for new recipe tables
 interface RecipeRow {
-  id: string;
+  id: number;            // w Supabase będzie BIGINT -> w TS wygodniej jako number
   name: string;
   servings: number;
   product_id: number | null;
@@ -71,7 +71,7 @@ Return ONLY valid JSON. No comments, no explanation, no text outside JSON.`;
 
 export interface GenerateRecipeResult {
   success: boolean;
-  recipeId?: string;
+  recipeId?: number;
   data?: RecipeResponse;
   error?: string;
   details?: string;
@@ -197,9 +197,8 @@ export async function saveRecipeToSupabase(
   servings: number,
   data: RecipeResponse,
   productId?: number
-): Promise<{ recipeId: string | null; error: string | null }> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = getSupabaseServerClient() as any;
+): Promise<{ recipeId: number | null; error: string | null }> {
+  const supabase = getSupabaseServerClient();
 
   // Insert into recipes table
   const { data: recipeResult, error: recipeError } = await supabase
@@ -217,7 +216,6 @@ export async function saveRecipeToSupabase(
     return { recipeId: null, error: recipeError?.message ?? "Unknown error" };
   }
 
-  // Type assertion for the recipe result
   const recipe = recipeResult as RecipeRow;
   const recipeId = recipe.id;
 
