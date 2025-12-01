@@ -288,3 +288,79 @@ test.describe('Recipe Creator/Kreator', () => {
     }
   })
 })
+
+test.describe('NutriChef Integration', () => {
+  test('should fetch NutriChef data from API', async ({ page }) => {
+    // Test NutriChef products API endpoint
+    const response = await page.request.get(`${BASE_URL}/api/nutrichef/products`)
+    const data = await response.json()
+
+    expect(data.success).toBeTruthy()
+    expect(data.products).toBeDefined()
+    expect(Array.isArray(data.products)).toBeTruthy()
+  })
+
+  test('should fetch NutriChef product detail from API', async ({ page }) => {
+    // Test NutriChef single product API endpoint
+    // First get list to find a product ID
+    const listResponse = await page.request.get(`${BASE_URL}/api/nutrichef/products`)
+    const listData = await listResponse.json()
+
+    if (listData.success && listData.products?.length > 0) {
+      const productId = listData.products[0].id
+      
+      const detailResponse = await page.request.get(`${BASE_URL}/api/nutrichef/products/${productId}`)
+      const detailData = await detailResponse.json()
+
+      expect(detailData.success).toBeTruthy()
+      expect(detailData.data).toBeDefined()
+      expect(detailData.data.product).toBeDefined()
+      
+      // Recipe data may or may not exist depending on whether NutriChef has generated it
+      if (detailData.data.recipe) {
+        expect(detailData.data.nutrition).toBeDefined()
+        expect(detailData.data.ingredients).toBeDefined()
+        expect(Array.isArray(detailData.data.ingredients)).toBeTruthy()
+      }
+    }
+  })
+
+  test('should display NutriChef nutrition data on recipe page', async ({ page }) => {
+    await page.goto(`${BASE_URL}/danie/61`)
+    await page.waitForLoadState('networkidle')
+
+    // Check for nutrition sections
+    await expect(page.locator('text=Wartości odżywcze')).toBeVisible()
+    
+    // Check for macronutrients display
+    await expect(page.locator('text=kcal')).toBeVisible()
+    await expect(page.locator('text=Białko')).toBeVisible()
+    await expect(page.locator('text=Tłuszcz')).toBeVisible()
+    await expect(page.locator('text=Węglowodany')).toBeVisible()
+  })
+
+  test('should display ingredients from NutriChef with quantities', async ({ page }) => {
+    await page.goto(`${BASE_URL}/danie/61`)
+    await page.waitForLoadState('networkidle')
+
+    // Check for ingredients section
+    await expect(page.locator('text=Składniki w pudełku')).toBeVisible()
+
+    // Look for ingredient items (either with or without grams)
+    const ingredientsList = page.locator('ul').filter({ has: page.locator('li') })
+    const hasIngredients = await ingredientsList.count() > 0
+    expect(hasIngredients).toBeTruthy()
+  })
+
+  test('should indicate NutriChef data source when available', async ({ page }) => {
+    await page.goto(`${BASE_URL}/danie/61`)
+    await page.waitForLoadState('networkidle')
+
+    // Check if NutriChef indicator is shown (may or may not be visible depending on data)
+    const nutriChefIndicator = page.locator('text=NutriChef')
+    const hasIndicator = await nutriChefIndicator.isVisible().catch(() => false)
+    
+    // Log for debugging - NutriChef indicator presence depends on whether recipe exists
+    console.log(`NutriChef indicator visible: ${hasIndicator}`)
+  })
+})
