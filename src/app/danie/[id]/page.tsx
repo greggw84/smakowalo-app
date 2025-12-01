@@ -504,15 +504,25 @@ function DishPageClient({ dishId }: { dishId: string }) {
             salt: nutriChefData?.nutrition?.salt,
           },
           tags: baseProduct?.tags || [],
-          nutritionPer100g: baseProduct?.nutrition_per_100g || {
-            energy: `${Math.round((nutriChefData?.nutrition?.calories || 400) / 4)} kcal`,
-            fat: `${(nutriChefData?.nutrition?.fat || 15) / 4} g`,
-            saturatedFat: "2 g",
-            carbs: `${(nutriChefData?.nutrition?.carbs || 25) / 4} g`,
-            sugar: "3 g",
-            protein: `${(nutriChefData?.nutrition?.protein || 20) / 4} g`,
-            salt: `${(nutriChefData?.nutrition?.salt || 1.5) / 4} g`,
-          },
+          // Convert per-serving values to per-100g estimates (assuming ~400g average serving)
+          nutritionPer100g: baseProduct?.nutrition_per_100g || (() => {
+            // Approximate divisor to convert per-serving to per-100g (assuming ~400g serving = divisor of 4)
+            const SERVING_TO_100G_DIVISOR = 4;
+            const cal = nutriChefData?.nutrition?.calories || 400;
+            const fat = nutriChefData?.nutrition?.fat || 15;
+            const carb = nutriChefData?.nutrition?.carbs || 25;
+            const prot = nutriChefData?.nutrition?.protein || 20;
+            const slt = nutriChefData?.nutrition?.salt || 1.5;
+            return {
+              energy: `${Math.round(cal / SERVING_TO_100G_DIVISOR)} kcal`,
+              fat: `${(fat / SERVING_TO_100G_DIVISOR).toFixed(1)} g`,
+              saturatedFat: "2 g",
+              carbs: `${(carb / SERVING_TO_100G_DIVISOR).toFixed(1)} g`,
+              sugar: "3 g",
+              protein: `${(prot / SERVING_TO_100G_DIVISOR).toFixed(1)} g`,
+              salt: `${(slt / SERVING_TO_100G_DIVISOR).toFixed(2)} g`,
+            };
+          })(),
           // NutriChef-specific fields
           healthScore: nutriChefData?.nutrition?.score,
           healthBenefits: nutriChefData?.generatedText?.health_benefits,
