@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Users, ChefHat, Loader, ShoppingCart, Plus, Flame } from "lucide-react"
+import { Clock, Users, ChefHat, Loader, ShoppingCart, Plus, Flame, AlertCircle } from "lucide-react"
 import { MenuGridSkeleton } from "@/components/Loading"
 import { ErrorFallback } from "@/components/ErrorBoundary"
 import { trackEvent } from "@/components/Analytics"
@@ -13,6 +13,9 @@ import ProductImage from "@/components/ProductImage"
 import Link from "next/link"
 import Logo from "@/components/Logo"
 import { useCart } from "@/contexts/CartContext"
+
+// Maximum number of diet filters allowed (excluding "Wszystkie")
+const MAX_DIET_FILTERS = 3
 
 // Product interface matching Supabase weekly menu products
 interface Product {
@@ -35,6 +38,10 @@ interface Product {
     name: string
     slug: string
   }
+  // TODO: Add these fields to Supabase schema if not present:
+  // cooking_time_minutes?: number
+  // kcal_per_portion?: number
+  // diet_types?: string[]
 }
 
 // Weekly menu interface
@@ -112,11 +119,70 @@ export default function MenuPage() {
   const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenu | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [selectedDiet, setSelectedDiet] = useState('all')
+  // Changed from single diet to array of selected diets for multi-select with limit
+  const [selectedDiets, setSelectedDiets] = useState<string[]>(['all'])
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
   const [expandedIds, setExpandedIds] = useState<number[]>([])
   const [dataSource, setDataSource] = useState<string>('')
+  const [filterLimitMessage, setFilterLimitMessage] = useState<string | null>(null)
+  const filterMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const { addItem, totalItems } = useCart()
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (filterMessageTimeoutRef.current) {
+        clearTimeout(filterMessageTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Handle diet filter selection with limit enforcement
+  const handleDietSelect = useCallback((dietCode: string) => {
+    // Clear any existing timeout
+    if (filterMessageTimeoutRef.current) {
+      clearTimeout(filterMessageTimeoutRef.current)
+      filterMessageTimeoutRef.current = null
+    }
+    setFilterLimitMessage(null)
+
+    if (dietCode === 'all') {
+      // "Wszystkie" clears all other filters and selects only "all"
+      setSelectedDiets(['all'])
+      return
+    }
+
+    setSelectedDiets(prev => {
+      // If "all" is currently selected, remove it and add the new diet
+      if (prev.includes('all')) {
+        return [dietCode]
+      }
+
+      // If already selected, remove it (but ensure at least one remains)
+      if (prev.includes(dietCode)) {
+        const newDiets = prev.filter(d => d !== dietCode)
+        // If no diets remain, revert to "Wszystkie"
+        if (newDiets.length === 0) {
+          return ['all']
+        }
+        return newDiets
+      }
+
+      // If trying to add a 4th filter, show message and prevent selection
+      if (prev.length >= MAX_DIET_FILTERS) {
+        setFilterLimitMessage(`Możesz wybrać maksymalnie ${MAX_DIET_FILTERS} preferencje jednocześnie`)
+        // Hide message after 3 seconds with cleanup
+        filterMessageTimeoutRef.current = setTimeout(() => {
+          setFilterLimitMessage(null)
+          filterMessageTimeoutRef.current = null
+        }, 3000)
+        return prev
+      }
+
+      // Add the new diet
+      return [...prev, dietCode]
+    })
+  }, [])
 
   // Fetch products from weekly menu API (primary) or products API (fallback)
   useEffect(() => {
@@ -200,9 +266,12 @@ export default function MenuPage() {
     fetchData()
   }, [])
 
-  // Filter products by selected diet and category
+  // Filter products by selected diets and category
   const filteredProducts = products.filter(product => {
-    const matchesDiet = selectedDiet === 'all' || (product.diets ?? []).includes(selectedDiet)
+    // If "all" is selected, match all products
+    const matchesDiet = selectedDiets.includes('all') || 
+      // Match if product has any of the selected diets
+      (product.diets ?? []).some(diet => selectedDiets.includes(diet.toLowerCase()))
     const matchesCategory = selectedCategory === null || product.category_id === selectedCategory
     return matchesDiet && matchesCategory
   })
@@ -306,24 +375,51 @@ export default function MenuPage() {
         <div className="mb-8 space-y-6">
           {/* Diet Filters */}
           <div>
-            <h3 className="text-lg font-semibold text-[var(--smakowalo-green-dark)] mb-4">
-              Filtruj według preferencji dietetycznych:
-            </h3>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold text-[var(--smakowalo-green-dark)]">
+                Filtruj według preferencji dietetycznych:
+              </h3>
+              {!selectedDiets.includes('all') && (
+                <span className="text-sm text-gray-500">
+                  ({selectedDiets.length}/{MAX_DIET_FILTERS} wybranych)
+                </span>
+              )}
+            </div>
+            
+            {/* Filter limit warning message */}
+            {filterLimitMessage && (
+              <div className="mb-4 flex items-center gap-2 text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 animate-in fade-in duration-200">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <span className="text-sm">{filterLimitMessage}</span>
+              </div>
+            )}
+            
             <div className="flex flex-wrap gap-3">
-              {dietTypes.map((diet) => (
-                <Button
-                  key={diet.code}
-                  variant={selectedDiet === diet.code ? "default" : "outline"}
-                  className={selectedDiet === diet.code
-                    ? "bg-[var(--smakowalo-green-primary)] text-white"
-                    : "border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-primary)] hover:text-white"
-                  }
-                  onClick={() => setSelectedDiet(diet.code)}
-                >
-                  <div className={`w-3 h-3 rounded-full ${diet.color} mr-2`} />
-                  {diet.name}
-                </Button>
-              ))}
+              {dietTypes.map((diet) => {
+                const isSelected = selectedDiets.includes(diet.code)
+                const isDisabled = !isSelected && 
+                                   !selectedDiets.includes('all') && 
+                                   selectedDiets.length >= MAX_DIET_FILTERS &&
+                                   diet.code !== 'all'
+                
+                return (
+                  <Button
+                    key={diet.code}
+                    variant={isSelected ? "default" : "outline"}
+                    className={`${isSelected
+                      ? "bg-[var(--smakowalo-green-primary)] text-white"
+                      : isDisabled
+                        ? "border-gray-300 text-gray-400 cursor-not-allowed opacity-50"
+                        : "border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)] hover:bg-[var(--smakowalo-green-primary)] hover:text-white"
+                    } transition-all`}
+                    onClick={() => handleDietSelect(diet.code)}
+                    disabled={isDisabled}
+                  >
+                    <div className={`w-3 h-3 rounded-full ${diet.color} mr-2`} />
+                    {diet.name}
+                  </Button>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -359,17 +455,17 @@ export default function MenuPage() {
           filteredProducts.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-gray-600 text-lg mb-4">
-                  {selectedDiet === 'all' && selectedCategory === null
+                  {selectedDiets.includes('all') && selectedCategory === null
                     ? 'Brak dostępnych produktów'
                     : "Brak produktów dla wybranych filtrów"
                   }
                 </p>
-                {(selectedDiet !== 'all' || selectedCategory !== null) && (
+                {(!selectedDiets.includes('all') || selectedCategory !== null) && (
                   <div className="space-x-4">
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setSelectedDiet('all')
+                        setSelectedDiets(['all'])
                         setSelectedCategory(null)
                       }}
                       className="border-[var(--smakowalo-green-primary)] text-[var(--smakowalo-green-primary)]"
@@ -388,7 +484,7 @@ export default function MenuPage() {
                   return (
                   <Card
                     key={product.id}
-                    className="w-full overflow-hidden shadow hover:shadow-xl cursor-pointer flex flex-col"
+                    className="w-full overflow-hidden shadow hover:shadow-xl cursor-pointer flex flex-col transition-shadow duration-200"
                   >
                     <div className="relative h-56">
                       <ProductImage
@@ -398,14 +494,6 @@ export default function MenuPage() {
                         className="object-cover"
                       />
 
-                      <div className="absolute top-2 left-2 flex space-x-2">
-                        {Math.random() > 0.7 && (
-                          <span className="bg-green-600 text-white text-xs px-2 py-0.5 rounded">Nowość</span>
-                        )}
-                        {Math.random() > 0.5 && (
-                          <span className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded">Popularne</span>
-                        )}
-                      </div>
                       <div className="absolute top-2 right-2 flex items-center space-x-2">
                         <FavoriteButton
                           product={{
@@ -417,62 +505,56 @@ export default function MenuPage() {
                           variant="minimal"
                           className="bg-white/90 backdrop-blur-sm"
                         />
-                        <span className="bg-gray-800/70 text-white text-xs px-2 py-0.5 rounded-full flex items-center">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {product.cook_time} min
-                        </span>
                       </div>
 
                     </div>
 
                     <CardContent className="p-4 flex-1 flex flex-col">
-                      <h3 className="text-base font-bold text-[var(--smakowalo-green-dark)] line-clamp-2">
+                      <h3 className="text-base font-bold text-[var(--smakowalo-green-dark)] line-clamp-2 mb-2">
                         {product.name}
                       </h3>
 
-                      <p className="text-xs text-gray-600 line-clamp-2 mt-1 mb-2">
-                        {truncateText(product.description, 120)}
-                      </p>
+                      {/* Meta row with time and calories - prominent display */}
+                      <div className="flex items-center gap-4 text-sm text-gray-700 mb-3 pb-3 border-b border-gray-100">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4 text-[var(--smakowalo-green-primary)]" />
+                          <span className="font-medium">{product.cook_time} min</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Flame className="w-4 h-4 text-orange-500" />
+                          <span className="font-medium">{product.calories} kcal</span>
+                        </div>
+                        {product.protein > 0 && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-500">Białko:</span>
+                            <span className="font-medium">{product.protein}g</span>
+                          </div>
+                        )}
+                      </div>
 
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {diets.slice(0, 2).map((diet) => (
+                      {/* Diet labels */}
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {diets.slice(0, 3).map((diet) => (
                           <DietBadge key={`diet-${product.id}-${diet}`} type={diet} />
                         ))}
-                        {diets.length > 2 && (
-                          <span className="text-xs px-1 text-gray-500">+{diets.length - 2}</span>
-                        )}
-                      </div>
-                      <div className="flex gap-6 text-xs my-2">
-                        <div className="flex items-center">
-                          <Users className="w-3 h-3 mr-1" />
-                          <span>{product.servings ?? 1} os.</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Flame className="w-3 h-3 mr-1" />
-                          <span>{product.calories} kcal</span>
-                        </div>
-                        <div className="flex items-center">
-                          <span className={product.difficulty === 'Łatwy' ? 'text-green-500' :
-                                           product.difficulty === 'Średni' ? 'text-amber-500' : 'text-red-500'}>
-                            {product.difficulty}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex space-x-2 my-2">
-                        {['ostre', 'wegetariańskie', 'zdrowsze', 'słodkie'].map((tag, idx) =>
-                          Math.random() > 0.6 ? (
-                            <div key={idx} className={`w-6 h-6 rounded-full ${
-                              idx === 0 ? 'bg-red-500' :
-                              idx === 1 ? 'bg-green-500' :
-                              idx === 2 ? 'bg-blue-500' : 'bg-amber-500'
-                            } flex items-center justify-center`}>
-                            </div>
-                          ) : null
+                        {diets.length > 3 && (
+                          <span className="text-xs px-1.5 py-0.5 text-gray-500 bg-gray-100 rounded-full">+{diets.length - 3}</span>
                         )}
                       </div>
 
-                      <div className="mt-auto pt-3">
+                      {/* Difficulty indicator */}
+                      <div className="flex items-center gap-2 text-xs text-gray-600 mb-3">
+                        <ChefHat className="w-3.5 h-3.5" />
+                        <span>Poziom:</span>
+                        <span className={`font-medium ${
+                          product.difficulty === 'Łatwy' ? 'text-green-600' :
+                          product.difficulty === 'Średni' ? 'text-amber-600' : 'text-red-600'
+                        }`}>
+                          {product.difficulty || 'Średni'}
+                        </span>
+                      </div>
+
+                      <div className="mt-auto pt-2">
                         <Link
                           href={`/danie/${product.id}`}
                           className="block"

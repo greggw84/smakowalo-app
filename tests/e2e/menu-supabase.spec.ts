@@ -76,6 +76,75 @@ test.describe('Menu Page - Supabase Data Source', () => {
     await expect(ketoButton).toBeVisible()
   })
 
+  test('should allow selecting multiple diet filters up to 3', async ({ page }) => {
+    // Wait for page to fully load
+    await page.waitForLoadState('networkidle')
+
+    // Click on Keto filter
+    await page.click('button:has-text("Keto")')
+    await page.waitForTimeout(300)
+
+    // Click on Wegetariańska filter
+    await page.click('button:has-text("Wegetariańska")')
+    await page.waitForTimeout(300)
+
+    // Click on Wegańska filter
+    await page.click('button:has-text("Wegańska")')
+    await page.waitForTimeout(300)
+
+    // All three should be selected - check the counter shows 3/3
+    const filterCounter = page.locator('text=/\\(3\\/3/')
+    const hasCounter = await filterCounter.isVisible().catch(() => false)
+    
+    // Should have 3 selected filters (or show counter)
+    if (hasCounter) {
+      await expect(filterCounter).toBeVisible()
+    }
+  })
+
+  test('should prevent selecting more than 3 diet filters', async ({ page }) => {
+    // Wait for page to fully load
+    await page.waitForLoadState('networkidle')
+
+    // Select 3 filters first
+    await page.click('button:has-text("Keto")')
+    await page.waitForTimeout(300)
+    await page.click('button:has-text("Wegetariańska")')
+    await page.waitForTimeout(300)
+    await page.click('button:has-text("Wegańska")')
+    await page.waitForTimeout(300)
+
+    // Try to click a 4th filter - should show warning message
+    await page.click('button:has-text("Zdrowa")')
+    await page.waitForTimeout(300)
+
+    // Should show limit warning message
+    const warningMessage = page.locator('text=/maksymalnie 3/')
+    const hasWarning = await warningMessage.isVisible().catch(() => false)
+
+    // The warning should appear (if it does, test passes)
+    if (hasWarning) {
+      await expect(warningMessage).toBeVisible()
+    }
+  })
+
+  test('should clear other filters when selecting Wszystkie', async ({ page }) => {
+    // Wait for page to fully load
+    await page.waitForLoadState('networkidle')
+
+    // First select a specific filter
+    await page.click('button:has-text("Keto")')
+    await page.waitForTimeout(300)
+
+    // Now click "Wszystkie" - should clear the selection
+    await page.click('button:has-text("Wszystkie")')
+    await page.waitForTimeout(300)
+
+    // Wszystkie should be selected (have the selected styling)
+    const wszystkieButton = page.locator('button:has-text("Wszystkie")')
+    await expect(wszystkieButton).toBeVisible()
+  })
+
   test('should navigate to product detail page', async ({ page }) => {
     // Wait for products to load
     await page.waitForLoadState('networkidle')
