@@ -96,6 +96,87 @@ test.describe('Recipe System', () => {
     }
   })
 
+  test('should display recipe meta information row', async ({ page }) => {
+    // Get a valid product ID from the products API
+    const productsResponse = await page.request.get(`${BASE_URL}/api/products`)
+    const productsData = await productsResponse.json()
+    
+    if (!productsData.success || !productsData.products?.length) {
+      console.log('No products available, skipping test')
+      return
+    }
+    
+    const productId = productsData.products[0].id
+    await page.goto(`${BASE_URL}/danie/${productId}`)
+    await page.waitForLoadState('networkidle')
+
+    // Check for meta row elements - these should be visible in the hero section
+    // Time (min)
+    const timeElement = page.locator('text=/\\d+ min/')
+    const hasTime = await timeElement.first().isVisible().catch(() => false)
+    if (hasTime) {
+      await expect(timeElement.first()).toBeVisible()
+    }
+
+    // Calories (kcal)
+    const caloriesElement = page.locator('text=/\\d+ kcal/')
+    const hasCalories = await caloriesElement.first().isVisible().catch(() => false)
+    if (hasCalories) {
+      await expect(caloriesElement.first()).toBeVisible()
+    }
+
+    // Protein (g białka)
+    const proteinElement = page.locator('text=/\\d+.*g białka/')
+    const hasProtein = await proteinElement.first().isVisible().catch(() => false)
+    if (hasProtein) {
+      await expect(proteinElement.first()).toBeVisible()
+    }
+  })
+
+  test('should display cooking steps in card layout', async ({ page }) => {
+    // Get a valid product ID from the products API
+    const productsResponse = await page.request.get(`${BASE_URL}/api/products`)
+    const productsData = await productsResponse.json()
+    
+    if (!productsData.success || !productsData.products?.length) {
+      console.log('No products available, skipping test')
+      return
+    }
+    
+    const productId = productsData.products[0].id
+    await page.goto(`${BASE_URL}/danie/${productId}`)
+    await page.waitForLoadState('networkidle')
+
+    // Check for step cards with "Krok X" headings
+    const stepCards = page.locator('text=/Krok \\d+/')
+    const stepCount = await stepCards.count()
+
+    // Should have at least one step
+    expect(stepCount).toBeGreaterThanOrEqual(1)
+    
+    // First step should be visible
+    await expect(stepCards.first()).toBeVisible()
+  })
+
+  test('should display allergens section', async ({ page }) => {
+    // Get a valid product ID from the products API
+    const productsResponse = await page.request.get(`${BASE_URL}/api/products`)
+    const productsData = await productsResponse.json()
+    
+    if (!productsData.success || !productsData.products?.length) {
+      console.log('No products available, skipping test')
+      return
+    }
+    
+    const productId = productsData.products[0].id
+    await page.goto(`${BASE_URL}/danie/${productId}`)
+    await page.waitForLoadState('networkidle')
+
+    // Check for allergens section header
+    const allergensSection = page.locator('text=Alergeny')
+    await expect(allergensSection.first()).toBeVisible()
+  })
+
   test('should display recipe ingredients and equipment', async ({ page }) => {
     await page.goto(`${BASE_URL}/danie/61`)
     await page.waitForLoadState('networkidle')

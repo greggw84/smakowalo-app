@@ -8,7 +8,7 @@ import Link from "next/link"
 import Image from "next/image"
 import Navigation from "@/components/Navigation"
 import ProductImage from "@/components/ProductImage"
-import { ArrowLeft, Clock, Users, ChefHat, Zap, ShoppingCart, Loader2 } from "lucide-react"
+import { ArrowLeft, Clock, Users, ChefHat, Zap, Flame, AlertTriangle, UtensilsCrossed, Leaf, BarChart2 } from "lucide-react"
 import { ProductDetailSkeleton } from "@/components/Loading"
 import { ErrorFallback } from "@/components/ErrorBoundary"
 import { trackEvent } from "@/components/Analytics"
@@ -47,6 +47,8 @@ interface NutriChefData {
     order: number
     title: string
     description: string
+    // TODO: Add step_image field to Supabase schema for step images
+    image?: string
   }>
   generatedText: {
     short_description: string
@@ -61,6 +63,7 @@ interface DishData {
   id: number
   name: string
   description: string
+  shortDescription?: string
   image: string
   cookTime: number
   servings: number
@@ -76,11 +79,15 @@ interface DishData {
   allergens: string[]
   ingredients: string[]
   ingredientsWithQuantity?: IngredientWithQuantity[]
+  // TODO: Add ingredient grouping support (e.g., "included in box", "not included")
+  ingredientsInBox?: IngredientWithQuantity[]
+  ingredientsNotIncluded?: string[]
   equipment?: string[]
   instructions: Array<{
     step: number
     title?: string
     description: string
+    image?: string
   }>
   nutrition: {
     calories: number
@@ -101,11 +108,248 @@ interface DishData {
     protein: string
     salt: string
   }
+  // TODO: Add these fields to Supabase schema if not present
+  badges?: string[] // e.g., ["High Protein", "Flexitarian"]
   // NutriChef-specific fields
   healthScore?: number
   healthBenefits?: string
   substitutions?: string
   hasNutriChefData?: boolean
+}
+
+// Difficulty level badge styles
+function getDifficultyStyle(difficulty: string) {
+  switch (difficulty?.toLowerCase()) {
+    case 'łatwy':
+    case 'easy':
+      return 'bg-green-100 text-green-700 border-green-200'
+    case 'średni':
+    case 'medium':
+      return 'bg-amber-100 text-amber-700 border-amber-200'
+    case 'trudny':
+    case 'hard':
+      return 'bg-red-100 text-red-700 border-red-200'
+    default:
+      return 'bg-gray-100 text-gray-700 border-gray-200'
+  }
+}
+
+// Diet badge styles
+function getDietBadgeStyle(diet: string) {
+  switch (diet?.toLowerCase()) {
+    case 'keto':
+      return 'bg-purple-100 text-purple-700'
+    case 'wegetariańska':
+    case 'vegetarian':
+      return 'bg-green-100 text-green-700'
+    case 'wegańska':
+    case 'vegan':
+      return 'bg-emerald-100 text-emerald-700'
+    case 'niskowęglowodanowa':
+    case 'low carb':
+      return 'bg-blue-100 text-blue-700'
+    case 'wysokobiałkowa':
+    case 'high protein':
+      return 'bg-orange-100 text-orange-700'
+    case 'zdrowa':
+    case 'healthy':
+      return 'bg-teal-100 text-teal-700'
+    default:
+      return 'bg-gray-100 text-gray-700'
+  }
+}
+
+// Recipe Hero Section Component
+function RecipeHero({ dish }: { dish: DishData }) {
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-xl">
+      {/* Hero Image */}
+      <div className="relative h-64 md:h-80 lg:h-96">
+        <ProductImage
+          src={dish.image}
+          alt={dish.name}
+          fill
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        
+        {/* Title overlay on image */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 drop-shadow-lg">
+            {dish.name}
+          </h1>
+          {dish.shortDescription && (
+            <p className="text-sm md:text-base opacity-90 max-w-2xl">
+              {dish.shortDescription}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Meta Row */}
+      <RecipeMeta dish={dish} />
+    </div>
+  )
+}
+
+// Recipe Meta Row Component - displays key stats
+function RecipeMeta({ dish }: { dish: DishData }) {
+  return (
+    <div className="p-4 md:p-6 border-t border-gray-100">
+      <div className="flex flex-wrap items-center gap-3 md:gap-6">
+        {/* Time */}
+        <div className="flex items-center gap-2 text-gray-700">
+          <Clock className="h-5 w-5 text-[var(--smakowalo-green-primary)]" />
+          <div>
+            <span className="font-semibold">{dish.cookTime}</span>
+            <span className="text-sm text-gray-500 ml-1">min</span>
+          </div>
+        </div>
+
+        <div className="w-px h-8 bg-gray-200 hidden md:block" />
+
+        {/* Calories */}
+        <div className="flex items-center gap-2 text-gray-700">
+          <Flame className="h-5 w-5 text-orange-500" />
+          <div>
+            <span className="font-semibold">{dish.calories}</span>
+            <span className="text-sm text-gray-500 ml-1">kcal</span>
+          </div>
+        </div>
+
+        <div className="w-px h-8 bg-gray-200 hidden md:block" />
+
+        {/* Protein */}
+        <div className="flex items-center gap-2 text-gray-700">
+          <BarChart2 className="h-5 w-5 text-blue-500" />
+          <div>
+            <span className="font-semibold">{dish.protein}</span>
+            <span className="text-sm text-gray-500 ml-1">g białka</span>
+          </div>
+        </div>
+
+        <div className="w-px h-8 bg-gray-200 hidden md:block" />
+
+        {/* Difficulty */}
+        <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getDifficultyStyle(dish.difficulty)}`}>
+          {dish.difficulty || 'Średni'}
+        </div>
+
+        {/* Servings */}
+        <div className="flex items-center gap-2 text-gray-700">
+          <Users className="h-5 w-5 text-[var(--smakowalo-green-primary)]" />
+          <div>
+            <span className="font-semibold">{dish.servings}</span>
+            <span className="text-sm text-gray-500 ml-1">os.</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Diet badges */}
+      {dish.diets && dish.diets.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-4">
+          {dish.diets.map((diet, index) => (
+            <span
+              key={`meta-diet-${diet}-${index}`}
+              className={`px-3 py-1 rounded-full text-xs font-medium ${getDietBadgeStyle(diet)}`}
+            >
+              {diet}
+            </span>
+          ))}
+          {/* Additional badges if available */}
+          {dish.badges?.map((badge, index) => (
+            <span
+              key={`meta-badge-${badge}-${index}`}
+              className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700"
+            >
+              {badge}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Section Header Component for consistent styling
+function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode, title: string, subtitle?: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <div className="p-2 rounded-lg bg-[var(--smakowalo-green-primary)]/10 text-[var(--smakowalo-green-primary)]">
+        {icon}
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold text-[var(--smakowalo-green-dark)]">{title}</h3>
+        {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+      </div>
+    </div>
+  )
+}
+
+// Cooking Steps Grid Component
+function CookingStepsGrid({ instructions, openCartData }: { 
+  instructions: DishData['instructions'], 
+  openCartData: any 
+}) {
+  const steps = openCartData?.preparation_instructions || instructions
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      {steps.map((instruction: any, index: number) => (
+        <div 
+          key={`step-${instruction.step || index}`} 
+          className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+        >
+          {/* Step number header */}
+          <div className="bg-gradient-to-r from-[var(--smakowalo-green-primary)] to-[var(--smakowalo-green-dark)] px-4 py-2 flex items-center justify-between">
+            <span className="text-white font-bold">Krok {instruction.step || index + 1}</span>
+            {instruction.time && (
+              <span className="text-white/90 text-sm flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {instruction.time}
+              </span>
+            )}
+          </div>
+
+          <div className="p-4">
+            {instruction.title && (
+              <h4 className="font-semibold text-[var(--smakowalo-green-dark)] mb-2">
+                {instruction.title}
+              </h4>
+            )}
+            
+            <p className="text-gray-700 text-sm leading-relaxed">
+              {instruction.description}
+            </p>
+
+            {/* Step image if available */}
+            {instruction.image && (
+              <div className="mt-4 relative h-40 rounded-lg overflow-hidden">
+                <Image
+                  src={instruction.image}
+                  alt={`Krok ${instruction.step}: ${instruction.title || ''}`}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            )}
+
+            {/* Tips */}
+            {instruction.tips && instruction.tips.length > 0 && (
+              <div className="mt-4 bg-amber-50 rounded-lg p-3 border border-amber-100">
+                <p className="text-xs font-semibold text-amber-800 mb-1">💡 Wskazówka</p>
+                <ul className="text-sm text-amber-700 space-y-1">
+                  {instruction.tips.map((tip: string, tipIndex: number) => (
+                    <li key={`tip-${tipIndex}`}>• {tip}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 // Dane dań z OpenCart (w prawdziwej aplikacji byłyby pobierane z API)
@@ -450,6 +694,7 @@ function DishPageClient({ dishId }: { dishId: string }) {
           id: Number.parseInt(productId),
           name: baseProduct?.name || nutriChefData?.recipe?.name || `Przepis ${productId}`,
           description: nutriChefData?.generatedText?.long_description || baseProduct?.description || "Opis dania",
+          shortDescription: nutriChefData?.generatedText?.short_description || baseProduct?.short_description,
           image: baseProduct?.image || "https://ext.same-assets.com/817389662/206723592.jpeg",
           cookTime: baseProduct?.cook_time || 30,
           servings: nutriChefData?.recipe?.servings || baseProduct?.servings || 2,
@@ -719,226 +964,112 @@ function DishPageClient({ dishId }: { dishId: string }) {
             <span>/</span>
             <Link href="/menu" className="hover:text-[var(--smakowalo-green-primary)]">Menu</Link>
             <span>/</span>
-            <span className="text-[var(--smakowalo-green-dark)] font-medium">{dish.name}</span>
+            <span className="text-[var(--smakowalo-green-dark)] font-medium truncate max-w-[200px] md:max-w-none">{dish.name}</span>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         {/* Back button */}
-        <div className="flex justify-between items-center mb-4">
-          <Link href="/menu" className="flex items-center text-[var(--smakowalo-green-primary)] hover:text-[var(--smakowalo-green-dark)]">
+        <div className="flex justify-between items-center mb-6">
+          <Link href="/menu" className="flex items-center text-[var(--smakowalo-green-primary)] hover:text-[var(--smakowalo-green-dark)] transition-colors">
             <ArrowLeft className="w-4 h-4 mr-1" />
             Powrót do menu
           </Link>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Hero section */}
-            <div className="bg-white rounded-2xl overflow-hidden shadow-xl">
-              <div className="relative h-80 lg:h-96">
-                <ProductImage
-                  src={dish.image}
-                  alt={dish.name}
-                  fill
-                  className="object-cover"
+        {/* Main Layout - Responsive grid */}
+        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
+          {/* Main content - takes 2 columns on large screens */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Hero Section with Image and Meta */}
+            <RecipeHero dish={dish} />
+
+            {/* Description Section */}
+            {dish.description && (
+              <Card className="border-0 shadow-lg">
+                <CardContent className="p-6">
+                  <SectionHeader 
+                    icon={<Leaf className="w-5 h-5" />} 
+                    title="Opis przepisu" 
+                  />
+                  <p className="text-gray-700 leading-relaxed">
+                    {dish.description}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Cooking Steps Section */}
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-6">
+                <SectionHeader 
+                  icon={<ChefHat className="w-5 h-5" />} 
+                  title="Instrukcje przygotowania" 
+                  subtitle={`${dish.instructions.length} kroków`}
+                />
+                <CookingStepsGrid 
+                  instructions={dish.instructions} 
+                  openCartData={openCartData} 
                 />
 
-              </div>
-              <div className="p-8">
-                <h1 className="text-3xl md:text-4xl font-bold text-[var(--smakowalo-green-dark)] mb-4">
-                  {dish.name}
-                </h1>
-                <p className="text-lg text-gray-600 mb-6">
-                  {dish.description}
-                </p>
-
-                {/* Quick stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-5 w-5 text-[var(--smakowalo-green-primary)]" />
-                    <span className="text-sm text-gray-600">{dish.cookTime} min</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-5 w-5 text-[var(--smakowalo-green-primary)]" />
-                    <span className="text-sm text-gray-600">{dish.servings} osoby</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <ChefHat className="h-5 w-5 text-[var(--smakowalo-green-primary)]" />
-                    <span className="text-sm text-gray-600">{dish.difficulty}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Zap className="h-5 w-5 text-[var(--smakowalo-green-primary)]" />
-                    <span className="text-sm text-gray-600">{dish.calories} kcal</span>
-                  </div>
-                </div>
-
-
-
-                {/* Price and action */}
-                {/* Price and cart button removed */}
-              </div>
-            </div>
-
-            {/* Instructions */}
-            <Card className="border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-2xl text-[var(--smakowalo-green-dark)]">
-                  Instrukcje przygotowania
-                </CardTitle>
-                {loadingInstructions && (
-                  <p className="text-sm text-gray-600">Ładowanie instrukcji z OpenCart...</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-8">
-                  {openCartData?.preparation_instructions ? (
-                    // Use enhanced OpenCart instructions
-                    openCartData.preparation_instructions.map((instruction: any) => (
-                      <div key={instruction.step} className="bg-gradient-to-r from-gray-50 to-white rounded-xl p-6 border border-gray-100 shadow-sm">
-                        <div className="flex items-start space-x-6">
-                          <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-[var(--smakowalo-green-primary)] to-[var(--smakowalo-green-dark)] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                            {instruction.step}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="font-bold text-[var(--smakowalo-green-dark)] text-xl">
-                                {instruction.title}
-                              </h3>
-                              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                {instruction.time && (
-                                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-                                    ⏱️ {instruction.time}
-                                  </span>
-                                )}
-                                {instruction.difficulty && (
-                                  <span className={`px-2 py-1 rounded-full font-medium ${
-                                    instruction.difficulty === 'Łatwe' ? 'bg-green-100 text-green-800' :
-                                    instruction.difficulty === 'Średnie' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-red-100 text-red-800'
-                                  }`}>
-                                    🎯 {instruction.difficulty}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="grid lg:grid-cols-2 gap-6">
-                              <div className="space-y-4">
-                                <p className="text-gray-700 leading-relaxed text-base">
-                                  {instruction.description}
-                                </p>
-
-                                {instruction.tips && instruction.tips.length > 0 && (
-                                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                                    <h4 className="font-semibold text-amber-800 mb-2 flex items-center">
-                                      💡 Porady szefa kuchni
-                                    </h4>
-                                    <ul className="space-y-1">
-                                      {instruction.tips.map((tip: string, index: number) => (
-                                        <li key={index} className="text-amber-700 text-sm flex items-start">
-                                          <span className="text-amber-500 mr-2">•</span>
-                                          {tip}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                              </div>
-
-                              {instruction.image && (
-                                <div className="relative h-48 lg:h-40 rounded-lg overflow-hidden shadow-md">
-                                  <Image
-                                    src={instruction.image}
-                                    alt={`Krok ${instruction.step}: ${instruction.title}`}
-                                    fill
-                                    className="object-cover hover:scale-105 transition-transform duration-300"
-                                  />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    // Fallback to original instructions if OpenCart data not available
-                    dish.instructions.map((instruction) => (
-                      <div key={instruction.step} className="bg-gray-50 rounded-lg p-6">
-                        <div className="flex space-x-4">
-                          <div className="flex-shrink-0 w-10 h-10 bg-[var(--smakowalo-green-primary)] rounded-full flex items-center justify-center text-white font-bold">
-                            {instruction.step}
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-[var(--smakowalo-green-dark)] mb-2 text-lg">
-                              {instruction.title}
-                            </h3>
-                            <p className="text-gray-600 leading-relaxed">
-                              {instruction.description}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Add Chef Notes and Nutrition Info if available */}
+                {/* Chef Notes */}
                 {openCartData?.chef_notes && (
-                  <div className="mt-8 bg-green-50 border border-green-200 rounded-lg p-6">
-                    <h4 className="font-bold text-green-800 mb-4 flex items-center text-lg">
-                      👨‍🍳 Notatki szefa kuchni
+                  <div className="mt-8 bg-green-50 border border-green-200 rounded-xl p-5">
+                    <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+                      <span className="text-lg">👨‍🍳</span> Notatki szefa kuchni
                     </h4>
                     <ul className="space-y-2">
                       {openCartData.chef_notes.map((note: string, index: number) => (
-                        <li key={index} className="text-green-700 flex items-start">
-                          <span className="text-green-500 mr-2 mt-1">✓</span>
-                          {note}
+                        <li key={`chef-note-${index}`} className="text-green-700 flex items-start gap-2">
+                          <span className="text-green-500 mt-0.5">✓</span>
+                          <span>{note}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
-
-                {openCartData?.nutrition_info && (
-                  <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <h4 className="font-bold text-blue-800 mb-4 flex items-center text-lg">
-                      📊 Informacje żywieniowe i czas przygotowania
-                    </h4>
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">{openCartData.nutrition_info.calories}</div>
-                        <div className="text-sm text-blue-700">Kalorie</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">{openCartData.nutrition_info.total_time}</div>
-                        <div className="text-sm text-blue-700">Całkowity czas</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">{openCartData.nutrition_info.servings}</div>
-                        <div className="text-sm text-blue-700">Porcje</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
+
+            {/* Health Benefits and Substitutions on mobile - shown below main content */}
+            <div className="lg:hidden space-y-6">
+              {dish.healthBenefits && (
+                <Card className="border-0 shadow-lg">
+                  <CardContent className="p-6">
+                    <SectionHeader 
+                      icon={<Leaf className="w-5 h-5" />} 
+                      title="Korzyści zdrowotne" 
+                    />
+                    <p className="text-gray-700 leading-relaxed">{dish.healthBenefits}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {dish.substitutions && (
+                <Card className="border-0 shadow-lg">
+                  <CardContent className="p-6">
+                    <SectionHeader 
+                      icon={<UtensilsCrossed className="w-5 h-5" />} 
+                      title="Możliwe zamienniki" 
+                    />
+                    <p className="text-gray-700 leading-relaxed">{dish.substitutions}</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar - stacks below on mobile */}
           <div className="space-y-6">
-            {/* Main Nutrition info - per serving from NutriChef */}
-            <Card className="border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
-                  Wartości odżywcze
-                </CardTitle>
-                <p className="text-sm text-gray-600">Na porcję ({dish.servings} os.)</p>
-              </CardHeader>
-              <CardContent>
+            {/* Nutrition per serving */}
+            <Card className="border-0 shadow-lg sticky top-4">
+              <CardContent className="p-6">
+                <SectionHeader 
+                  icon={<BarChart2 className="w-5 h-5" />} 
+                  title="Wartości odżywcze" 
+                  subtitle={`Na porcję (${dish.servings} os.)`}
+                />
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="bg-orange-50 rounded-lg p-3 text-center">
                     <p className="text-xl font-bold text-orange-600">{dish.nutrition.calories}</p>
@@ -968,7 +1099,7 @@ function DishPageClient({ dishId }: { dishId: string }) {
                   )}
                 </div>
                 
-                {/* Health Score from NutriChef */}
+                {/* Health Score */}
                 {dish.healthScore !== undefined && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <div className="flex items-center justify-between mb-2">
@@ -992,55 +1123,75 @@ function DishPageClient({ dishId }: { dishId: string }) {
               </CardContent>
             </Card>
 
-            {/* Per 100g nutrition - detailed view */}
-            <Card className="border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
-                  Wartości na 100g
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {dish.nutritionPer100g && Object.entries(dish.nutritionPer100g).map(([key, value]) => {
-                    const labels: { [key: string]: string } = {
-                      energy: "Energia",
-                      fat: "Tłuszcze",
-                      saturatedFat: "Tłuszcze nasycone",
-                      carbs: "Węglowodany",
-                      sugar: "Cukry",
-                      protein: "Białko",
-                      salt: "Sól"
-                    }
-                    return (
-                      <div key={key} className="flex justify-between">
-                        <span className="text-gray-600">{labels[key]}</span>
-                        <span className="font-medium">{value}</span>
-                      </div>
-                    )
-                  })}
-                </div>
+            {/* Nutrition per 100g */}
+            {dish.nutritionPer100g && (
+              <Card className="border-0 shadow-lg">
+                <CardContent className="p-6">
+                  <SectionHeader 
+                    icon={<BarChart2 className="w-5 h-5" />} 
+                    title="Wartości na 100g" 
+                  />
+                  <div className="space-y-2">
+                    {Object.entries(dish.nutritionPer100g).map(([key, value]) => {
+                      const labels: { [key: string]: string } = {
+                        energy: "Energia",
+                        fat: "Tłuszcze",
+                        saturatedFat: "Tłuszcze nasycone",
+                        carbs: "Węglowodany",
+                        sugar: "Cukry",
+                        protein: "Białko",
+                        salt: "Sól"
+                      }
+                      return (
+                        <div key={`nutrition100g-${key}`} className="flex justify-between py-1.5 border-b border-gray-50 last:border-0">
+                          <span className="text-gray-600 text-sm">{labels[key]}</span>
+                          <span className="font-medium text-sm">{value}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Allergens */}
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-6">
+                <SectionHeader 
+                  icon={<AlertTriangle className="w-5 h-5" />} 
+                  title="Alergeny" 
+                />
+                {dish.allergens.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {dish.allergens.map((allergen: string) => (
+                      <Badge key={`allergen-${allergen}`} className="bg-red-100 text-red-800 border-red-200">
+                        {allergen}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <Badge className="bg-green-100 text-green-800 border-green-200">Brak alergenów</Badge>
+                )}
               </CardContent>
             </Card>
 
             {/* Ingredients */}
-            <Card className="border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
-                  Składniki w pudełku
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-6">
+                <SectionHeader 
+                  icon={<Leaf className="w-5 h-5" />} 
+                  title="Składniki w pudełku" 
+                />
                 <ul className="space-y-2">
-                  {/* Display ingredients with quantities if NutriChef data is available */}
                   {dish.ingredientsWithQuantity && dish.ingredientsWithQuantity.length > 0 ? (
                     dish.ingredientsWithQuantity.map((ingredient, index) => (
-                      <li key={`ingredient-${index}-${ingredient.name}`} className="flex items-center justify-between bg-gray-50 rounded-lg p-2">
-                        <div className="flex items-center space-x-2">
+                      <li key={`ingredient-${index}-${ingredient.name}`} className="flex items-center justify-between bg-gray-50 rounded-lg p-2.5">
+                        <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-[var(--smakowalo-green-primary)] rounded-full" />
-                          <span className="text-gray-700">{ingredient.name}</span>
+                          <span className="text-gray-700 text-sm">{ingredient.name}</span>
                         </div>
                         {ingredient.grams && (
-                          <span className="text-sm font-medium text-[var(--smakowalo-green-primary)] bg-white px-2 py-0.5 rounded">
+                          <span className="text-sm font-medium text-[var(--smakowalo-green-primary)] bg-white px-2 py-0.5 rounded border border-gray-100">
                             {ingredient.grams}g
                           </span>
                         )}
@@ -1048,97 +1199,63 @@ function DishPageClient({ dishId }: { dishId: string }) {
                     ))
                   ) : (
                     dish.ingredients.map((ingredient: string, index: number) => (
-                      <li key={`ingredient-${ingredient}`} className="flex items-center space-x-2">
+                      <li key={`ingredient-list-${index}`} className="flex items-center gap-2 py-1">
                         <div className="w-2 h-2 bg-[var(--smakowalo-green-primary)] rounded-full" />
-                        <span className="text-gray-700">{ingredient}</span>
+                        <span className="text-gray-700 text-sm">{ingredient}</span>
                       </li>
                     ))
                   )}
                 </ul>
-                {dish.hasNutriChefData && (
+                {dish.hasNutriChefData && dish.ingredientsWithQuantity && (
                   <p className="text-xs text-green-600 mt-3 flex items-center gap-1">
-                    <span>✓</span> Składniki z dokładnymi gramaturami wygenerowane przez NutriChef
+                    <span>✓</span> Dokładne gramartury z NutriChef
                   </p>
                 )}
               </CardContent>
             </Card>
 
             {/* Equipment */}
-            <Card className="border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
-                  Czego będziesz potrzebować
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {dish.equipment?.map((item: string, index: number) => (
-                    <li key={`equipment-${item}`} className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-[var(--smakowalo-brown)] rounded-full" />
-                      <span className="text-gray-700">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Allergens */}
-            {dish.allergens.length > 0 && (
-              <Card className="border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
-                    Alergeny
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {dish.allergens.map((allergen: string, index: number) => (
-                      <Badge key={`allergen-${allergen}`} className="bg-red-100 text-red-800">
-                        {allergen}
-                      </Badge>
+            {dish.equipment && dish.equipment.length > 0 && (
+              <Card className="border-0 shadow-lg">
+                <CardContent className="p-6">
+                  <SectionHeader 
+                    icon={<UtensilsCrossed className="w-5 h-5" />} 
+                    title="Potrzebne przybory" 
+                  />
+                  <ul className="space-y-2">
+                    {dish.equipment.map((item: string, index: number) => (
+                      <li key={`equipment-${index}`} className="flex items-center gap-2 py-1">
+                        <div className="w-2 h-2 bg-[var(--smakowalo-brown)] rounded-full" />
+                        <span className="text-gray-700 text-sm">{item}</span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </CardContent>
               </Card>
             )}
 
-            {dish.allergens.length === 0 && (
-              <Card className="border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
-                    Alergeny
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Badge className="bg-green-100 text-green-800">Brak alergenów</Badge>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Health Benefits from NutriChef */}
+            {/* Health Benefits - Desktop only (already shown on mobile above) */}
             {dish.healthBenefits && (
-              <Card className="border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
-                    💪 Korzyści zdrowotne
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-700 leading-relaxed">{dish.healthBenefits}</p>
+              <Card className="border-0 shadow-lg hidden lg:block">
+                <CardContent className="p-6">
+                  <SectionHeader 
+                    icon={<Leaf className="w-5 h-5" />} 
+                    title="Korzyści zdrowotne" 
+                  />
+                  <p className="text-gray-700 leading-relaxed text-sm">{dish.healthBenefits}</p>
                 </CardContent>
               </Card>
             )}
 
-            {/* Substitutions from NutriChef */}
+            {/* Substitutions - Desktop only */}
             {dish.substitutions && (
-              <Card className="border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-xl text-[var(--smakowalo-green-dark)]">
-                    🔄 Możliwe zamienniki
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-700 leading-relaxed">{dish.substitutions}</p>
+              <Card className="border-0 shadow-lg hidden lg:block">
+                <CardContent className="p-6">
+                  <SectionHeader 
+                    icon={<UtensilsCrossed className="w-5 h-5" />} 
+                    title="Możliwe zamienniki" 
+                  />
+                  <p className="text-gray-700 leading-relaxed text-sm">{dish.substitutions}</p>
                 </CardContent>
               </Card>
             )}
