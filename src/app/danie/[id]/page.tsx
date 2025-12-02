@@ -1143,7 +1143,7 @@ function DishPageClient({ dishId }: { dishId: string }) {
                         salt: "Sól"
                       }
                       return (
-                        <div key={`nutrition100g-${key}`} className="flex justify-between py-1.5 border-b border-gray-50 last:border-0">
+                        <div key={key} className="flex justify-between py-1.5 border-b border-gray-50 last:border-0">
                           <span className="text-gray-600 text-sm">{labels[key]}</span>
                           <span className="font-medium text-sm">{value}</span>
                         </div>

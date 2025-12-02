@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -125,10 +125,25 @@ export default function MenuPage() {
   const [expandedIds, setExpandedIds] = useState<number[]>([])
   const [dataSource, setDataSource] = useState<string>('')
   const [filterLimitMessage, setFilterLimitMessage] = useState<string | null>(null)
+  const filterMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const { addItem, totalItems } = useCart()
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (filterMessageTimeoutRef.current) {
+        clearTimeout(filterMessageTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Handle diet filter selection with limit enforcement
   const handleDietSelect = useCallback((dietCode: string) => {
+    // Clear any existing timeout
+    if (filterMessageTimeoutRef.current) {
+      clearTimeout(filterMessageTimeoutRef.current)
+      filterMessageTimeoutRef.current = null
+    }
     setFilterLimitMessage(null)
 
     if (dietCode === 'all') {
@@ -156,8 +171,11 @@ export default function MenuPage() {
       // If trying to add a 4th filter, show message and prevent selection
       if (prev.length >= MAX_DIET_FILTERS) {
         setFilterLimitMessage(`Możesz wybrać maksymalnie ${MAX_DIET_FILTERS} preferencje jednocześnie`)
-        // Hide message after 3 seconds
-        setTimeout(() => setFilterLimitMessage(null), 3000)
+        // Hide message after 3 seconds with cleanup
+        filterMessageTimeoutRef.current = setTimeout(() => {
+          setFilterLimitMessage(null)
+          filterMessageTimeoutRef.current = null
+        }, 3000)
         return prev
       }
 
