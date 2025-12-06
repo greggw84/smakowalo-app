@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { fetchSupabaseCategories, isSupabaseConfigured } from '@/lib/supabase-menu'
+import { fetchSupabaseProducts, isSupabaseConfigured } from '@/lib/supabase-menu'
 
 const hasSupabase = isSupabaseConfigured()
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('🔍 Fetching categories from Supabase...')
-    const categories = await fetchSupabaseCategories()
+    const categories = await fetchSupabaseProducts()
 
     console.log(`✅ Returning ${categories.length} categories from Supabase`)
     return NextResponse.json({ success: true, categories, source: 'supabase' })
