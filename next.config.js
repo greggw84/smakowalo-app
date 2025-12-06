@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  // 🔥 Disable Turbopack (Next.js 16 uses it by default)
+  turbopack: false,
+
   // Allow build to succeed with TypeScript and ESLint errors
   typescript: {
     ignoreBuildErrors: true,
@@ -44,9 +47,9 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
-      }
+      };
     }
-    return config
+    return config;
   },
 
   // Experimental features
@@ -66,39 +69,21 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: [
-          {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on'
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload'
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'SAMEORIGIN'
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff'
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block'
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin'
-          }
-        ]
-      }
-    ]
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-XSS-PROTECTION', value: '1; mode=block' },
+          { key: 'Referrer-Policy', value: 'origin-when-cross-origin' },
+        ],
+      },
+    ];
   },
 
   // Redirects
   async redirects() {
-    return []
+    return [];
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
