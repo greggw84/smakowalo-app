@@ -2,45 +2,40 @@
 const nextConfig = {
   reactStrictMode: true,
 
-  // ✅ OFFICIALLY RECOMMENDED WAY TO DISABLE TURBOPACK ERRORS
-  // This forces Next.js to fall back to Webpack instead of Turbopack
-  turbopack: {},
+  // 🔥 Wymuszenie Webpacka zamiast Turbopack (REKOMENDOWANE)
+  experimental: {
+    webpackBuildWorker: true,
+    optimizeCss: false,
+    serverActions: {
+      bodySizeLimit: "2mb",
+    },
+  },
 
-  // Allow build to succeed with TypeScript and ESLint errors
+  // 👉 Pozwala budować nawet przy błędach TS
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 
-  // Environment variables
+  // 🌍 Environment variables
   env: {
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://smakowalo.pl',
-    NEXT_PUBLIC_SITE_NAME: process.env.NEXT_PUBLIC_SITE_NAME || 'Smakowało',
+    NEXT_PUBLIC_SITE_URL:
+      process.env.NEXT_PUBLIC_SITE_URL || "https://smakowalo.pl",
+    NEXT_PUBLIC_SITE_NAME:
+      process.env.NEXT_PUBLIC_SITE_NAME || "Smakowało",
   },
 
-  // Image optimization
+  // 🖼 Poprawna konfiguracja obrazków (bez deprecated 'domains')
   images: {
-    domains: [
-      'smakowalo.pl',
-      'demo.opencart.com',
-      'opencart.com',
-      'images.unsplash.com',
-      'unsplash.com',
-      'same-assets.com',
-      'smakowalo.vercel.app',
-    ],
     unoptimized: false,
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: '**',
+        protocol: "https",
+        hostname: "**",
       },
     ],
   },
 
-  // Webpack configuration (keep your fallbacks)
+  // 🔧 Webpack fallbacki (potrzebne dla niektórych bibliotek)
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -53,35 +48,26 @@ const nextConfig = {
     return config;
   },
 
-  // Experimental features
-  experimental: {
-    optimizeCss: false,
-    serverActions: {
-      bodySizeLimit: '2mb',
-    },
-  },
+  // 📦 Out-of-the-box Vercel standalone
+  output: "standalone",
 
-  // Output configuration
-  output: 'standalone',
-
-  // Headers
+  // 🛡 Security headers
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: "/:path*",
         headers: [
-          { key: 'X-DNS-Prefetch-Control', value: 'on' },
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
-          { key: 'Referrer-Policy', value: 'origin-when-cross-origin' },
+          { key: "X-DNS-Prefetch-Control", value: "on" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-XSS-Protection", value: "1; mode=block" },
+          { key: "Referrer-Policy", value: "origin-when-cross-origin" },
         ],
       },
     ];
   },
 
-  // Redirects
   async redirects() {
     return [];
   },
