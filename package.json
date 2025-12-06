@@ -1,4 +1,11 @@
 {
+  "scripts": {
+    "build": "NEXT_ENABLE_WEBPACK=1 next build",
+    "dev": "NEXT_ENABLE_WEBPACK=1 next dev",
+    "start": "next start"
+  }
+}
+{
   "name": "nextjs-shadcn",
   "version": "0.1.0",
   "private": true,
