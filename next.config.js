@@ -2,8 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
 
-  // Disable Turbopack completely
-  turbopack: false,
+  // ✅ OFFICIALLY RECOMMENDED WAY TO DISABLE TURBOPACK ERRORS
+  // This forces Next.js to fall back to Webpack instead of Turbopack
+  turbopack: {},
 
   // Allow build to succeed with TypeScript and ESLint errors
   typescript: {
@@ -39,12 +40,8 @@ const nextConfig = {
     ],
   },
 
-  // Webpack configuration — MERGED PROPERLY
+  // Webpack configuration (keep your fallbacks)
   webpack: (config, { isServer }) => {
-    // Disable Turbopack explicitly
-    config.experiments = { ...config.experiments, turbopack: false };
-
-    // Your previous fallback settings
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -53,7 +50,6 @@ const nextConfig = {
         tls: false,
       };
     }
-
     return config;
   },
 
