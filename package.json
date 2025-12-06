@@ -1,17 +1,10 @@
 {
-  "scripts": {
-    "build": "NEXT_ENABLE_WEBPACK=1 next build",
-    "dev": "NEXT_ENABLE_WEBPACK=1 next dev",
-    "start": "next start"
-  }
-}
-{
   "name": "nextjs-shadcn",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 --turbopack",
-    "build": "next build",
+    "dev": "NEXT_ENABLE_WEBPACK=1 next dev",
+    "build": "NEXT_ENABLE_WEBPACK=1 next build",
     "start": "next start",
     "lint": "bunx biome lint --write && bunx tsc --noEmit",
     "format": "bunx biome format --write",
