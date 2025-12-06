@@ -39,7 +39,7 @@
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.475.0",
-    "next": "^15.3.2",
+    "next": "^16.0.7",
     "next-auth": "^4.24.11",
     "nodemailer": "^7.0.5",
     "openai": "^6.9.1",
